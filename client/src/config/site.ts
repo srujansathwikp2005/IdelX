@@ -38,7 +38,6 @@ export const FOOTER_NAV = {
   Legal: [
     { label: "Terms of Service", href: ROUTES.TERMS },
     { label: "Privacy Policy", href: ROUTES.PRIVACY },
-    { label: "Cookie Policy", href: ROUTES.COOKIE_POLICY },
     { label: "Security Deposit & Damage", href: ROUTES.SECURITY_DEPOSIT_POLICY },
     { label: "Cancellation & Refund", href: ROUTES.CANCELLATION_REFUND_POLICY },
   ],
