@@ -965,7 +965,9 @@ export function AdminGate({ children }: { children: React.ReactNode }) {
     if (bouncedRef.current) return;
     bouncedRef.current = true;
     if (!user) {
-      if (mounted) router.replace(ROUTES.LOGIN);
+      // Carry the origin so the sign-in screen knows this is the admin
+      // entrance and can hide the registration link.
+      if (mounted) router.replace(`${ROUTES.LOGIN}?next=${encodeURIComponent(ROUTES.ADMIN)}`);
     } else if (mounted && user.role !== "admin") {
       router.replace(ROUTES.DASHBOARD);
     }
