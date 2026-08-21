@@ -80,8 +80,12 @@ jobs:
           IDLEX_MONGO_URI:               ${{ secrets.MONGO_URI }}
           IDLEX_JWT_ACCESS_SECRET:       ${{ secrets.JWT_ACCESS_SECRET }}
           IDLEX_JWT_REFRESH_SECRET:      ${{ secrets.JWT_REFRESH_SECRET }}
+          IDLEX_ADMIN_EMAIL:             ${{ secrets.ADMIN_EMAIL }}
+          IDLEX_ADMIN_PASSWORD:          ${{ secrets.ADMIN_PASSWORD }}
           IDLEX_RENFLAIR_API_KEY:        ${{ secrets.RENFLAIR_API_KEY }}
           IDLEX_SMTP_HOST:               ${{ secrets.SMTP_HOST }}
+          IDLEX_SMTP_PORT:               ${{ vars.SMTP_PORT }}
+          IDLEX_SMTP_SECURE:             ${{ vars.SMTP_SECURE }}
           IDLEX_SMTP_USER:               ${{ secrets.SMTP_USER }}
           IDLEX_SMTP_PASS:               ${{ secrets.SMTP_PASS }}
           IDLEX_SMTP_FROM:               ${{ secrets.SMTP_FROM }}

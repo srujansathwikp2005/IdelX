@@ -72,6 +72,8 @@ EXTRA_VARS=$(cat <<JSON
   "admin_password": "${IDLEX_ADMIN_PASSWORD:-}",
   "renflair_api_key": "${IDLEX_RENFLAIR_API_KEY:-}",
   "smtp_host": "${IDLEX_SMTP_HOST:-}",
+  "smtp_port": "${IDLEX_SMTP_PORT:-587}",
+  "smtp_secure": "${IDLEX_SMTP_SECURE:-false}",
   "smtp_user": "${IDLEX_SMTP_USER:-}",
   "smtp_pass": "${IDLEX_SMTP_PASS:-}",
   "smtp_from": "${IDLEX_SMTP_FROM:-}",

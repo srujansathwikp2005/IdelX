@@ -277,13 +277,51 @@ surfaces this in its summary rather than leaving you to guess.
 - `concurrency` serialises deploys so two pushes cannot race over `current`
 - gated on the `production` GitHub Environment, so approvals can be required
 
-Configure under **Settings → Environments → production**:
+Configure under **Settings → Environments → production**.
 
-*Secrets:* `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`, `EC2_SSH_PRIVATE_KEY`,
-`REPO_DEPLOY_KEY`, `MONGO_URI`, `JWT_ACCESS_SECRET`, `JWT_REFRESH_SECRET`,
-plus optional `RENFLAIR_API_KEY`, `SMTP_*`, `RAZORPAY_*`.
+#### Required secrets — the deploy fails without these
 
-*Variables:* `AWS_REGION`, `CLIENT_URL`.
+| Secret | Value |
+|---|---|
+| `AWS_ACCESS_KEY_ID` | Deployer key id (see `docs/aws-credentials.md`) |
+| `AWS_SECRET_ACCESS_KEY` | Deployer secret |
+| `EC2_SSH_PRIVATE_KEY` | Full contents of the `.pem` matching `ec2_key_name`, including the BEGIN/END lines |
+| `REPO_DEPLOY_KEY` | Private half of a read-only deploy key on this repo |
+| `MONGO_URI` | Atlas SRV string, **with a database name**: `mongodb+srv://…/idlex?retryWrites=true&w=majority` |
+| `JWT_ACCESS_SECRET` | `openssl rand -hex 48` |
+| `JWT_REFRESH_SECRET` | `openssl rand -hex 48` — a different value |
+| `ADMIN_EMAIL` | Sole administrator's address |
+| `ADMIN_PASSWORD` | That account's password |
+
+#### Optional secrets — the app runs without them, but the feature does not
+
+| Secret | Unset behaviour |
+|---|---|
+| `RENFLAIR_API_KEY` | SMS OTPs are written to the journal instead of sent |
+| `SMTP_HOST`, `SMTP_USER`, `SMTP_PASS`, `SMTP_FROM` | Email OTPs are logged instead of sent |
+| `RAZORPAY_KEY_ID`, `RAZORPAY_KEY_SECRET`, `RAZORPAY_WEBHOOK_SECRET`, `RAZORPAY_ACCOUNT_NUMBER` | Checkout fails at payment |
+
+#### Variables (not secrets)
+
+| Variable | Example |
+|---|---|
+| `AWS_REGION` | `eu-north-1` |
+| `CLIENT_URL` | `https://idlex.in` — also the CORS and socket.io origin |
+| `SMTP_PORT` | `587` |
+| `SMTP_SECURE` | `false` |
+
+> `SMTP_PORT` and `SMTP_SECURE` must agree. **587 is STARTTLS and needs
+> `SMTP_SECURE=false`**; only 465 is implicit TLS and takes `true`. Setting
+> 587 with `true` makes nodemailer attempt a handshake the server is not
+> expecting, and the connection hangs rather than failing cleanly.
+
+> `ADMIN_EMAIL` and `ADMIN_PASSWORD` are applied on every boot: the app sets
+> that account's password to match, and demotes and deactivates any other
+> account holding the admin role. Changing the secret and redeploying is
+> therefore the supported way to rotate the administrator credential.
+
+> `MONGO_URI` must name a database. Atlas copies a connection string ending
+> `/?appName=…`, and Mongoose silently writes to `test` if the path is empty.
 
 ---
 
