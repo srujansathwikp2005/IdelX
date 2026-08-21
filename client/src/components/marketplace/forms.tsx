@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Input, Select, Textarea } from "@/components/ui/input";
@@ -37,8 +37,29 @@ function Notice({ message }: { message: string | null }) {
   );
 }
 
-export function AuthPanel({ mode }: { mode: "login" | "sign-up" | "forgot" | "otp" }) {
+type AuthMode = "login" | "sign-up" | "forgot" | "otp";
+
+// useSearchParams opts a route out of static prerendering unless it sits
+// inside a Suspense boundary. Wrapping here rather than in each of the five
+// auth pages keeps every caller correct by construction — and a missing
+// boundary fails the build, not the browser, so it is easy to reintroduce.
+export function AuthPanel({ mode }: { mode: AuthMode }) {
+  return (
+    <React.Suspense fallback={null}>
+      <AuthPanelInner mode={mode} />
+    </React.Suspense>
+  );
+}
+
+function AuthPanelInner({ mode }: { mode: AuthMode }) {
   const router = useRouter();
+  const searchParams = useSearchParams();
+
+  // Signing in on the way to the admin console. Registration is offered on
+  // the ordinary sign-in screen but not here: self-registration always
+  // creates a renter, so advertising it to someone trying to reach /admin
+  // only suggests a route to administrator access that does not exist.
+  const isAdminEntry = (searchParams.get("next") ?? "").startsWith(ROUTES.ADMIN);
   const { login, register } = useAuth();
   const [name, setName] = React.useState("");
   const [email, setEmail] = React.useState("");
@@ -172,9 +193,11 @@ export function AuthPanel({ mode }: { mode: "login" | "sign-up" | "forgot" | "ot
               <Link href={ROUTES.FORGOT_PASSWORD} className="font-semibold text-primary transition-colors hover:text-violet-600">
                 Forgot password?
               </Link>
-              <Link href={ROUTES.REGISTER} className="font-semibold text-primary transition-colors hover:text-violet-600">
-                Create account
-              </Link>
+              {!isAdminEntry && (
+                <Link href={ROUTES.REGISTER} className="font-semibold text-primary transition-colors hover:text-violet-600">
+                  Create account
+                </Link>
+              )}
             </>
           )}
           {mode === "sign-up" && (
