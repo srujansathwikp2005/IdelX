@@ -21,8 +21,19 @@ ec2_instance_type: t3.small
 ec2_volume_size: 20                  # GB; 8GB fills up once node_modules + .next land
 ec2_ami_owner: "137112412989"        # Amazon's official AL2023 AMI owner id
 ec2_ami_name_filter: "al2023-ami-2023.*-kernel-6.1-x86_64"
-ec2_key_name: idlex-deploy           # existing EC2 keypair name
+# Must match a key pair that already exists in the target account — Ansible
+# does not create one. In account 308413200654 that pair is named "deploy".
+ec2_key_name: deploy
 ec2_ssh_private_key: "~/.ssh/idlex-dev.pem"
+
+# Set false when the deploying identity has no IAM permissions. Provisioning
+# then skips role/instance-profile creation and the app falls back to local
+# disk storage, because reaching S3 without an instance profile would mean
+# putting long-lived AWS keys on the box — a worse trade than local disk.
+manage_iam: true
+# Attach an instance profile someone else created out of band. Requires
+# iam:PassRole on that role even though the role itself already exists.
+ec2_instance_profile: ""
 
 # --- Application ------------------------------------------------------------
 app_user: ec2-user
