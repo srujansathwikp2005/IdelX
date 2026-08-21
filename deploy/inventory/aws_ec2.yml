@@ -15,10 +15,10 @@ filters:
 
 keyed_groups:
   # tag:Env=prod -> group "env_prod"; lets one inventory serve several envs.
-  - key: tags.Env
+  - key: ec2_tags.Env
     prefix: env
   # tag:Role=web -> group "role_web", which the plays target.
-  - key: tags.Role
+  - key: ec2_tags.Role
     prefix: role
 
 hostnames:

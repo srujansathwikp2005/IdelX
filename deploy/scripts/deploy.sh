@@ -40,10 +40,14 @@ require_env() {
 # AWS credentials are needed for provisioning and for the dynamic inventory.
 require_env AWS_ACCESS_KEY_ID AWS_SECRET_ACCESS_KEY
 
-# Application secrets are needed for anything that renders shared/.env.
-if [[ "$STAGE" != "check" ]]; then
-  require_env IDLEX_MONGO_URI IDLEX_JWT_ACCESS_SECRET IDLEX_JWT_REFRESH_SECRET
-fi
+# Application secrets are only needed by stages that render shared/.env or
+# start the app. Provisioning creates infrastructure and touches none of it,
+# so demanding them there would block a legitimate infra-only run.
+case "$STAGE" in
+  all|configure|deploy)
+    require_env IDLEX_MONGO_URI IDLEX_JWT_ACCESS_SECRET IDLEX_JWT_REFRESH_SECRET
+    ;;
+esac
 
 # Map the IDLEX_-prefixed environment onto ansible variables. Prefixing keeps
 # the app's secrets from colliding with anything else in a CI environment.
