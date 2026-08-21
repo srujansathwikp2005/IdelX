@@ -1,0 +1,86 @@
+---
+# =============================================================================
+# configure.yml — turn a bare Amazon Linux 2023 instance into an IdleX host.
+#
+# Everything here is idempotent and safe to re-run: it is the way to bring a
+# drifted box back to the known-good state, not just first-time setup.
+#
+#   ansible-playbook playbooks/configure.yml
+# =============================================================================
+- name: Configure IdleX application hosts
+  # Intersection, not just role_web: that group spans every environment in
+  # the account, so an unscoped play would reach production hosts while you
+  # believed you were touching staging. `:&` requires membership of both.
+  #
+  # The default is repeated here rather than read from group_vars because
+  # `hosts:` is resolved when the play is parsed, before group_vars load.
+  # Override it with -e env_name=... , which IS available at parse time.
+  hosts: "env_{{ env_name | default('prod') }}:&role_web"
+  become: false
+
+  pre_tasks:
+    - name: Wait for cloud-init to finish
+      # A fresh instance may still be running cloud-init, which holds the dnf
+      # lock. Installing packages before it settles fails intermittently —
+      # exactly the kind of flake that makes a pipeline look unreliable.
+      ansible.builtin.raw: cloud-init status --wait || true
+      changed_when: false
+
+    - name: Gather facts
+      ansible.builtin.setup:
+
+    - name: Report the target's memory
+      # Surfaces an undersized instance before the build fails, rather than
+      # after an OOM kill takes sshd down with it.
+      ansible.builtin.debug:
+        msg: >-
+          {{ inventory_hostname }} — {{ ansible_memtotal_mb }}MB RAM.
+          {{ 'OK' if ansible_memtotal_mb >= 1800
+             else 'WARNING: below 1.8GB; next build peaks near 969MB and may be OOM-killed.' }}
+
+    - name: Detect an existing certificate
+      # The nginx template needs to know whether TLS can be enabled BEFORE it
+      # renders. On a first run no certificate exists yet, so the HTTP-only
+      # block is rendered, certbot obtains a cert through it, and the certbot
+      # role re-renders with TLS on.
+      ansible.builtin.stat:
+        path: "/etc/letsencrypt/live/{{ domain_name | default('none', true) }}/fullchain.pem"
+      register: tls_cert
+      become: true
+      when: domain_name | default('') | length > 0
+
+    - name: Set the TLS flag
+      ansible.builtin.set_fact:
+        tls_enabled: "{{ (tls_cert.stat.exists | default(false)) and (domain_name | default('') | length > 0) }}"
+
+  roles:
+    - common     # packages, timezone, swap, directory tree
+    - nodejs     # Node 22 from NodeSource
+    - nginx      # reverse proxy, conf.d server block
+    - app        # systemd units + shared/.env
+    - certbot    # TLS; installs tooling, issues only when domain_name is set
+
+  post_tasks:
+    - name: Confirm nginx is serving
+      ansible.builtin.uri:
+        url: "http://127.0.0.1/health"
+        # Once server_name is a real domain, a loopback request by IP no
+        # longer matches that server block, so the Host header must be
+        # explicit or the probe hits the catch-all and 404s.
+        headers:
+          Host: "{{ domain_name | default('localhost', true) }}"
+        # certbot adds a 301 to HTTPS, which this must follow.
+        follow_redirects: all
+        # Loopback: the certificate is issued for the public name, so
+        # hostname verification against 127.0.0.1 cannot succeed.
+        validate_certs: false
+        status_code: [200, 502]   # 502 is expected until deploy.yml runs
+      register: health
+      changed_when: false
+
+    - name: Summarise
+      ansible.builtin.debug:
+        msg:
+          - "Host configured: {{ inventory_hostname }}"
+          - "nginx /health -> {{ health.status }} (502 is expected before first deploy)"
+          - "Next: ansible-playbook playbooks/deploy.yml"

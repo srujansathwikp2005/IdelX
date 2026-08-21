@@ -1,0 +1,32 @@
+---
+# Dynamic inventory: hosts are discovered from EC2 tags rather than being
+# written down. A freshly provisioned instance joins the inventory on the
+# next run with no file to edit, which is what makes the pipeline repeatable.
+plugin: amazon.aws.aws_ec2
+
+regions:
+  - eu-north-1
+
+# Only running instances tagged as ours, so unrelated boxes in the account
+# are never touched by these playbooks.
+filters:
+  tag:Project: idlex
+  instance-state-name: running
+
+keyed_groups:
+  # tag:Env=prod -> group "env_prod"; lets one inventory serve several envs.
+  - key: ec2_tags.Env
+    prefix: env
+  # tag:Role=web -> group "role_web", which the plays target.
+  - key: ec2_tags.Role
+    prefix: role
+
+hostnames:
+  # "ip-address" is the plugin's preference key for the public address.
+  # Anything the plugin does not recognise is used verbatim as the hostname
+  # rather than raising, so a typo here silently yields an unusable
+  # inventory — verify with `ansible-inventory --graph` after editing.
+  - ip-address
+
+compose:
+  ansible_host: public_ip_address

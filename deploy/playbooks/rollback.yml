@@ -1,0 +1,104 @@
+---
+# =============================================================================
+# rollback.yml — return to a previous release.
+#
+# deploy.yml already rolls back automatically when a release fails its health
+# check. This playbook is for the other case: the deploy succeeded, but the
+# release turns out to be bad once real traffic hits it.
+#
+# Because every release is kept intact on disk, rollback is only a symlink
+# swap and a restart — no rebuild, no network fetch, typically a few seconds.
+#
+#   ansible-playbook playbooks/rollback.yml                    # previous release
+#   ansible-playbook playbooks/rollback.yml -e target=20260821143000
+#   ansible-playbook playbooks/rollback.yml --tags list        # just show them
+# =============================================================================
+- name: Roll back IdleX
+  # Intersection, not just role_web: that group spans every environment in
+  # the account, so an unscoped play would reach production hosts while you
+  # believed you were touching staging. `:&` requires membership of both.
+  #
+  # The default is repeated here rather than read from group_vars because
+  # `hosts:` is resolved when the play is parsed, before group_vars load.
+  # Override it with -e env_name=... , which IS available at parse time.
+  hosts: "env_{{ env_name | default('prod') }}:&role_web"
+  become: false
+  serial: 1
+
+  tasks:
+    - name: List available releases
+      ansible.builtin.shell:
+        cmd: "set -o pipefail && ls -1dt {{ app_root }}/releases/*/ | xargs -n1 basename"
+        executable: /bin/bash
+      register: releases
+      changed_when: false
+      tags: [list, always]
+
+    - name: Show releases, newest first
+      ansible.builtin.debug:
+        msg: "{{ releases.stdout_lines }}"
+      tags: [list, always]
+
+    - name: Resolve the current release
+      ansible.builtin.stat:
+        path: "{{ app_root }}/current"
+      register: current_link
+
+    - name: Determine the rollback target
+      # With no -e target, pick the newest release that is not the running
+      # one. Explicit targets win, so a specific known-good build can be
+      # pinned during an incident.
+      ansible.builtin.set_fact:
+        rollback_to: >-
+          {{ target | default(
+               (releases.stdout_lines
+                 | reject('equalto', current_link.stat.lnk_target | basename)
+                 | list | first | default('')), true) }}
+
+    - name: Refuse to roll back with nowhere to go
+      ansible.builtin.assert:
+        that: rollback_to | length > 0
+        fail_msg: "No previous release available on {{ inventory_hostname }}."
+
+    - name: Verify the target release exists
+      ansible.builtin.stat:
+        path: "{{ app_root }}/releases/{{ rollback_to }}"
+      register: target_stat
+
+    - name: Refuse to roll back to a missing release
+      ansible.builtin.assert:
+        that: target_stat.stat.exists and target_stat.stat.isdir
+        fail_msg: "Release {{ rollback_to }} does not exist on {{ inventory_hostname }}."
+
+    - name: Point current at the target release
+      ansible.builtin.file:
+        src: "{{ app_root }}/releases/{{ rollback_to }}"
+        dest: "{{ app_root }}/current"
+        state: link
+        force: true
+
+    - name: Restart the application services
+      ansible.builtin.systemd:
+        name: "{{ item }}"
+        state: restarted
+      become: true
+      loop:
+        - idlex-backend
+        - idlex-frontend
+
+    - name: Verify the restored release is healthy
+      ansible.builtin.uri:
+        url: "http://127.0.0.1/health"
+        headers:
+          Host: "{{ domain_name | default('localhost', true) }}"
+        follow_redirects: all
+        validate_certs: false
+        status_code: 200
+      register: health
+      retries: 12
+      delay: 5
+      until: health.status == 200
+
+    - name: Report
+      ansible.builtin.debug:
+        msg: "Rolled back to {{ rollback_to }} — /health returned {{ health.status }}"

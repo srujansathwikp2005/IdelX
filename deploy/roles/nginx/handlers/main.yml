@@ -1,0 +1,8 @@
+---
+- name: Reload nginx
+  # reload, not restart: existing connections are not dropped, and a broken
+  # config leaves the previous one serving rather than killing the site.
+  ansible.builtin.service:
+    name: nginx
+    state: reloaded
+  become: true

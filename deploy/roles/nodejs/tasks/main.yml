@@ -1,0 +1,52 @@
+---
+# Node.js runtime.
+#
+# Deliberately NOT `dnf install nodejs`: the Amazon Linux 2023 repositories
+# cap at Node 20, which reached end-of-life in April 2026 and no longer gets
+# security patches. Next.js 16 also wants >= 20.9. NodeSource carries current
+# LTS releases, so we use their repo instead.
+
+- name: Check the installed Node version
+  ansible.builtin.command:
+    cmd: node --version
+  register: nodejs_installed
+  changed_when: false
+  failed_when: false
+
+- name: Add the NodeSource repository
+  ansible.builtin.shell:
+    # pipefail matters here: without it the exit status is bash's, so a
+    # failed curl would be silently treated as a successful repo setup.
+    cmd: "set -o pipefail && curl -fsSL https://rpm.nodesource.com/setup_{{ nodejs_major }}.x | bash -"
+    executable: /bin/bash
+  become: true
+  when: >-
+    nodejs_installed.rc != 0 or
+    not nodejs_installed.stdout.startswith('v' ~ nodejs_major ~ '.')
+  changed_when: true
+
+- name: Install Node.js
+  ansible.builtin.dnf:
+    name: "nodejs-{{ nodejs_major }}*"
+    state: present
+    # NodeSource's package supersedes the distro one; allow the swap so a
+    # box that already had AL2023's Node 20 can be upgraded in place.
+    allowerasing: true
+  become: true
+  when: >-
+    nodejs_installed.rc != 0 or
+    not nodejs_installed.stdout.startswith('v' ~ nodejs_major ~ '.')
+
+- name: Verify the Node major version
+  # A silent fallback to the distro's Node 20 would only surface later as a
+  # confusing Next.js build error, so assert it now.
+  ansible.builtin.command:
+    cmd: node --version
+  register: nodejs_final
+  changed_when: false
+
+- name: Assert Node matches the requested major
+  ansible.builtin.assert:
+    that: nodejs_final.stdout.startswith('v' ~ nodejs_major ~ '.')
+    fail_msg: "Expected Node v{{ nodejs_major }}.x but found {{ nodejs_final.stdout }}"
+    success_msg: "Node {{ nodejs_final.stdout }} installed"

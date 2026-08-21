@@ -1,0 +1,98 @@
+---
+# nginx as the single public entrypoint.
+#
+# Platform note: Amazon Linux 2023 follows the upstream/RHEL layout, so there
+# is no sites-available/sites-enabled pair. Server blocks live directly in
+# /etc/nginx/conf.d/*.conf, and the .conf suffix IS the enable mechanism.
+
+- name: Install nginx
+  ansible.builtin.dnf:
+    name: nginx
+    state: present
+  become: true
+
+- name: Disable the stock default server block
+  # The shipped nginx.conf contains an inline `server { listen 80; server_name _; }`
+  # that collides with ours over the catch-all name. Commenting it out removes
+  # the "conflicting server name" warning and any ambiguity about which block wins.
+  ansible.builtin.replace:
+    path: /etc/nginx/nginx.conf
+    # Matches the default block from `server {` through its closing brace.
+    regexp: '(?s)(\n    server \{\n        listen       80;.*?\n    \}\n)'
+    replace: '\n# Default server block disabled by Ansible — see conf.d/idlex.conf\n'
+    backup: true
+  become: true
+  notify: Reload nginx
+
+# A conf.d fragment cannot be validated on its own: it has no surrounding
+# http{} block, so `nginx -t` on the file alone always fails. Ansible's
+# `validate:` only ever sees that single file, which makes it unusable here.
+# Instead: write the file (keeping a backup), test the WHOLE config, and
+# restore the backup if the test fails.
+- name: Deploy and validate the IdleX server block
+  block:
+    - name: Deploy the IdleX server block
+      ansible.builtin.template:
+        src: idlex.conf.j2
+        dest: /etc/nginx/conf.d/idlex.conf
+        owner: root
+        group: root
+        mode: "0644"
+        backup: true
+      become: true
+      register: nginx_conf
+      notify: Reload nginx
+
+    - name: Validate the full nginx configuration
+      ansible.builtin.command:
+        cmd: nginx -t
+      become: true
+      changed_when: false
+
+  rescue:
+    - name: Restore the previous server block
+      # Leaving a broken fragment on disk would break the next unrelated
+      # reload, long after this run, making the cause hard to find.
+      ansible.builtin.copy:
+        src: "{{ nginx_conf.backup_file }}"
+        dest: /etc/nginx/conf.d/idlex.conf
+        remote_src: true
+        mode: "0644"
+      become: true
+      when: nginx_conf.backup_file is defined
+
+    - name: Remove the fragment when there was no previous version
+      ansible.builtin.file:
+        path: /etc/nginx/conf.d/idlex.conf
+        state: absent
+      become: true
+      when: nginx_conf.backup_file is not defined
+
+    - name: Fail with the validation error
+      ansible.builtin.fail:
+        msg: >-
+          The rendered nginx config failed `nginx -t` and was rolled back.
+          nginx is still serving its previous configuration.
+
+- name: Enable and start nginx
+  ansible.builtin.service:
+    name: nginx
+    state: started
+    enabled: true
+  become: true
+
+- name: Ensure nginx is running the config that is on disk
+  # Deliberately unconditional, not handler-driven. A run that writes the
+  # config and then fails later leaves the file correct but never reloaded;
+  # the next run sees no change, notifies nothing, and nginx serves stale
+  # config indefinitely. That happened during the first real run here.
+  #
+  # Convergence has to mean the RUNNING state matches the desired state, not
+  # merely that the file on disk does. A reload is cheap, drops no
+  # connections, and is a no-op when nothing changed, so doing it every time
+  # is the cheaper guarantee.
+  ansible.builtin.systemd:
+    name: nginx
+    state: reloaded
+  become: true
+  changed_when: false

@@ -1,0 +1,89 @@
+---
+# TLS certificates via Let's Encrypt.
+#
+# Gated on `domain_name` because Let's Encrypt only issues for DOMAIN NAMES.
+# There is no mechanism to certify a bare IP address — the ACME challenge
+# proves control of a name, so 13.62.183.206 can never receive a cert.
+# Point a domain at the Elastic IP first, then set domain_name and re-run.
+
+- name: Install certbot and the nginx plugin
+  # Installed even without a domain so the tooling is present and ready;
+  # only certificate issuance is gated.
+  ansible.builtin.dnf:
+    name:
+      - certbot
+      - python3-certbot-nginx
+    state: present
+  become: true
+
+- name: Report that TLS is not configured
+  ansible.builtin.debug:
+    msg: >-
+      certbot is installed but no certificate was requested: domain_name is
+      unset. Let's Encrypt cannot issue for an IP address. Point a domain at
+      this host's Elastic IP, then re-run with -e domain_name=example.com
+      -e certbot_email=you@example.com
+  when: not (domain_name | default('') | length > 0)
+
+- name: Configure TLS
+  when: domain_name | default('') | length > 0
+  block:
+    - name: Require a contact email
+      # Let's Encrypt uses it for expiry warnings. Losing that notice is how
+      # certificates silently lapse.
+      ansible.builtin.assert:
+        that: certbot_email | default('') | length > 0
+        fail_msg: "certbot_email is required when domain_name is set."
+
+    - name: Check for an existing certificate
+      ansible.builtin.stat:
+        path: "/etc/letsencrypt/live/{{ domain_name }}/fullchain.pem"
+      register: certbot_existing
+      become: true
+
+    - name: Ensure the ACME challenge webroot exists
+      ansible.builtin.file:
+        path: /var/lib/letsencrypt/.well-known/acme-challenge
+        state: directory
+        mode: "0755"
+      become: true
+
+    - name: Obtain the certificate
+      # --webroot, NOT --nginx. The nginx plugin rewrites conf.d/idlex.conf
+      # in place, which Ansible then overwrites from its template on the next
+      # run, silently dropping the site back to plain HTTP. Keeping certbot
+      # out of the config makes ownership unambiguous: Ansible renders the
+      # server blocks, certbot only obtains and renews certificates.
+      #
+      # All names go on ONE certificate via repeated -d flags. Separate
+      # certificates per hostname would each consume from the same weekly
+      # rate limit and each need their own renewal to succeed.
+      ansible.builtin.command:
+        cmd: >-
+          certbot certonly --webroot -w /var/lib/letsencrypt
+          {% for d in ([domain_name] + (domain_aliases | default([]))) %}-d {{ d }} {% endfor %}
+          --email {{ certbot_email }}
+          --agree-tos --no-eff-email
+          --non-interactive
+      become: true
+      when: not certbot_existing.stat.exists
+      register: certbot_run
+      changed_when: "'Successfully received certificate' in certbot_run.stdout"
+
+    - name: Enable automatic renewal
+      # certbot ships a systemd timer; renewal runs twice daily and is a
+      # no-op until the certificate is within 30 days of expiry. Without
+      # this the site breaks silently after 90 days.
+      ansible.builtin.systemd:
+        name: certbot-renew.timer
+        enabled: true
+        state: started
+      become: true
+
+    - name: Verify the renewal path works
+      # --dry-run exercises the full renewal against the staging endpoint.
+      # Finding a broken renewal now beats finding it at expiry.
+      ansible.builtin.command:
+        cmd: certbot renew --dry-run
+      become: true
+      changed_when: false

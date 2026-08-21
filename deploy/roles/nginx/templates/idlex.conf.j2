@@ -1,0 +1,125 @@
+# {{ ansible_managed }}
+# IdleX — nginx server block
+#
+#   /            -> Next.js  (127.0.0.1:{{ frontend_port }})
+#   /api         -> Express  (127.0.0.1:{{ backend_port }})
+#   /socket.io   -> Express  (websocket upgrade)
+#   /uploads     -> Express  (static files on the instance's local disk)
+#
+# Node binds to loopback only; nginx is the sole public listener.
+
+upstream idlex_frontend { server 127.0.0.1:{{ frontend_port }}; keepalive 32; }
+upstream idlex_backend  { server 127.0.0.1:{{ backend_port }};  keepalive 32; }
+
+{% if tls_enabled | default(false) %}
+# ---------------------------------------------------------------------------
+# HTTP: ACME challenges and a redirect to HTTPS.
+#
+# TLS is rendered HERE rather than left to `certbot --nginx` to patch in.
+# certbot edits this file in place, so the next Ansible run would overwrite
+# its work and silently drop the site back to plain HTTP — which is exactly
+# what happened once. Ansible owns the file; certbot only issues certs.
+# ---------------------------------------------------------------------------
+server {
+    listen      80 default_server;
+    listen [::]:80 default_server;
+    server_name {{ ([domain_name] + (domain_aliases | default([]))) | select | join(' ') }};
+
+    # Must stay on HTTP: renewal revalidates over port 80.
+    location ^~ /.well-known/acme-challenge/ {
+        root /var/lib/letsencrypt;
+        default_type "text/plain";
+    }
+
+    location / {
+        return 301 https://$host$request_uri;
+    }
+}
+
+server {
+    listen      443 ssl default_server;
+    listen [::]:443 ssl default_server;
+    http2 on;
+
+    ssl_certificate     /etc/letsencrypt/live/{{ domain_name }}/fullchain.pem;
+    ssl_certificate_key /etc/letsencrypt/live/{{ domain_name }}/privkey.pem;
+    # Mozilla's intermediate profile, shipped and kept current by certbot.
+    include /etc/letsencrypt/options-ssl-nginx.conf;
+    ssl_dhparam /etc/letsencrypt/ssl-dhparams.pem;
+{% else %}
+server {
+    listen      80 default_server;
+    listen [::]:80 default_server;
+{% endif %}
+    # Every name on the certificate must appear here: certbot --nginx finds
+    # the block to modify by matching server_name, and a name it cannot find
+    # is silently left without TLS.
+    server_name {{ ([domain_name] + (domain_aliases | default([]))) | select | join(' ') | default('_', true) }};
+
+    # Must exceed multer's 10MB per-file limit with room for multipart
+    # overhead, or large KYC uploads fail at the proxy before reaching Node.
+    client_max_body_size {{ nginx_client_max_body_size }};
+
+    access_log /var/log/nginx/idlex.access.log;
+    error_log  /var/log/nginx/idlex.error.log;
+
+    gzip on;
+    gzip_types text/plain text/css application/json application/javascript
+               application/x-javascript text/xml application/xml image/svg+xml;
+    gzip_min_length 1024;
+
+    # HTTP/1.1 is required for both keepalive to upstreams and websockets.
+    proxy_http_version 1.1;
+    proxy_set_header Host              $host;
+    proxy_set_header X-Real-IP         $remote_addr;
+    proxy_set_header X-Forwarded-For   $proxy_add_x_forwarded_for;
+    proxy_set_header X-Forwarded-Proto $scheme;
+
+    location /health {
+        # Used by the deploy playbook's smoke test and by any future ALB.
+        proxy_pass http://idlex_backend;
+        proxy_set_header Connection "";
+        access_log off;
+    }
+
+    location /api/ {
+        proxy_pass http://idlex_backend;
+        # Empty Connection header enables upstream keepalive; sending
+        # "upgrade" here would break connection reuse for plain requests.
+        proxy_set_header Connection "";
+    }
+
+    location /uploads/ {
+        # Served by express.static from the release's uploads directory.
+        proxy_pass http://idlex_backend;
+        proxy_set_header Connection "";
+        # Filenames are unique per upload and files are never rewritten in
+        # place, so they are safe to cache.
+        expires 7d;
+        add_header Cache-Control "public";
+    }
+
+    location /socket.io/ {
+        proxy_pass http://idlex_backend;
+        proxy_set_header Upgrade    $http_upgrade;
+        proxy_set_header Connection "upgrade";
+        # Chat sockets are long-lived; the 60s default would sever them.
+        proxy_read_timeout 7d;
+        proxy_send_timeout 7d;
+    }
+
+    location /_next/static/ {
+        # Next.js content-hashes these filenames, so they are safe to cache
+        # forever — a new build produces new names.
+        proxy_pass http://idlex_frontend;
+        proxy_set_header Connection "";
+        expires 1y;
+        add_header Cache-Control "public, immutable";
+    }
+
+    location / {
+        proxy_pass http://idlex_frontend;
+        proxy_set_header Upgrade    $http_upgrade;
+        proxy_set_header Connection "upgrade";
+    }
+}

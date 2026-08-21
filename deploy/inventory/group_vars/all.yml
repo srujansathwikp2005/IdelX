@@ -1,0 +1,67 @@
+---
+# =============================================================================
+# IdleX deployment variables
+#
+# Anything secret (database uri, jwt secrets, api keys) is deliberately NOT
+# here — see README "Secrets". Those arrive from environment variables or
+# ansible-vault, so this file stays safe to commit.
+# =============================================================================
+
+# --- Identity / tagging -----------------------------------------------------
+project_name: idlex
+env_name: prod                       # also the tag:Env used by the inventory
+
+# --- AWS --------------------------------------------------------------------
+aws_region: eu-north-1               # Stockholm; keep the app near its database
+aws_vpc_subnet_id: ""                # optional; empty = the default VPC subnet
+
+# t3.small (2GB) is the floor, not a preference: `next build` peaks at ~969MB
+# and a 1GB t3.micro gets OOM-killed mid-build, taking sshd with it.
+ec2_instance_type: t3.small
+ec2_volume_size: 20                  # GB; 8GB fills up once node_modules + .next land
+ec2_ami_owner: "137112412989"        # Amazon's official AL2023 AMI owner id
+ec2_ami_name_filter: "al2023-ami-2023.*-kernel-6.1-x86_64"
+# Must match a key pair that already exists in the target account — Ansible
+# does not create one. In account 308413200654 that pair is named "deploy".
+ec2_key_name: deploy
+ec2_ssh_private_key: "~/.ssh/idlex-dev.pem"
+
+
+# --- Connection -------------------------------------------------------------
+# Derived from the values above so the ssh identity is defined once and the
+# playbooks, scripts/ssh.sh and the inventory cannot drift apart.
+ansible_user: "{{ app_user }}"
+ansible_ssh_private_key_file: "{{ ec2_ssh_private_key }}"
+
+# --- Application ------------------------------------------------------------
+app_user: ec2-user
+app_root: /opt/idlex
+app_repo: "git@github.com:srujansathwikp2005/IdelX.git"
+# owner/name form, used to build the HTTPS URL when a token is supplied.
+github_repo: "srujansathwikp2005/IdelX"
+app_branch: main
+# Number of past releases kept on disk for rollback. Each is a full checkout
+# plus node_modules, so this trades disk for recovery options.
+keep_releases: 5
+
+backend_port: 5000
+frontend_port: 3000
+
+# --- Node -------------------------------------------------------------------
+# AL2023 repos cap at Node 20, which reached EOL in April 2026, so the
+# NodeSource repo is used instead.
+nodejs_major: 22
+
+# --- TLS --------------------------------------------------------------------
+# Let's Encrypt issues for domain names only, never for an IP address. Leave
+# domain_name empty until a domain points at this host's Elastic IP; certbot
+# is installed either way but will not request a certificate.
+domain_name: ""
+# Additional names on the SAME certificate (SAN entries), e.g. api. and www.
+domain_aliases: []
+certbot_email: ""
+
+# --- Runtime ----------------------------------------------------------------
+# Swap is a safety net for build spikes, not a substitute for RAM.
+swapfile_size_mb: 2048
+nginx_client_max_body_size: 25M

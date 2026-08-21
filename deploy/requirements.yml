@@ -1,0 +1,12 @@
+---
+# Install with: ansible-galaxy install -r requirements.yml
+collections:
+  # EC2 modules and the aws_ec2 dynamic inventory plugin.
+  - name: amazon.aws
+    version: ">=7.0.0"
+  # Provides community.general.* helpers used by the nginx/systemd roles.
+  - name: community.general
+    version: ">=8.0.0"
+  # Provides ansible.posix.mount, used to persist the swapfile in /etc/fstab.
+  - name: ansible.posix
+    version: ">=1.5.0"

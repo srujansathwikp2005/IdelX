@@ -1,0 +1,31 @@
+# {{ ansible_managed }}
+[Unit]
+Description=IdleX Frontend (Next.js)
+After=network-online.target idlex-backend.service
+Wants=network-online.target
+
+[Service]
+Type=simple
+User={{ app_user }}
+WorkingDirectory={{ app_root }}/current/client
+Environment=NODE_ENV=production
+Environment=PORT={{ frontend_port }}
+# Next's rewrites proxy /api and /uploads to the backend. nginx routes those
+# paths directly too, so this is the fallback path for server-side fetches.
+Environment=BACKEND_URL=http://127.0.0.1:{{ backend_port }}
+ExecStart=/usr/bin/npm run start
+Restart=always
+RestartSec=5
+
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=full
+ProtectHome=read-only
+ReadWritePaths={{ app_root }}
+
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=idlex-frontend
+
+[Install]
+WantedBy=multi-user.target
