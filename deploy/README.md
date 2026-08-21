@@ -178,6 +178,67 @@ Lock SSH to your own address instead of the world:
 
 ---
 
+## SSH access
+
+Public IPs are not stable: stopping and starting an instance releases the
+address unless an Elastic IP is attached. `scripts/ssh.sh` therefore resolves
+the current address from EC2 tags instead of a hardcoded config entry.
+
+```bash
+./scripts/ssh.sh                  # prod host
+./scripts/ssh.sh dev              # dev host
+./scripts/ssh.sh prod 'uptime'    # run a command and exit
+./scripts/ssh.sh prod --ip        # print the ip only
+```
+
+It reads the key path, user and region from `group_vars/all.yml`, so the
+script and the playbooks cannot disagree about which key to use.
+
+For a permanent shortcut, add the resolved address to `~/.ssh/config`:
+
+```
+Host idlex-prod
+    HostName <ip from ./scripts/ssh.sh prod --ip>
+    User ec2-user
+    IdentityFile ~/.ssh/idlex-dev.pem
+    IdentitiesOnly yes
+```
+
+That entry needs updating after any stop/start. An Elastic IP costs nothing
+while attached and removes the problem — worth doing before handover.
+
+### Key pair configuration
+
+`provision.yml` launches the instance with the key pair named in
+`ec2_key_name` (default `idlex-deploy`). Two things must line up, or you will
+provision a host you cannot log into:
+
+1. A key pair with that **exact name** must already exist in the target
+   account and region — Ansible does not create it.
+2. `ec2_ssh_private_key` must point at the matching private key locally.
+
+To use an existing key pair instead:
+
+```bash
+./scripts/deploy.sh provision \
+  -e ec2_key_name=<name-in-aws> \
+  -e ec2_ssh_private_key=~/.ssh/<matching>.pem
+```
+
+To create a fresh one:
+
+```bash
+aws ec2 create-key-pair --region eu-north-1 --key-name idlex-deploy \
+  --query KeyMaterial --output text > ~/.ssh/idlex-deploy.pem
+chmod 400 ~/.ssh/idlex-deploy.pem
+```
+
+> There is no recovery path if the private key is lost — AWS does not store
+> it. SSM Session Manager is the fallback: the instance role enables it, so
+> `aws ssm start-session --target <instance-id>` gets you a shell without SSH.
+
+---
+
 ## What each playbook does
 
 | Playbook | Responsibility |
