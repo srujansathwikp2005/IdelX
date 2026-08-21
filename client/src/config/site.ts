@@ -28,8 +28,6 @@ export const FOOTER_NAV = {
   Company: [
     { label: "About Us", href: ROUTES.ABOUT },
     { label: "How it Works", href: "/#how-it-works" },
-    { label: "Careers", href: "#" },
-    { label: "Blog", href: "#" },
   ],
   Support: [
     { label: "Help Center", href: ROUTES.HELP },
@@ -41,5 +39,7 @@ export const FOOTER_NAV = {
     { label: "Terms of Service", href: ROUTES.TERMS },
     { label: "Privacy Policy", href: ROUTES.PRIVACY },
     { label: "Cookie Policy", href: ROUTES.COOKIE_POLICY },
+    { label: "Security Deposit & Damage", href: ROUTES.SECURITY_DEPOSIT_POLICY },
+    { label: "Cancellation & Refund", href: ROUTES.CANCELLATION_REFUND_POLICY },
   ],
 };

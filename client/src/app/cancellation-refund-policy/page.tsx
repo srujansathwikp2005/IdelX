@@ -1,9 +1,9 @@
 import type { Metadata } from "next";
 import { LegalDocument } from "@/components/marketplace/legal";
-import { PRIVACY_DOC as doc } from "@/config/legal/privacy";
+import { CANCELLATION_DOC as doc } from "@/config/legal/cancellation-refund";
 
 export const metadata: Metadata = { title: doc.title, description: doc.description };
 
-export default function PrivacyPolicyPage() {
+export default function CancellationRefundPolicyPage() {
   return <LegalDocument doc={doc} />;
 }
