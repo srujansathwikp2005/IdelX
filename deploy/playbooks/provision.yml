@@ -64,10 +64,14 @@
             rule_desc: HTTPS
         # Node listens only on 127.0.0.1; ports 3000/5000 are deliberately
         # NOT opened. Everything public goes through nginx.
-        rules_egress:
-          - proto: -1
-            cidr_ip: 0.0.0.0/0
-            rule_desc: Allow all outbound
+        #
+        # rules_egress is deliberately omitted. AWS already creates an
+        # allow-all egress rule on every new security group, so restating it
+        # changes nothing — but doing so makes the module call
+        # UpdateSecurityGroupRuleDescriptionsEgress to attach a description,
+        # a permission scoped deployer keys routinely lack. Omitting the key
+        # also leaves any existing egress rules untouched rather than purging
+        # them.
         tags:
           Project: "{{ project_name }}"
           Env: "{{ env_name }}"
@@ -116,9 +120,43 @@
         wait: true
       register: ec2_result
 
+    # -------------------------------------------------------------------
+    # Stable address
+    #
+    # Auto-assigned public IPs change on every stop/start, which breaks the
+    # MongoDB Atlas allowlist and forces a manual console edit per instance.
+    # An Elastic IP makes the address a property of the DEPLOYMENT rather
+    # than of the instance, so Atlas is configured once and never revisited.
+    #
+    # reuse_existing_ip_allowed picks up an already-allocated but unattached
+    # EIP before allocating a new one — that is what keeps the pool small and
+    # the allowlist stable across instance replacements. It never steals an
+    # EIP that is currently associated with a running instance.
+    # -------------------------------------------------------------------
+    - name: Attach a stable Elastic IP
+      amazon.aws.ec2_eip:
+        device_id: "{{ ec2_result.instances[0].instance_id }}"
+        region: "{{ aws_region }}"
+        in_vpc: true
+        # Pin a specific address with -e elastic_ip=x.x.x.x. Leaving it unset
+        # reuses any free EIP, then falls back to allocating one.
+        public_ip: "{{ elastic_ip | default(omit, true) }}"
+        reuse_existing_ip_allowed: true
+        state: present
+        tags:
+          Project: "{{ project_name }}"
+          Env: "{{ env_name }}"
+      register: eip_result
+
+    - name: Use the Elastic IP for the rest of the run
+      # Everything downstream must address the stable IP, not the ephemeral
+      # one the instance booted with.
+      ansible.builtin.set_fact:
+        instance_public_ip: "{{ eip_result.public_ip }}"
+
     - name: Wait for SSH to accept connections
       ansible.builtin.wait_for:
-        host: "{{ ec2_result.instances[0].public_ip_address }}"
+        host: "{{ instance_public_ip }}"
         port: 22
         delay: 10
         timeout: 300
@@ -128,7 +166,7 @@
       # Lets a single `site.yml` run flow straight from provision into
       # configure without a second command or an inventory refresh.
       ansible.builtin.add_host:
-        name: "{{ ec2_result.instances[0].public_ip_address }}"
+        name: "{{ instance_public_ip }}"
         groups: role_web
         ansible_user: "{{ app_user }}"
         ansible_ssh_private_key_file: "{{ ec2_ssh_private_key }}"
@@ -137,5 +175,5 @@
       ansible.builtin.debug:
         msg: >-
           Instance {{ ec2_result.instances[0].instance_id }}
-          ({{ ec2_instance_type }}) at {{ ec2_result.instances[0].public_ip_address }}.
+          ({{ ec2_instance_type }}) at {{ instance_public_ip }} (Elastic IP).
           Next: ansible-playbook playbooks/configure.yml

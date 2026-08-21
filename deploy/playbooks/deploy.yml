@@ -16,7 +16,14 @@
 #   ansible-playbook playbooks/deploy.yml -e app_branch=hotfix/foo
 # =============================================================================
 - name: Deploy IdleX
-  hosts: role_web
+  # Intersection, not just role_web: that group spans every environment in
+  # the account, so an unscoped play would reach production hosts while you
+  # believed you were touching staging. `:&` requires membership of both.
+  #
+  # The default is repeated here rather than read from group_vars because
+  # `hosts:` is resolved when the play is parsed, before group_vars load.
+  # Override it with -e env_name=... , which IS available at parse time.
+  hosts: "env_{{ env_name | default('prod') }}:&role_web"
   become: false
   serial: 1        # one host at a time, so a bad release cannot take out the fleet
 

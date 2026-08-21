@@ -19,9 +19,12 @@
         "ec2:DescribeInstanceTypes",
         "ec2:DescribeAvailabilityZones",
         "ec2:DescribeNetworkInterfaces",
-        "ec2:DescribeAddresses"
+        "ec2:DescribeAddresses",
+        "ec2:DescribeVpcAttribute",
+        "ec2:DescribeSecurityGroupRules"
       ],
-      "Resource": "*"
+      "Resource": "*",
+      "Comment": "The Describe*Attribute actions are easy to miss: amazon.aws modules call them to converge state after a change, so omitting them makes provisioning fail AFTER resources are created, leaving them orphaned."
     },
     {
       "Sid": "ManageInstancesAndSecurityGroups",
