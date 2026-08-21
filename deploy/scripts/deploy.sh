@@ -68,6 +68,8 @@ EXTRA_VARS=$(cat <<JSON
   "mongo_uri": "${IDLEX_MONGO_URI:-}",
   "jwt_access_secret": "${IDLEX_JWT_ACCESS_SECRET:-}",
   "jwt_refresh_secret": "${IDLEX_JWT_REFRESH_SECRET:-}",
+  "admin_email": "${IDLEX_ADMIN_EMAIL:-}",
+  "admin_password": "${IDLEX_ADMIN_PASSWORD:-}",
   "renflair_api_key": "${IDLEX_RENFLAIR_API_KEY:-}",
   "smtp_host": "${IDLEX_SMTP_HOST:-}",
   "smtp_user": "${IDLEX_SMTP_USER:-}",
