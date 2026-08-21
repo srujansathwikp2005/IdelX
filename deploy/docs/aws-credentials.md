@@ -139,10 +139,12 @@ as "no default VPC" or an empty inventory rather than as a permissions error.
 
 ---
 
-## What the instance gets (for contrast)
+## What the instance gets
 
-The policy above is for the **deployer**. The EC2 instance itself receives a
-far narrower role, created by `provision.yml`: `s3:GetObject`, `PutObject` and
-`DeleteObject` on `{bucket}/uploads/*` and nothing else. No AWS keys are ever
-written to the instance — credentials come from the instance profile at
-runtime.
+Nothing. The deployment attaches no IAM role and no instance profile, and
+writes no AWS credentials to the server. The instance runs the application
+and talks to MongoDB Atlas over the network; it never calls the AWS API.
+
+That is why the policy above needs no S3 or IAM permissions, and why a
+narrowly scoped developer key is usually sufficient to run the playbooks
+as-is.

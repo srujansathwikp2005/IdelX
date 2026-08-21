@@ -116,7 +116,7 @@ cat <<OUT
   Verify with:  aws sts get-caller-identity     # expect account ${ACCOUNT}
   Then:         ./scripts/deploy.sh check
 
-  This is a long-lived credential with EC2, S3 and IAM permissions. Delete it
+  This is a long-lived credential with EC2 permissions. Delete it
   when the engagement ends:
 
     aws iam delete-access-key --user-name ${USER_NAME} --access-key-id ${KEY_ID}

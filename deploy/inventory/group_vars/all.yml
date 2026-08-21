@@ -12,7 +12,7 @@ project_name: idlex
 env_name: prod                       # also the tag:Env used by the inventory
 
 # --- AWS --------------------------------------------------------------------
-aws_region: eu-north-1               # Stockholm; keep app + bucket colocated
+aws_region: eu-north-1               # Stockholm; keep the app near its database
 aws_vpc_subnet_id: ""                # optional; empty = the default VPC subnet
 
 # t3.small (2GB) is the floor, not a preference: `next build` peaks at ~969MB
