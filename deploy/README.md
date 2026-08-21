@@ -106,15 +106,21 @@ export IDLEX_JWT_REFRESH_SECRET=$(openssl rand -hex 48)
 
 ### Repository access
 
-The private repo is cloned **on the instance**. Authentication uses a
-forwarded ssh-agent, so no deploy key is ever written to the server:
+The private repo is cloned **on the instance**, with two auth paths and no
+deploy key in either.
+
+**From CI**: the workflow passes the automatic `GITHUB_TOKEN`, and the clone
+runs over HTTPS. That token is scoped to this repository and expires when the
+job ends, so there is nothing to store, rotate, or revoke — and no repository
+credential is left on the server. Because `ansible.builtin.git` writes the
+clone URL into `.git/config`, the playbook resets the remote afterwards;
+otherwise the token would persist in every retained release directory.
+
+**Locally**: authentication uses a forwarded ssh-agent.
 
 ```bash
 eval "$(ssh-agent)" && ssh-add ~/.ssh/id_ed25519
 ```
-
-To use a read-only GitHub deploy key instead, pass
-`-e deploy_key_file=/path/on/instance/key`.
 
 ---
 
@@ -286,7 +292,6 @@ Configure under **Settings → Environments → production**.
 | `AWS_ACCESS_KEY_ID` | Deployer key id (see `docs/aws-credentials.md`) |
 | `AWS_SECRET_ACCESS_KEY` | Deployer secret |
 | `EC2_SSH_PRIVATE_KEY` | Full contents of the `.pem` matching `ec2_key_name`, including the BEGIN/END lines |
-| `REPO_DEPLOY_KEY` | Private half of a read-only deploy key on this repo |
 | `MONGO_URI` | Atlas SRV string, **with a database name**: `mongodb+srv://…/idlex?retryWrites=true&w=majority` |
 | `JWT_ACCESS_SECRET` | `openssl rand -hex 48` |
 | `JWT_REFRESH_SECRET` | `openssl rand -hex 48` — a different value |

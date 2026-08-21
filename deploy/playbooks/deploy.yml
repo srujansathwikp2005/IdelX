@@ -54,15 +54,32 @@
     # -------------------------------------------------------------------
     - name: Clone the repository into a new release directory
       ansible.builtin.git:
-        repo: "{{ app_repo }}"
+        # Two auth paths, no deploy key in either:
+        #   github_token set  -> HTTPS with a short-lived token. CI passes
+        #                        the automatic GITHUB_TOKEN, which is scoped
+        #                        to this repo and expires with the job.
+        #   otherwise         -> SSH via the operator's forwarded ssh-agent.
+        repo: >-
+          {{ ('https://x-access-token:' ~ github_token ~ '@github.com/' ~ github_repo ~ '.git')
+             if (github_token | default('') | length > 0) else app_repo }}
         dest: "{{ app_root }}/releases/{{ release_ts }}"
         version: "{{ app_branch }}"
         depth: 1                 # no history needed; keeps releases small
         accept_hostkey: true
-        # Auth comes from a forwarded ssh-agent (see README "Repository
-        # access"), so no deploy key is ever written to the instance.
-        key_file: "{{ deploy_key_file | default(omit) }}"
       register: git_result
+      # The URL carries the token; keep it out of the log and any callback.
+      no_log: "{{ (github_token | default('') | length > 0) }}"
+
+    - name: Strip the token from the stored remote
+      # ansible.builtin.git writes the clone URL into .git/config, so the
+      # token would sit on disk in every release directory long after the job
+      # that issued it ended. Releases are kept for rollback, so this would
+      # accumulate. Reset the remote to the plain URL.
+      ansible.builtin.command:
+        cmd: "git remote set-url origin {{ app_repo }}"
+        chdir: "{{ app_root }}/releases/{{ release_ts }}"
+      when: github_token | default('') | length > 0
+      changed_when: true
 
     - name: Build the release identifier
       ansible.builtin.set_fact:

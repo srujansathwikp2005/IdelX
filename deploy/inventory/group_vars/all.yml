@@ -37,6 +37,8 @@ ansible_ssh_private_key_file: "{{ ec2_ssh_private_key }}"
 app_user: ec2-user
 app_root: /opt/idlex
 app_repo: "git@github.com:srujansathwikp2005/IdelX.git"
+# owner/name form, used to build the HTTPS URL when a token is supplied.
+github_repo: "srujansathwikp2005/IdelX"
 app_branch: main
 # Number of past releases kept on disk for rollback. Each is a full checkout
 # plus node_modules, so this trades disk for recovery options.

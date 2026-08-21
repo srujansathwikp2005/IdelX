@@ -35,6 +35,8 @@ jobs:
     # Gate on a GitHub Environment so production deploys can require an
     # approval and so the secrets below are scoped, not repo-wide.
     environment: production
+    permissions:
+      contents: read      # lets GITHUB_TOKEN clone this repo over HTTPS
     timeout-minutes: 30
 
     steps:
@@ -66,9 +68,10 @@ jobs:
         # EC2 instance authenticate to GitHub for the private-repo clone.
         uses: webfactory/ssh-agent@v0.9.0
         with:
-          ssh-private-key: |
-            ${{ secrets.EC2_SSH_PRIVATE_KEY }}
-            ${{ secrets.REPO_DEPLOY_KEY }}
+          # Only the EC2 key. The instance authenticates to GitHub with the
+          # job's own GITHUB_TOKEN over HTTPS, so no repo deploy key exists
+          # to store, rotate, or leave behind on the server.
+          ssh-private-key: ${{ secrets.EC2_SSH_PRIVATE_KEY }}
 
       - name: Run the pipeline
         working-directory: deploy
@@ -98,7 +101,8 @@ jobs:
           ANSIBLE_FORCE_COLOR: '1'
         run: |
           ./scripts/deploy.sh "${{ github.event.inputs.action || 'deploy' }}" \
-            -e "app_branch=${{ github.event.inputs.branch || github.ref_name }}"
+            -e "app_branch=${{ github.event.inputs.branch || github.ref_name }}" \
+            -e "github_token=${{ secrets.GITHUB_TOKEN }}"
 
       - name: Report the deployed url
         if: success()
