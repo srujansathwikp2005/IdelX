@@ -22,7 +22,11 @@ keyed_groups:
     prefix: role
 
 hostnames:
-  - public-ip-address
+  # "ip-address" is the plugin's preference key for the public address.
+  # Anything the plugin does not recognise is used verbatim as the hostname
+  # rather than raising, so a typo here silently yields an unusable
+  # inventory — verify with `ansible-inventory --graph` after editing.
+  - ip-address
 
 compose:
   ansible_host: public_ip_address

@@ -37,8 +37,20 @@ require_env() {
   fi
 }
 
-# AWS credentials are needed for provisioning and for the dynamic inventory.
-require_env AWS_ACCESS_KEY_ID AWS_SECRET_ACCESS_KEY
+# AWS credentials are needed for provisioning and for the dynamic inventory,
+# but they can arrive several ways. Accept a named profile or an assumed-role
+# session as readily as static keys — profiles are what the docs recommend,
+# and rejecting them here would contradict that guidance.
+if [[ -z "${AWS_PROFILE:-}" ]]; then
+  if [[ -n "${AWS_ACCESS_KEY_ID:-}" ]]; then
+    require_env AWS_SECRET_ACCESS_KEY
+  else
+    echo "ERROR: no AWS credentials found." >&2
+    echo "       Set AWS_PROFILE, or AWS_ACCESS_KEY_ID + AWS_SECRET_ACCESS_KEY." >&2
+    echo "       See deploy/docs/aws-credentials.md" >&2
+    exit 1
+  fi
+fi
 
 # Application secrets are only needed by stages that render shared/.env or
 # start the app. Provisioning creates infrastructure and touches none of it,

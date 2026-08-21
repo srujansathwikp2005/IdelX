@@ -20,10 +20,16 @@
   become: false
   serial: 1        # one host at a time, so a bad release cannot take out the fleet
 
-  vars:
-    release_ts: "{{ lookup('pipe', 'date -u +%Y%m%d%H%M%S') }}"
-
   tasks:
+    - name: Stamp this release
+      # MUST be set_fact, not a play-level var. A `vars:` entry containing a
+      # lookup() is re-evaluated on EVERY reference, so `date` runs again for
+      # each task and each one sees a different timestamp — the clone lands in
+      # one directory and the next task addresses another. set_fact evaluates
+      # once and stores the result for the rest of the play.
+      ansible.builtin.set_fact:
+        release_ts: "{{ lookup('pipe', 'date -u +%Y%m%d%H%M%S') }}"
+
     # -------------------------------------------------------------------
     # Record where we are, so rollback has somewhere to go back to
     # -------------------------------------------------------------------
