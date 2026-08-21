@@ -41,21 +41,29 @@
       register: certbot_existing
       become: true
 
-    - name: Obtain the certificate and rewrite the nginx config
-      # --nginx edits the server block in place to add listen 443, the
-      # certificate paths, and an HTTP->HTTPS redirect.
-      # --agree-tos and -n are required for unattended runs.
+    - name: Ensure the ACME challenge webroot exists
+      ansible.builtin.file:
+        path: /var/lib/letsencrypt/.well-known/acme-challenge
+        state: directory
+        mode: "0755"
+      become: true
+
+    - name: Obtain the certificate
+      # --webroot, NOT --nginx. The nginx plugin rewrites conf.d/idlex.conf
+      # in place, which Ansible then overwrites from its template on the next
+      # run, silently dropping the site back to plain HTTP. Keeping certbot
+      # out of the config makes ownership unambiguous: Ansible renders the
+      # server blocks, certbot only obtains and renews certificates.
       #
       # All names go on ONE certificate via repeated -d flags. Separate
       # certificates per hostname would each consume from the same weekly
       # rate limit and each need their own renewal to succeed.
       ansible.builtin.command:
         cmd: >-
-          certbot --nginx
+          certbot certonly --webroot -w /var/lib/letsencrypt
           {% for d in ([domain_name] + (domain_aliases | default([]))) %}-d {{ d }} {% endfor %}
           --email {{ certbot_email }}
           --agree-tos --no-eff-email
-          --redirect
           --non-interactive
       become: true
       when: not certbot_existing.stat.exists

@@ -89,8 +89,8 @@
     - name: Verify the restored release is healthy
       ansible.builtin.uri:
         url: "http://127.0.0.1/health"
-      headers:
-        Host: "{{ domain_name | default('localhost', true) }}"
+        headers:
+          Host: "{{ domain_name | default('localhost', true) }}"
         follow_redirects: all
         validate_certs: false
         status_code: 200

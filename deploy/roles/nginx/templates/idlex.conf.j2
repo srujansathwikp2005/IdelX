@@ -11,9 +11,46 @@
 upstream idlex_frontend { server 127.0.0.1:{{ frontend_port }}; keepalive 32; }
 upstream idlex_backend  { server 127.0.0.1:{{ backend_port }};  keepalive 32; }
 
+{% if tls_enabled | default(false) %}
+# ---------------------------------------------------------------------------
+# HTTP: ACME challenges and a redirect to HTTPS.
+#
+# TLS is rendered HERE rather than left to `certbot --nginx` to patch in.
+# certbot edits this file in place, so the next Ansible run would overwrite
+# its work and silently drop the site back to plain HTTP — which is exactly
+# what happened once. Ansible owns the file; certbot only issues certs.
+# ---------------------------------------------------------------------------
 server {
     listen      80 default_server;
     listen [::]:80 default_server;
+    server_name {{ ([domain_name] + (domain_aliases | default([]))) | select | join(' ') }};
+
+    # Must stay on HTTP: renewal revalidates over port 80.
+    location ^~ /.well-known/acme-challenge/ {
+        root /var/lib/letsencrypt;
+        default_type "text/plain";
+    }
+
+    location / {
+        return 301 https://$host$request_uri;
+    }
+}
+
+server {
+    listen      443 ssl default_server;
+    listen [::]:443 ssl default_server;
+    http2 on;
+
+    ssl_certificate     /etc/letsencrypt/live/{{ domain_name }}/fullchain.pem;
+    ssl_certificate_key /etc/letsencrypt/live/{{ domain_name }}/privkey.pem;
+    # Mozilla's intermediate profile, shipped and kept current by certbot.
+    include /etc/letsencrypt/options-ssl-nginx.conf;
+    ssl_dhparam /etc/letsencrypt/ssl-dhparams.pem;
+{% else %}
+server {
+    listen      80 default_server;
+    listen [::]:80 default_server;
+{% endif %}
     # Every name on the certificate must appear here: certbot --nginx finds
     # the block to modify by matching server_name, and a name it cannot find
     # is silently left without TLS.
