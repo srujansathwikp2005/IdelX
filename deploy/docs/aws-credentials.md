@@ -1,5 +1,15 @@
 # Getting AWS credentials for the client's account
 
+> **Fastest path:** open **AWS CloudShell** while logged into the client's
+> console (terminal icon, top bar). It is already authenticated as you, which
+> sidesteps the chicken-and-egg problem of needing credentials to create
+> credentials. Upload `iam-bootstrap-policy.json` via *Actions → Upload file*,
+> then run `./scripts/bootstrap-deployer.sh`. It creates the identity, attaches
+> the least-privilege policy, and prints the export lines.
+>
+> Add `--role` for a cross-account role instead of an access key, or
+> `--rotate` to replace an existing key.
+
 Three approaches, best first. All of them start with the least-privilege policy
 in [`iam-bootstrap-policy.json`](iam-bootstrap-policy.json) — attach that rather
 than `AdministratorAccess`, whichever route you take.
