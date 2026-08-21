@@ -9,10 +9,18 @@ const registerSchema = z.object({
   phoneVerificationToken: z.string().optional(),
 });
 
-const loginSchema = z.object({
-  email: z.string().email(),
-  password: z.string().min(1),
-});
+// Login accepts an email address OR a phone number in one field. `email`
+// is still accepted so that any client not yet updated keeps working.
+const loginSchema = z
+  .object({
+    identifier: z.string().min(1).optional(),
+    email: z.string().min(1).optional(),
+    password: z.string().min(1),
+  })
+  .refine((data) => Boolean(data.identifier || data.email), {
+    message: 'Enter your email address or phone number',
+    path: ['identifier'],
+  });
 
 const otpRequestSchema = z.object({
   phone: z.string().min(7),
