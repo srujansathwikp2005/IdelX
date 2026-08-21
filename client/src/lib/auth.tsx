@@ -41,7 +41,7 @@ const DEMO_USER: MockUser = {
   _id: "mock-demo-user",
   name: "Demo Renter",
   email: "demo@idlex.com",
-  phone: "+91 98765 43210",
+  phone: "+91 00000 00000",
   password: "demo1234",
   role: "renter",
   isOwner: false,

@@ -7,7 +7,7 @@ export const SITE_CONFIG = {
     "IdleX is your trusted community marketplace to rent items you love and earn from what you don't use.",
   url: "https://idlex.app",
   email: "support@idlex.app",
-  phone: "+91 98765 43210",
+  phone: "",
   address: "Bhimavaram, Andhra Pradesh, India",
   social: {
     twitter: "https://twitter.com/idlex",
@@ -34,12 +34,12 @@ export const FOOTER_NAV = {
   Support: [
     { label: "Help Center", href: ROUTES.HELP },
     { label: "Safety", href: ROUTES.SAFETY },
-    { label: "Community Guidelines", href: "#" },
+    { label: "Community Guidelines", href: ROUTES.COMMUNITY_GUIDELINES },
     { label: "Contact Us", href: ROUTES.CONTACT },
   ],
   Legal: [
     { label: "Terms of Service", href: ROUTES.TERMS },
     { label: "Privacy Policy", href: ROUTES.PRIVACY },
-    { label: "Cookie Policy", href: "#" },
+    { label: "Cookie Policy", href: ROUTES.COOKIE_POLICY },
   ],
 };

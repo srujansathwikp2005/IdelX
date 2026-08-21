@@ -3,7 +3,7 @@ const env = require('../config/env');
 // SMS OTP delivery via Renflair's gateway (sms.renflair.in). The provider
 // exposes a simple GET endpoint — no SDK required — and renders the OTP
 // using its own approved template. Phone numbers are expected in plain
-// 10-digit form (e.g. 9876543210), so the E.164 "+91" prefix is stripped
+// 10-digit form (e.g. 9000000000), so the E.164 "+91" prefix is stripped
 // before calling.
 
 const RENFLAIR_OTP_URL = 'https://sms.renflair.in/V1.php';
