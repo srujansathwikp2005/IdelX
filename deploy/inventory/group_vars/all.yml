@@ -63,6 +63,13 @@ s3_signed_url_ttl: 300
 # NodeSource repo is used instead.
 nodejs_major: 22
 
+# --- TLS --------------------------------------------------------------------
+# Let's Encrypt issues for domain names only, never for an IP address. Leave
+# domain_name empty until a domain points at this host's Elastic IP; certbot
+# is installed either way but will not request a certificate.
+domain_name: ""
+certbot_email: ""
+
 # --- Runtime ----------------------------------------------------------------
 # Swap is a safety net for build spikes, not a substitute for RAM.
 swapfile_size_mb: 2048

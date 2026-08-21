@@ -36,6 +36,7 @@
     - nodejs     # Node 22 from NodeSource
     - nginx      # reverse proxy, conf.d server block
     - app        # systemd units + shared/.env
+    - certbot    # TLS; installs tooling, issues only when domain_name is set
 
   post_tasks:
     - name: Confirm nginx is serving
