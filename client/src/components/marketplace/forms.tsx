@@ -122,12 +122,28 @@ export function AuthPanel({ mode }: { mode: "login" | "sign-up" | "forgot" | "ot
       </div>
       <div className="space-y-4">
         {mode === "sign-up" && (
-          <Input label="Full name" value={name} onChange={(e) => setName(e.target.value)} placeholder="Venkata Siddhardha" required />
+          <Input label="Full name" value={name} onChange={(e) => setName(e.target.value)} placeholder="Your full name" required />
         )}
-        {mode === "otp" ? (
-          <Input label="Phone number" type="tel" value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="+91 98765 43210" required />
-        ) : (
-          <Input label="Email" type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="siddhu@example.com" required />
+        {mode === "otp" && (
+          <Input label="Phone number" type="tel" value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="+91 XXXXX XXXXX" required />
+        )}
+        {mode === "login" && (
+          // Sign-in accepts either identifier, so this cannot be type="email":
+          // the browser would reject a phone number before the form submits.
+          <Input
+            label="Email or phone number"
+            type="text"
+            autoComplete="username"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            placeholder="you@example.com or 10-digit mobile"
+            required
+          />
+        )}
+        {(mode === "sign-up" || mode === "forgot") && (
+          // Registration and password reset are email-only, so keep the
+          // stricter input type and its built-in validation here.
+          <Input label="Email" type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="you@example.com" required />
         )}
         {mode === "otp" && (
           <Input label="One-time password" value={code} onChange={(e) => setCode(e.target.value)} placeholder="6 digit code" />
@@ -264,7 +280,7 @@ export function EmailVerifyPanel({ initialEmail = "" }: { initialEmail?: string 
           type="email"
           value={email}
           onChange={(e) => setEmail(e.target.value)}
-          placeholder="siddhu@example.com"
+          placeholder="you@example.com"
           required
         />
         {codeSent && (

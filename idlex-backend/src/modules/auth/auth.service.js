@@ -39,10 +39,29 @@ async function register({ name, email, phone, password, phoneVerificationToken }
   return issueTokens(user);
 }
 
-async function login({ email, password }) {
-  const user = await User.findOne({ email }).select('+password');
+// Accepts either an email address or a phone number in `identifier`.
+// `email` remains supported for older clients.
+async function login({ identifier, email, password }) {
+  const raw = String(identifier || email || '').trim();
+  if (!raw) throw ApiError.badRequest('Enter your email address or phone number');
+
+  // An "@" is the reliable discriminator: a phone number never contains one,
+  // and this avoids guessing from length or leading digits.
+  let query;
+  if (raw.includes('@')) {
+    query = { email: raw.toLowerCase() };
+  } else {
+    const phone = normalizePhone(raw);
+    // A malformed number gets the same generic failure as a wrong password.
+    // Saying "that isn't a valid number" would confirm which field was read
+    // and help an attacker enumerate accounts.
+    if (!phone) throw ApiError.unauthorized('Invalid credentials');
+    query = { phone };
+  }
+
+  const user = await User.findOne(query).select('+password');
   if (!user || !(await user.comparePassword(password))) {
-    throw ApiError.unauthorized('Invalid email or password');
+    throw ApiError.unauthorized('Invalid credentials');
   }
   if (!user.isActive) throw ApiError.forbidden('Account is suspended');
   return issueTokens(user);

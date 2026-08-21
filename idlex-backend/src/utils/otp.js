@@ -23,7 +23,7 @@ function generateOtp(length = 6) {
 }
 
 // Normalizes an Indian phone number to E.164 (+91XXXXXXXXXX). Accepts
-// "+91 98765 43210", "9876543210", "919876543210", etc. Returns null for
+// "+91 90000 00000", "9000000000", "919000000000", etc. Returns null for
 // anything that isn't a valid 10-digit number.
 function normalizePhone(phone) {
   if (!phone || typeof phone !== 'string') return null;

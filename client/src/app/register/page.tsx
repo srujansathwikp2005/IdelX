@@ -283,7 +283,7 @@ export default function RegisterPage() {
               </div>
 
               <div className="mt-6 grid gap-4 sm:grid-cols-2">
-                <Input label="Full name" value={name} onChange={(e) => setName(e.target.value)} placeholder="Venkata Siddhardha" minLength={2} required />
+                <Input label="Full name" value={name} onChange={(e) => setName(e.target.value)} placeholder="Your full name" minLength={2} required />
                 <div>
                   <Input
                     label="Phone number"
@@ -293,7 +293,7 @@ export default function RegisterPage() {
                       setPhone(e.target.value);
                       resetOtp();
                     }}
-                    placeholder="98765 43210"
+                    placeholder="10-digit mobile number"
                     minLength={10}
                     required
                   />
@@ -334,7 +334,7 @@ export default function RegisterPage() {
                   )}
                   {otpMessage && !phoneVerified && <p className="mt-2 text-sm text-muted-foreground">{otpMessage}</p>}
                 </div>
-                <Input label="Email address" type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="siddhu@example.com" required />
+                <Input label="Email address" type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="you@example.com" required />
                 <Select
                   label="City"
                   name="city"

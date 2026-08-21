@@ -41,7 +41,7 @@ const DEMO_USER: MockUser = {
   _id: "mock-demo-user",
   name: "Demo Renter",
   email: "demo@idlex.com",
-  phone: "+91 98765 43210",
+  phone: "+91 00000 00000",
   password: "demo1234",
   role: "renter",
   isOwner: false,
@@ -111,13 +111,21 @@ function seedMockUsers(): void {
   saveMockUsers(users);
 }
 
-function mockLogin(email: string, password: string): User {
+// Offline fallback. Matches the backend's behaviour: an identifier
+// containing "@" is an email, anything else is treated as a phone number and
+// compared on digits alone, so spacing and a +91 prefix do not matter.
+function mockLogin(identifier: string, password: string): User {
   seedMockUsers();
-  const match = getMockUsers().find(
-    (u) => u.email.toLowerCase() === email.trim().toLowerCase() && u.password === password
-  );
+  const value = identifier.trim();
+  const digits = (s: string) => s.replace(/\D/g, "").replace(/^91(?=\d{10}$)/, "");
+  const match = getMockUsers().find((u) => {
+    const matchesIdentifier = value.includes("@")
+      ? u.email.toLowerCase() === value.toLowerCase()
+      : Boolean(u.phone) && digits(u.phone as string) === digits(value);
+    return matchesIdentifier && u.password === password;
+  });
   if (!match) {
-    throw new Error("Invalid email or password.");
+    throw new Error("Invalid credentials.");
   }
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const { password: _pw, ...safe } = match;
@@ -162,17 +170,19 @@ function mockRegister(payload: RegisterPayload): User {
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = React.useState<User | null>(() => getStoredUser<User>());
 
-  const login = React.useCallback(async (email: string, password: string) => {
+  // `identifier` is an email address or a phone number; the backend decides
+  // which field to match on.
+  const login = React.useCallback(async (identifier: string, password: string) => {
     let result: AuthResult;
     try {
-      result = await api.post<AuthResult>("/api/auth/login", { email, password });
+      result = await api.post<AuthResult>("/api/auth/login", { identifier, password });
     } catch (err) {
       if (isNetworkError(err)) {
-        result = { user: mockLogin(email, password), accessToken: "", refreshToken: "" };
+        result = { user: mockLogin(identifier, password), accessToken: "", refreshToken: "" };
       } else if (isUnauthorizedError(err)) {
         // Backend is up but has no record of this locally-registered account.
         try {
-          result = { user: mockLogin(email, password), accessToken: "", refreshToken: "" };
+          result = { user: mockLogin(identifier, password), accessToken: "", refreshToken: "" };
         } catch {
           throw err;
         }

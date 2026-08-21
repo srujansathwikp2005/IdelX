@@ -1,0 +1,258 @@
+import type { LegalDoc } from "./types";
+
+// Verbatim from the client's counsel-supplied document, 20 August 2026.
+// Do not reword: this is the operative legal text. Structure only.
+export const TERMS_DOC: LegalDoc = {
+  title: "Terms of Service",
+  eyebrow: "Legal",
+  description: "Rental terms covering bookings, deposits, damages, returns, and disputes.",
+  effectiveDate: "20 August 2026",
+  sections: [
+    {
+  heading: "About IdelX and Role of the Platform",
+  paragraphs: [
+        "IdelX is a peer-to-peer (P2P) rental marketplace that enables users to list items for rent and allows other users to discover and request to rent those items.",
+        "IdelX acts as an intermediary technology platform. IdelX does not own, manufacture, sell, possess, inspect, maintain, or manage the items listed by users unless expressly stated otherwise for a particular service. The person who lists an item is the “Lender” or “Owner”, and the person who rents or seeks to rent an item is the “Renter”.",
+        "The rental arrangement concerning an item is primarily between the Lender and the Renter. Users are responsible for accurately describing, handing over, using, returning, and receiving the relevant item in accordance with these Terms and the agreed rental conditions."
+      ]
+    },
+    {
+  heading: "Definitions",
+  paragraphs: [
+        "“IdelX”, “we”, “us”, or “our” means IdelX, operated as a sole proprietorship by Pujari Srujan Sathwik. “User” means any person who accesses or uses the Platform. “Lender” or “Owner” means a User who lists an item for rental. “Renter” means a User who rents or seeks to rent an item. “Item” or “Product” means a physical product listed by a Lender for rental. “Rental” means temporary use of an Item by a Renter under the agreed rental terms. “Security Deposit” means the refundable amount fixed by the Lender for an Item as security against damage or other permitted claims."
+      ]
+    },
+    {
+  heading: "Eligibility",
+  paragraphs: [
+        "Users must be legally capable of entering into a binding agreement under applicable law. IdelX may require identity verification or additional information before allowing certain features or transactions.",
+        "Users must provide accurate, complete, current, and non-misleading information. IdelX may restrict or terminate an account where information is materially false, fraudulent, or used unlawfully."
+      ]
+    },
+    {
+  heading: "Account Registration and Security",
+  paragraphs: [
+        "Certain Platform features may require an account. Users are responsible for maintaining the confidentiality of their login credentials and for activities carried out through their account.",
+        "Users must promptly notify IdelX of suspected unauthorized access. Users must not sell, transfer, impersonate, or unlawfully use another person's account."
+      ]
+    },
+    {
+  heading: "Listing Items on IdelX",
+  paragraphs: [
+        "A Lender may list eligible Items by providing the information requested by the Platform. Listings should accurately describe the Item, including its condition, rental price, availability, Security Deposit, rental period, usage restrictions, and other material terms.",
+        "The Lender is responsible for ensuring that the Item is legally permitted to be rented and that listing information is accurate. IdelX does not independently guarantee the condition, quality, ownership, authenticity, safety, legality, or suitability of an Item merely because it is listed.",
+        "IdelX may remove, suspend, restrict, or reject a listing where it reasonably believes the listing violates these Terms, applicable law, Platform rules, or User safety."
+      ]
+    },
+    {
+  heading: "Rental Requests and Agreements",
+  paragraphs: [
+        "A Renter may submit a request to rent an available Item. A rental becomes confirmed only when the Platform indicates that the booking has been accepted or confirmed and required payment or verification conditions have been satisfied.",
+        "The Lender and Renter are responsible for reviewing the Item description, rental price, rental period, Security Deposit, cancellation terms, pickup/return arrangements, and other conditions before proceeding.",
+        "IdelX may provide communication, booking, payment, verification, or other technology features to facilitate a transaction, but such features do not mean that IdelX owns or controls the Item."
+      ]
+    },
+    {
+  heading: "Security Deposit",
+  paragraphs: [
+        "The Security Deposit for an Item is fixed by the Lender and will be displayed or communicated to the Renter before confirmation where the Platform supports such display.",
+        "The Security Deposit is intended to be 100% refundable after the Item is returned, subject to a legitimate deduction for damage to the Item attributable to the Renter or another permitted claim under the applicable rental terms.",
+        "The Lender must not make an unsupported or excessive deduction. Where a deduction is claimed for damage, the Lender should provide reasonable evidence of the damage and the basis for the amount claimed.",
+        "The exact method, timing, and mechanism for holding, releasing, or refunding a Security Deposit may depend on the payment method and Platform functionality available for the relevant transaction."
+      ]
+    },
+    {
+  heading: "Payments and Fees",
+  paragraphs: [
+        "Rental charges, Security Deposits, Platform fees, taxes, processing charges, or other applicable amounts, if any, will be displayed or communicated before the relevant transaction is completed.",
+        "Where IdelX uses third-party payment providers, payment processing may be subject to the provider's terms, privacy practices, and technical processes. IdelX does not control third-party payment systems.",
+        "Users must not use stolen, unauthorized, fraudulent, or otherwise unlawful payment instruments."
+      ]
+    },
+    {
+  heading: "Cancellation, Changes and Extensions",
+  paragraphs: [
+        "Cancellation and modification rules applicable to a rental will be those displayed or agreed for the relevant transaction. Users should review applicable cancellation conditions before confirming.",
+        "Where a Lender permits rental extensions, the extension is subject to the Lender's approval and the applicable extension price and conditions. A Renter has no automatic right to extend a rental.",
+        "A Renter remains responsible for the Item until it has been returned in accordance with the agreed return arrangement."
+      ]
+    },
+    {
+  heading: "Lender Responsibilities",
+  paragraphs: [
+        "The Lender shall:"
+      ],
+  bullets: [
+        "Have the lawful right or authorization to list and rent the Item",
+        "Provide accurate and complete information about the Item and its condition",
+        "Provide the Item in substantially the condition represented in the listing, subject to disclosed normal wear",
+        "Clearly communicate material usage restrictions, safety instructions, and return requirements",
+        "Not list prohibited, stolen, counterfeit, unlawful, or unsafe Items",
+        "Deal honestly and fairly with Renters and comply with applicable laws"
+      ]
+    },
+    {
+  heading: "Renter Responsibilities",
+  paragraphs: [
+        "The Renter shall:"
+      ],
+  bullets: [
+        "Use the Item only for lawful purposes and according to agreed rental conditions",
+        "Take reasonable care of the Item during the rental period",
+        "Not transfer, sub-rent, sell, pledge, modify, or dispose of the Item without permission",
+        "Return the Item within the agreed period and in the agreed condition, subject to ordinary wear where applicable",
+        "Promptly report material damage, loss, theft, or other incidents concerning the Item to the Lender and IdelX where appropriate",
+        "Provide accurate information and cooperate with reasonable verification or dispute procedures"
+      ]
+    },
+    {
+  heading: "Damage, Loss and Theft",
+  paragraphs: [
+        "The Renter is responsible for damage to or loss of an Item caused by misuse, negligence, unauthorized use, failure to return, or other breach of rental terms, subject to applicable law.",
+        "Where an Item is damaged, the Lender may seek reasonable compensation corresponding to the actual loss or reasonable repair or replacement cost, as applicable. The Security Deposit may be applied toward a legitimate claim.",
+        "IdelX does not automatically provide insurance for rented Items unless a separate insurance or protection product is expressly offered for the relevant transaction."
+      ]
+    },
+    {
+  heading: "Verification and Trust Features",
+  paragraphs: [
+        "IdelX may offer identity verification, trust badges, document verification, or other safety features. Verification is intended to reduce fraud and increase trust but is not a guarantee of a User's identity, behavior, financial capacity, reliability, or safety.",
+        "Users should exercise appropriate caution during physical handovers. Users must not misrepresent identity or submit forged, altered, stolen, or fraudulent documents."
+      ]
+    },
+    {
+  heading: "Location and Local Discovery",
+  paragraphs: [
+        "IdelX may use approximate or precise location information, depending on permissions granted and Platform functionality, to support local discovery and rental matching.",
+        "Users are responsible for considering travel distance, pickup and return arrangements, and personal safety. IdelX does not guarantee the safety of a physical meeting or handover merely because a location feature is used."
+      ]
+    },
+    {
+  heading: "Prohibited Items and Activities",
+  paragraphs: [
+        "Users must not:"
+      ],
+  bullets: [
+        "List illegal drugs, controlled substances, unlawful materials, prohibited weapons, hazardous materials, stolen or counterfeit property",
+        "Provide materially false, deceptive, fraudulent, or misleading information",
+        "Use the Platform for fraud, harassment, threats, money laundering, or unlawful activity",
+        "Bypass Platform security, verification, payment systems, or access controls",
+        "Conduct unauthorized scraping, automated extraction, reverse engineering, or interference with the Platform"
+      ]
+    },
+    {
+  heading: "Communications",
+  paragraphs: [
+        "Users consent to receive service-related communications necessary to operate their account or transactions, including booking notices, payment updates, verification requests, safety notices, and support communications. Marketing communications, where applicable, may be subject to available opt-out controls."
+      ]
+    },
+    {
+  heading: "Third-Party Services and Links",
+  paragraphs: [
+        "IdelX may integrate third-party services such as payment processors, identity verification providers, hosting providers, analytics services, communication providers, mapping services, or other technology providers.",
+        "Use of third-party services may be subject to the third party's own terms and privacy policy. IdelX is not responsible for independent acts or omissions of third-party providers outside IdelX's reasonable control."
+      ]
+    },
+    {
+  heading: "Intellectual Property",
+  paragraphs: [
+        "The IdelX name, branding, logos, software, interface, design, text, graphics, and other Platform content owned or licensed by IdelX are protected by applicable intellectual-property laws. Users may not copy, modify, distribute, sell, reverse engineer, or commercially exploit such materials without authorization.",
+        "A User retains rights in content they lawfully own and upload, subject to granting IdelX the limited rights necessary to host, display, process, and operate the Platform and provide the Services."
+      ]
+    },
+    {
+  heading: "Privacy",
+  paragraphs: [
+        "Use of IdelX is also governed by the IdelX Privacy Policy, which explains the information collected, purposes of processing, sharing, security, retention, and User rights."
+      ]
+    },
+    {
+  heading: "Disputes Between Lenders and Renters",
+  paragraphs: [
+        "Disputes concerning an Item's condition, damage, late return, payment, pickup, return, or other rental obligations are primarily disputes between the Lender and Renter.",
+        "IdelX may provide support or mediation where appropriate, but unless expressly agreed otherwise, IdelX does not become a party to the underlying private rental contract merely because the transaction was facilitated through the Platform.",
+        "Users agree to cooperate in good faith with reasonable requests for information or evidence relating to a transaction or complaint."
+      ]
+    },
+    {
+  heading: "Disclaimer of Warranties",
+  paragraphs: [
+        "To the maximum extent permitted by applicable law, the Platform is provided on an “as available” and “as is” basis. IdelX does not guarantee that the Platform will always be uninterrupted, error-free, secure, or available.",
+        "IdelX does not warrant or guarantee the quality, safety, legality, ownership, authenticity, condition, availability, or suitability of any Item listed by a User."
+      ]
+    },
+    {
+  heading: "Limitation of Liability",
+  paragraphs: [
+        "IdelX is an intermediary technology platform and does not own, inspect, possess, or manage User-listed Items. To the maximum extent permitted by applicable law, IdelX shall not be responsible for losses arising directly from the condition, use, misuse, damage, theft, loss, non-return, or physical handover of a User-listed Item, or for disputes between Lenders and Renters.",
+        "Nothing in these Terms is intended to exclude or limit liability that cannot lawfully be excluded or limited under applicable law."
+      ]
+    },
+    {
+  heading: "Indemnification",
+  paragraphs: [
+        "To the extent permitted by law, a User agrees to indemnify and hold harmless IdelX, its proprietor, personnel, and service providers from claims, losses, liabilities, damages, costs, and reasonable legal expenses arising from the User's unlawful conduct, breach of these Terms, misuse of the Platform, or violation of another person's rights."
+      ]
+    },
+    {
+  heading: "Suspension and Termination",
+  paragraphs: [
+        "IdelX may suspend, restrict, or terminate an account or Platform access where it reasonably believes the User has breached these Terms, engaged in fraud or unlawful activity, created a safety risk, or misused the Platform.",
+        "Users may stop using the Platform at any time. Termination does not automatically extinguish obligations arising before termination, including valid payment, return, damage, dispute, confidentiality, or indemnity obligations."
+      ]
+    },
+    {
+  heading: "Changes to These Terms",
+  paragraphs: [
+        "IdelX may update these Terms from time to time to reflect changes in the Platform, business practices, technology, or applicable requirements. The updated version will be published on the Platform with a revised effective date. Continued use after an update may constitute acceptance to the extent permitted by law."
+      ]
+    },
+    {
+  heading: "Governing Law and Jurisdiction",
+  paragraphs: [
+        "These Terms shall be governed by and interpreted in accordance with the laws of India.",
+        "Subject to applicable law, disputes arising out of or relating to these Terms or use of the Platform shall be subject to the jurisdiction of the competent courts at Tanuku, Andhra Pradesh."
+      ]
+    },
+    {
+  heading: "Grievance Officer",
+  paragraphs: [
+        "For formal grievances relating to the Platform, User conduct, transactions, privacy, or other concerns, Users may contact the designated Grievance Officer."
+      ]
+    },
+    {
+  heading: "Customer Support",
+  paragraphs: [
+        "For general support, transaction assistance, technical issues, or questions regarding use of the Platform, Users may contact IdelX using the support contact details below. Support is intended to be available for approximately 8 hours per day."
+      ]
+    },
+    {
+  heading: "General Provisions",
+  paragraphs: [
+        "Severability: If any provision of these Terms is found to be unlawful or unenforceable, the remaining provisions will continue to the extent permitted by law.",
+        "No Waiver: Failure to enforce a provision does not constitute a waiver of the right to enforce that provision later.",
+        "Entire Agreement: These Terms, together with the Privacy Policy and any transaction-specific terms displayed on the Platform, constitute the terms governing the User's use of IdelX, subject to applicable law."
+      ]
+    },
+    {
+  heading: "Contact Information",
+  paragraphs: [
+        "IdelX is operated as a sole proprietorship by Pujari Srujan Sathwik.",
+        "Trade / Platform Name: IdelX Business Address: D.No: 17-21-5, Ward No. 3, Near Why Not Shopping Mall, Undarajavaram Road, Tanuku, West Godavari District, Andhra Pradesh, India. Email: idelxsupport@gmail.com Phone: 9704426431",
+        "Grievance Officer Contact Details",
+        "Name",
+        "Pujari Srujan Sathwik",
+        "Designation",
+        "Owner, IdelX",
+        "Email",
+        "idelxsupport@gmail.com",
+        "Phone",
+        "9704426431",
+        "Address",
+        "10-5-625, Bangle Street, Rayadurgam, Anantapur, Andhra Pradesh, India",
+        "Support Hours",
+        "8 hours per day"
+      ]
+    }
+  ]
+};

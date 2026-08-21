@@ -14,6 +14,10 @@ export const ROUTES = {
   FAQ: "/faq",
   PRIVACY: "/privacy-policy",
   TERMS: "/terms",
+  COOKIE_POLICY: "/cookie-policy",
+  SECURITY_DEPOSIT_POLICY: "/security-deposit-policy",
+  CANCELLATION_REFUND_POLICY: "/cancellation-refund-policy",
+  COMMUNITY_GUIDELINES: "/community-guidelines",
   BECOME_HOST: "/become-a-host",
 
   // Auth
