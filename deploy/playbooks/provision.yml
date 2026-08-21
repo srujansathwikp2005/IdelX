@@ -74,58 +74,6 @@
       register: app_sg
 
     # -------------------------------------------------------------------
-    # Object storage — private bucket for user uploads
-    # -------------------------------------------------------------------
-    - name: Create the uploads bucket
-      # Skipped alongside IAM: without an instance profile the app cannot
-      # reach the bucket anyway, so creating one would be misleading.
-      when: manage_iam | bool
-      amazon.aws.s3_bucket:
-        name: "{{ s3_bucket }}"
-        region: "{{ aws_region }}"
-        # KYC documents are identity papers. Public access is blocked at the
-        # bucket level so a bad object ACL cannot expose them by accident.
-        public_access:
-          block_public_acls: true
-          ignore_public_acls: true
-          block_public_policy: true
-          restrict_public_buckets: true
-        encryption: AES256
-        versioning: true          # an overwrite or bad delete stays recoverable
-        tags:
-          Project: "{{ project_name }}"
-          Env: "{{ env_name }}"
-
-    # -------------------------------------------------------------------
-    # IAM — instance profile so the app needs no long-lived AWS keys
-    # -------------------------------------------------------------------
-    - name: Create the EC2 IAM role
-      when: manage_iam | bool
-      amazon.aws.iam_role:
-        name: "{{ project_name }}-{{ env_name }}-ec2-role"
-        assume_role_policy_document: "{{ lookup('file', '../files/ec2-trust-policy.json') }}"
-        create_instance_profile: true
-        managed_policies:
-          # CloudWatch agent + SSM Session Manager as a break-glass path in
-          # when ssh is unavailable (which has already happened once here).
-          - arn:aws:iam::aws:policy/AmazonSSMManagedInstanceCore
-        tags:
-          Project: "{{ project_name }}"
-          Env: "{{ env_name }}"
-      register: ec2_role
-
-    - name: Attach a least-privilege S3 policy to the role
-      when: manage_iam | bool
-      amazon.aws.iam_policy:
-        iam_type: role
-        iam_name: "{{ ec2_role.role_name }}"
-        policy_name: "{{ project_name }}-{{ env_name }}-s3-uploads"
-        state: present
-        # Scoped to this bucket and this prefix only — the instance cannot
-        # read or write anything else in the account.
-        policy_json: "{{ lookup('template', '../templates/s3-policy.json.j2') }}"
-
-    # -------------------------------------------------------------------
     # Compute
     # -------------------------------------------------------------------
     - name: Find the latest Amazon Linux 2023 AMI
@@ -150,10 +98,6 @@
         image_id: "{{ selected_ami }}"
         security_groups: ["{{ app_sg.group_id }}"]
         vpc_subnet_id: "{{ aws_vpc_subnet_id | default(omit, true) }}"
-        # Falls back to an externally-created profile, then to none at all.
-        iam_instance_profile: >-
-          {{ ec2_role.role_name if (manage_iam | bool)
-             else (ec2_instance_profile | default(omit, true)) }}
         network:
           assign_public_ip: true
         volumes:
@@ -194,16 +138,4 @@
         msg: >-
           Instance {{ ec2_result.instances[0].instance_id }}
           ({{ ec2_instance_type }}) at {{ ec2_result.instances[0].public_ip_address }}.
-          {{ 'Bucket ' ~ s3_bucket ~ ' ready.' if (manage_iam | bool)
-             else 'IAM/S3 SKIPPED (manage_iam=false) — uploads will use local disk.' }}
           Next: ansible-playbook playbooks/configure.yml
-
-    - name: Warn about degraded storage
-      ansible.builtin.debug:
-        msg: >-
-          WARNING: running without an instance profile. Uploads go to local
-          disk, which means they are lost if the instance is replaced and
-          cannot be shared across instances. Grant the deployer IAM
-          permissions (see docs/iam-bootstrap-policy.json) and re-run with
-          manage_iam=true to move them to S3.
-      when: not (manage_iam | bool)

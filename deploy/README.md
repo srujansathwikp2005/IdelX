@@ -18,17 +18,20 @@ One command takes a fresh AWS account to a running, publicly reachable site.
                     │  nginx   │   sole public listener
                     └────┬─────┘
           ┌──────────────┼───────────────┐
-          │ /            │ /api          │ /uploads
-          │ /_next       │ /socket.io    │
-    ┌─────▼─────┐  ┌─────▼──────┐        │  302 redirect
-    │ Next.js   │  │  Express   │────────┘  to presigned url
-    │  :3000    │  │   :5000    │              │
-    └───────────┘  └─────┬──────┘         ┌────▼─────┐
-                         │                │ S3       │
-                   ┌─────▼──────┐         │ (private)│
-                   │  MongoDB   │         └──────────┘
+          │ /            │ /api  /uploads
+          │ /_next       │ /socket.io
+    ┌─────▼─────┐  ┌─────▼──────┐
+    │ Next.js   │  │  Express   │
+    │  :3000    │  │   :5000    │
+    └───────────┘  └─────┬──────┘
+                         │
+                   ┌─────▼──────┐
+                   │  MongoDB   │
                    │  (Atlas)   │
                    └────────────┘
+
+Uploads are written to local disk under {{ app_root }}/current/uploads,
+which is the application's own default behaviour.
 ```
 
 Both Node processes bind to **loopback only**. Ports 3000 and 5000 are never
@@ -59,7 +62,7 @@ symlink swap. Rollback is that swap in reverse — no rebuild, no fetch, seconds
 | `ansible-core >= 2.16` | `pip install ansible-core` |
 | `boto3`, `botocore` | Required by `amazon.aws` and the dynamic inventory |
 | Collections | `ansible-galaxy install -r requirements.yml` |
-| AWS credentials | IAM user/role able to manage EC2, S3 and IAM |
+| AWS credentials | IAM user/role able to manage EC2 (no S3 or IAM needed) |
 | EC2 keypair | Named in `ec2_key_name`, private key at `ec2_ssh_private_key` |
 | MongoDB Atlas cluster | Connection string supplied as a secret |
 | ssh-agent | Loaded with a key that can read the GitHub repo |
@@ -124,7 +127,7 @@ Defaults live in `inventory/group_vars/all.yml`. Override any of them with
 |---|---|---|
 | `ec2_instance_type` | `t3.small` | **Floor, not preference** — see below |
 | `ec2_volume_size` | `20` | 8 GB fills once `node_modules` + `.next` land |
-| `aws_region` | `eu-north-1` | Keep app and bucket colocated |
+| `aws_region` | `eu-north-1` | Keep the app near its database |
 | `nodejs_major` | `22` | AL2023 ships Node 20, EOL April 2026 |
 | `swapfile_size_mb` | `2048` | Absorbs the build's memory spike |
 | `keep_releases` | `5` | Rollback targets retained on disk |
@@ -243,7 +246,7 @@ chmod 400 ~/.ssh/idlex-deploy.pem
 
 | Playbook | Responsibility |
 |---|---|
-| `provision.yml` | Security group, private S3 bucket, IAM role + instance profile, EC2 instance |
+| `provision.yml` | Security group and EC2 instance from the latest AL2023 AMI |
 | `configure.yml` | Base packages, swap, Node 22, nginx, systemd units, `shared/.env` |
 | `deploy.yml` | Clone → `npm ci` → build → atomic symlink swap → health check → prune |
 | `rollback.yml` | Symlink swap to a previous release + restart + verify |
@@ -339,30 +342,11 @@ Short version: prefer **GitHub OIDC** for CI (no stored credentials at all)
 and a **cross-account role with an ExternalId** for local runs. Long-lived
 access keys are the fallback, not the default.
 
-Note the asymmetry: the deployer needs EC2, S3 and IAM permissions, but the
-**instance** receives only `s3:{Get,Put,Delete}Object` on `{bucket}/uploads/*`.
+The deployer needs **EC2 permissions only**. Provisioning creates no S3
+buckets and no IAM roles, so no S3 or IAM permissions are required — which
+also means a tightly scoped developer key is usually sufficient as-is.
 
 ---
-
-## Object storage
-
-Uploads go to a **private** S3 bucket. The app stores relative urls
-(`/uploads/<name>`) in MongoDB regardless of driver, so switching buckets,
-regions or CDNs later needs no data migration.
-
-Serving works by redirect: `GET /uploads/x.pdf` → 302 → presigned S3 url with
-a 300-second TTL. The bucket blocks public access at the account level, files
-are encrypted at rest, and versioning is on so an overwrite stays recoverable.
-
-This matters because KYC documents are **identity papers**. A public bucket
-plus an unguessable filename is not access control.
-
-The instance authenticates via an **IAM instance profile** scoped to
-`s3:GetObject/PutObject/DeleteObject` on `{bucket}/uploads/*` only — no AWS
-keys exist on the box, and the role cannot touch anything else in the account.
-
-Set `STORAGE_DRIVER=disk` to fall back to local-filesystem storage for
-development; the code path is unchanged from the original implementation.
 
 ---
 
@@ -384,9 +368,11 @@ from the console, or use SSM Session Manager, which the IAM role enables.
 bad config was never installed; nginx is still serving the previous one. Fix
 the template and re-run.
 
-**Uploads 403 or 404** — verify the instance profile is attached
-(`aws sts get-caller-identity` on the box) and that `S3_PREFIX` matches the
-prefix in the IAM policy.
+**Uploads missing after replacing an instance** — uploads live on the
+instance's local disk, so they do not survive instance replacement and are
+not shared between instances. Moving them to object storage is an
+application change (the upload middleware and the stored url shape), not a
+deployment setting.
 
 **Public IP changed** — stop/start releases the address unless an Elastic IP
 is attached. The dynamic inventory finds the new one automatically, but

@@ -1,6 +1,6 @@
 {
   "Version": "2012-10-17",
-  "Comment": "Least-privilege policy for the identity that RUNS the IdleX playbooks. This is the deployer's permission set, not the EC2 instance's — the instance gets a much narrower S3-only role created by provision.yml.",
+  "Comment": "Least-privilege policy for the identity that RUNS the IdleX playbooks. EC2 only: the deployment creates no S3 buckets and no IAM roles, so no S3 or IAM permissions are required.",
   "Statement": [
     {
       "Sid": "InventoryAndProvisioning",
@@ -18,7 +18,8 @@
         "ec2:DescribeInstanceStatus",
         "ec2:DescribeInstanceTypes",
         "ec2:DescribeAvailabilityZones",
-        "ec2:DescribeNetworkInterfaces"
+        "ec2:DescribeNetworkInterfaces",
+        "ec2:DescribeAddresses"
       ],
       "Resource": "*"
     },
@@ -47,59 +48,9 @@
       "Action": "ec2:TerminateInstances",
       "Resource": "*",
       "Condition": {
-        "StringEquals": { "ec2:ResourceTag/Project": "idlex" }
-      }
-    },
-    {
-      "Sid": "UploadsBucket",
-      "Effect": "Allow",
-      "Action": [
-        "s3:CreateBucket",
-        "s3:GetBucketLocation",
-        "s3:GetBucketVersioning",
-        "s3:PutBucketVersioning",
-        "s3:GetBucketPublicAccessBlock",
-        "s3:PutBucketPublicAccessBlock",
-        "s3:GetEncryptionConfiguration",
-        "s3:PutEncryptionConfiguration",
-        "s3:GetBucketTagging",
-        "s3:PutBucketTagging",
-        "s3:ListBucket"
-      ],
-      "Resource": "arn:aws:s3:::idlex-uploads-*"
-    },
-    {
-      "Sid": "InstanceRoleManagement",
-      "Comment": "Creates the role that provision.yml attaches to the instance. Scoped by name prefix.",
-      "Effect": "Allow",
-      "Action": [
-        "iam:CreateRole",
-        "iam:GetRole",
-        "iam:TagRole",
-        "iam:PutRolePolicy",
-        "iam:GetRolePolicy",
-        "iam:DeleteRolePolicy",
-        "iam:ListRolePolicies",
-        "iam:ListAttachedRolePolicies",
-        "iam:AttachRolePolicy",
-        "iam:CreateInstanceProfile",
-        "iam:GetInstanceProfile",
-        "iam:AddRoleToInstanceProfile",
-        "iam:ListInstanceProfilesForRole"
-      ],
-      "Resource": [
-        "arn:aws:iam::*:role/idlex-*",
-        "arn:aws:iam::*:instance-profile/idlex-*"
-      ]
-    },
-    {
-      "Sid": "PassOnlyTheInstanceRole",
-      "Comment": "iam:PassRole is the dangerous one — without this condition it would allow attaching ANY role, including an admin role, to a new instance.",
-      "Effect": "Allow",
-      "Action": "iam:PassRole",
-      "Resource": "arn:aws:iam::*:role/idlex-*",
-      "Condition": {
-        "StringEquals": { "iam:PassedToService": "ec2.amazonaws.com" }
+        "StringEquals": {
+          "ec2:ResourceTag/Project": "idlex"
+        }
       }
     }
   ]

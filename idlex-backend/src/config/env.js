@@ -38,22 +38,6 @@ const env = {
 
   uploadDir: process.env.UPLOAD_DIR || 'uploads',
 
-  storage: {
-    // 's3' in production, 'disk' for local dev. Anything other than 's3'
-    // keeps the original local-disk behaviour, so existing dev setups and
-    // the test suite are unaffected by this being added.
-    driver: (process.env.STORAGE_DRIVER || 'disk').toLowerCase(),
-    get isS3() { return this.driver === 's3'; },
-    bucket: process.env.S3_BUCKET,
-    region: process.env.AWS_REGION || 'eu-north-1',
-    // Uploads are namespaced under a prefix so one bucket can host several
-    // environments (idlex-dev/, idlex-prod/) without key collisions.
-    prefix: process.env.S3_PREFIX || 'uploads',
-    // Short TTL: long enough for a browser to follow the redirect and load
-    // the image, short enough that a leaked url is worthless within minutes.
-    signedUrlTtl: parseInt(process.env.S3_SIGNED_URL_TTL || '300', 10),
-  },
-
   razorpay: {
     keyId: process.env.RAZORPAY_KEY_ID,
     keySecret: process.env.RAZORPAY_KEY_SECRET,

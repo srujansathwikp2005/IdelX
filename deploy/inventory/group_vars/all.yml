@@ -26,14 +26,6 @@ ec2_ami_name_filter: "al2023-ami-2023.*-kernel-6.1-x86_64"
 ec2_key_name: deploy
 ec2_ssh_private_key: "~/.ssh/idlex-dev.pem"
 
-# Set false when the deploying identity has no IAM permissions. Provisioning
-# then skips role/instance-profile creation and the app falls back to local
-# disk storage, because reaching S3 without an instance profile would mean
-# putting long-lived AWS keys on the box — a worse trade than local disk.
-manage_iam: true
-# Attach an instance profile someone else created out of band. Requires
-# iam:PassRole on that role even though the role itself already exists.
-ec2_instance_profile: ""
 
 # --- Connection -------------------------------------------------------------
 # Derived from the values above so the ssh identity is defined once and the
@@ -52,11 +44,6 @@ keep_releases: 5
 
 backend_port: 5000
 frontend_port: 3000
-
-# --- Object storage ---------------------------------------------------------
-s3_bucket: "idlex-uploads-{{ env_name }}"
-s3_prefix: uploads
-s3_signed_url_ttl: 300
 
 # --- Node -------------------------------------------------------------------
 # AL2023 repos cap at Node 20, which reached EOL in April 2026, so the
