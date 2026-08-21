@@ -350,6 +350,42 @@ also means a tightly scoped developer key is usually sufficient as-is.
 
 ---
 
+## Teardown
+
+The playbooks provision infrastructure but do not destroy it. Removing an
+environment is deliberate and manual:
+
+```bash
+# Terminate the instance (the root volume has DeleteOnTermination=true)
+aws ec2 terminate-instances --region eu-north-1 --instance-ids <i-...>
+
+# Release the Elastic IP — an UNATTACHED EIP is the one case AWS bills extra
+# for, so leaving it allocated after terminating costs ~$3.60/month for nothing
+aws ec2 release-address --region eu-north-1 --allocation-id <eipalloc-...>
+
+# Delete the security group once no instance references it
+aws ec2 delete-security-group --region eu-north-1 --group-id <sg-...>
+```
+
+> The deploying identity needs `ec2:TerminateInstances` and
+> `ec2:DeleteSecurityGroup` for any of this. A policy that grants creates but
+> not deletes leaves retired instances and orphaned security groups
+> accumulating, each still billing.
+> `docs/iam-bootstrap-policy.json` includes both, with terminate tag-scoped to
+> `Project=idlex` so it cannot reach unrelated workloads.
+
+Before terminating, confirm nothing on the instance exists only there:
+
+```bash
+ssh <host> 'cd /opt/idlex/current && git status --porcelain'   # uncommitted work
+ssh <host> 'find /opt/idlex/current/uploads -type f'           # user uploads
+```
+
+Uploads live on local disk, so **they do not survive termination** and are not
+recovered by re-provisioning. Copy them off first if they matter.
+
+---
+
 ## Troubleshooting
 
 **`/api` returns 502** — the backend is not running.

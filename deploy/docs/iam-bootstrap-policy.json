@@ -55,6 +55,15 @@
           "ec2:ResourceTag/Project": "idlex"
         }
       }
+    },
+    {
+      "Sid": "DeleteOwnSecurityGroups",
+      "Comment": "Teardown needs deletes, not just creates. Without this the pipeline can provision but never clean up, so retired instances and orphaned security groups accumulate and keep billing. Not tag-scoped because AWS does not support tag conditions on DeleteSecurityGroup; scope it by VPC or drop it if that is too broad for the account.",
+      "Effect": "Allow",
+      "Action": [
+        "ec2:DeleteSecurityGroup"
+      ],
+      "Resource": "*"
     }
   ]
 }
