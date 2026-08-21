@@ -49,9 +49,14 @@ const env = {
   },
 
   admin: {
-    // Default admin account — auto-seeded on server start (see utils/ensureDefaultAdmin.js).
-    email: process.env.ADMIN_EMAIL || 'admin@gmail.com',
-    password: process.env.ADMIN_PASSWORD || 'admin',
+    // Auto-seeded on server start (see utils/ensureDefaultAdmin.js).
+    //
+    // Deliberately NO fallback values. A default that ships in source is a
+    // published credential, and this account can read every user's KYC
+    // documents and payment records. Unset means no admin is seeded, which
+    // is a visible failure; a weak default is an invisible one.
+    email: process.env.ADMIN_EMAIL,
+    password: process.env.ADMIN_PASSWORD,
   },
 };
 
