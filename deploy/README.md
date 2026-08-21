@@ -223,6 +223,66 @@ plus optional `RENFLAIR_API_KEY`, `SMTP_*`, `RAZORPAY_*`.
 
 ---
 
+## Database
+
+IdleX uses **MongoDB via Mongoose**. That constrains the options more than it
+might appear:
+
+| Option | Works | ~Cost/mo | Notes |
+|---|:--:|---|---|
+| MongoDB Atlas M0 | ✅ | $0 | Runs on AWS; the current choice |
+| Atlas M10 | ✅ | ~$60 | Dedicated, supports VPC peering |
+| Self-hosted MongoDB on EC2 | ✅ | ~$15 | Full MongoDB; backups and patching are yours |
+| Amazon DocumentDB | ❌ | ~$60+ | See below |
+| Amazon RDS | ❌ | — | Relational; would require rewriting the data layer |
+| DynamoDB | ❌ | — | Different data model; full rewrite |
+
+### Why not DocumentDB
+
+DocumentDB is MongoDB-*compatible*, not MongoDB. It does not implement text
+indexes or the `$text` operator, and IdleX depends on both:
+
+- `idlex-backend/src/models/Listing.js` declares `index({ title: 'text', description: 'text' })`
+- `idlex-backend/src/modules/listings/listings.service.js` queries it with `$text: { $search: q }`
+
+That is the listing search — the primary browse path of the marketplace. It
+would fail on DocumentDB from the first query. Migrating would mean replacing
+the search implementation (OpenSearch, Atlas Search, or regex matching with
+its own performance characteristics), which is an application change, not a
+deployment one.
+
+### Why not RDS
+
+RDS hosts relational engines — Postgres, MySQL, MariaDB, Oracle, SQL Server.
+There is no MongoDB option. Every model, query and schema in the backend would
+have to be rewritten against SQL.
+
+### On "keeping everything in AWS"
+
+Atlas already runs on AWS infrastructure, so this is largely a billing and
+contractual boundary rather than a technical one. If the client requires the
+database inside their own account, self-hosted MongoDB on EC2 is the honest
+answer, and the Ansible roles can be extended to provision it — ask and it can
+be added.
+
+---
+
+## AWS credentials
+
+See [`docs/aws-credentials.md`](docs/aws-credentials.md) for three ways to
+obtain credentials for the client's account, and
+[`docs/iam-bootstrap-policy.json`](docs/iam-bootstrap-policy.json) for the
+least-privilege policy the deployer needs.
+
+Short version: prefer **GitHub OIDC** for CI (no stored credentials at all)
+and a **cross-account role with an ExternalId** for local runs. Long-lived
+access keys are the fallback, not the default.
+
+Note the asymmetry: the deployer needs EC2, S3 and IAM permissions, but the
+**instance** receives only `s3:{Get,Put,Delete}Object` on `{bucket}/uploads/*`.
+
+---
+
 ## Object storage
 
 Uploads go to a **private** S3 bucket. The app stores relative urls
