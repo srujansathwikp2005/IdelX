@@ -139,6 +139,10 @@
         - name: Wait for the backend health endpoint
           ansible.builtin.uri:
             url: "http://127.0.0.1/health"
+            headers:
+              Host: "{{ domain_name | default('localhost', true) }}"
+            follow_redirects: all
+            validate_certs: false
             status_code: 200
           register: health
           retries: 12
@@ -148,6 +152,10 @@
         - name: Wait for the frontend to render
           ansible.builtin.uri:
             url: "http://127.0.0.1/"
+            headers:
+              Host: "{{ domain_name | default('localhost', true) }}"
+            follow_redirects: all
+            validate_certs: false
             status_code: 200
           register: home
           retries: 12

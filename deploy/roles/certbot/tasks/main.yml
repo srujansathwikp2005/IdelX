@@ -45,10 +45,14 @@
       # --nginx edits the server block in place to add listen 443, the
       # certificate paths, and an HTTP->HTTPS redirect.
       # --agree-tos and -n are required for unattended runs.
+      #
+      # All names go on ONE certificate via repeated -d flags. Separate
+      # certificates per hostname would each consume from the same weekly
+      # rate limit and each need their own renewal to succeed.
       ansible.builtin.command:
         cmd: >-
           certbot --nginx
-          -d {{ domain_name }}
+          {% for d in ([domain_name] + (domain_aliases | default([]))) %}-d {{ d }} {% endfor %}
           --email {{ certbot_email }}
           --agree-tos --no-eff-email
           --redirect

@@ -55,6 +55,8 @@ nodejs_major: 22
 # domain_name empty until a domain points at this host's Elastic IP; certbot
 # is installed either way but will not request a certificate.
 domain_name: ""
+# Additional names on the SAME certificate (SAN entries), e.g. api. and www.
+domain_aliases: []
 certbot_email: ""
 
 # --- Runtime ----------------------------------------------------------------

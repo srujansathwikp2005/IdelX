@@ -14,7 +14,10 @@ upstream idlex_backend  { server 127.0.0.1:{{ backend_port }};  keepalive 32; }
 server {
     listen      80 default_server;
     listen [::]:80 default_server;
-    server_name {{ server_name | default('_') }};
+    # Every name on the certificate must appear here: certbot --nginx finds
+    # the block to modify by matching server_name, and a name it cannot find
+    # is silently left without TLS.
+    server_name {{ ([domain_name] + (domain_aliases | default([]))) | select | join(' ') | default('_', true) }};
 
     # Must exceed multer's 10MB per-file limit with room for multipart
     # overhead, or large KYC uploads fail at the proxy before reaching Node.

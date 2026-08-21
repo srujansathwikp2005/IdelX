@@ -49,6 +49,13 @@
     - name: Confirm nginx is serving
       ansible.builtin.uri:
         url: "http://127.0.0.1/health"
+        # Once server_name is a real domain, a request by IP no longer matches
+        # the block, so the probe must present the Host header explicitly.
+      headers:
+        Host: "{{ domain_name | default('localhost', true) }}"
+        # follow_redirects is required after certbot adds the 301 to HTTPS.
+        follow_redirects: all
+        validate_certs: false     # loopback: the cert is for the public name
         status_code: [200, 502]   # 502 is expected until deploy.yml runs
       register: health
       changed_when: false
