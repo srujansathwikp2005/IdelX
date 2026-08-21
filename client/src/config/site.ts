@@ -5,8 +5,10 @@ export const SITE_CONFIG = {
   tagline: "Rent Smart. Live More.",
   description:
     "IdleX is your trusted community marketplace to rent items you love and earn from what you don't use.",
-  url: "https://idlex.app",
-  email: "support@idlex.app",
+  // The live domain. This is what the sitemap advertises to crawlers, so a
+  // stale value here publishes the wrong hostname for the whole site.
+  url: "https://idlex.in",
+  email: "idlexsupport@gmail.com",
   phone: "",
   address: "Bhimavaram, Andhra Pradesh, India",
   social: {
