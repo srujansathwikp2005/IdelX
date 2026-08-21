@@ -1,0 +1,98 @@
+---
+# Base OS setup shared by every IdleX host.
+
+- name: Install base packages
+  ansible.builtin.dnf:
+    # AL2023 uses dnf. There is no apt on this platform — a common trip-up
+    # when adapting Ubuntu-oriented runbooks.
+    name:
+      - git
+      - rsync          # used by the deploy role to sync releases
+      - tar
+      - gzip
+      - jq
+    state: present
+  become: true
+
+- name: Set the system timezone to UTC
+  # Logs correlate across regions and CI only if everything speaks UTC.
+  community.general.timezone:
+    name: UTC
+  become: true
+  notify: Restart rsyslog
+
+# ---------------------------------------------------------------------------
+# Swap
+#
+# Not optional on small instances: `next build` peaks around 969MB, and on a
+# 1GB box the OOM killer reaps processes — including sshd, which locks you
+# out of your own server mid-deploy. Swap absorbs the spike.
+#
+# It is a safety net, not a substitute for RAM: EBS-backed swap is slow
+# enough that a build relying on it heavily may still fail. Size the
+# instance properly (t3.small minimum) and treat swap as insurance.
+# ---------------------------------------------------------------------------
+- name: Check for an existing swapfile
+  ansible.builtin.stat:
+    path: /swapfile
+  register: common_swapfile_stat
+
+- name: Create the swapfile
+  ansible.builtin.command:
+    cmd: "dd if=/dev/zero of=/swapfile bs=1M count={{ swapfile_size_mb }}"
+    creates: /swapfile
+  become: true
+  when: not common_swapfile_stat.stat.exists
+
+- name: Secure the swapfile
+  # 0600 or mkswap refuses to use it — swap holds process memory, which may
+  # include decrypted secrets, so it must not be world-readable.
+  ansible.builtin.file:
+    path: /swapfile
+    owner: root
+    group: root
+    mode: "0600"
+  become: true
+
+- name: Format the swapfile
+  ansible.builtin.command:
+    cmd: mkswap /swapfile
+  become: true
+  when: not common_swapfile_stat.stat.exists
+  register: common_mkswap_result
+  changed_when: common_mkswap_result.rc == 0
+
+- name: Enable swap now and on every boot
+  # The fstab entry is what makes swap survive the reboot after an instance
+  # resize — verified during the manual rollout.
+  ansible.posix.mount:
+    name: none
+    src: /swapfile
+    fstype: swap
+    opts: sw
+    state: present
+  become: true
+
+- name: Activate swap immediately
+  ansible.builtin.command:
+    cmd: swapon /swapfile
+  become: true
+  when: not common_swapfile_stat.stat.exists
+  register: common_swapon_result
+  failed_when:
+    - common_swapon_result.rc != 0
+    - "'already active' not in common_swapon_result.stderr"
+  changed_when: common_swapon_result.rc == 0
+
+- name: Create the application directory tree
+  ansible.builtin.file:
+    path: "{{ item }}"
+    state: directory
+    owner: "{{ app_user }}"
+    group: "{{ app_user }}"
+    mode: "0755"
+  become: true
+  loop:
+    - "{{ app_root }}"
+    - "{{ app_root }}/releases"   # one timestamped checkout per deploy
+    - "{{ app_root }}/shared"     # persists across releases (.env, uploads)

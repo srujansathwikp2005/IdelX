@@ -1,0 +1,18 @@
+---
+# ansible-lint configuration.
+#
+# Only two rules are waived, each for a specific reason documented below.
+# Everything else is expected to pass clean.
+profile: production
+
+skip_list:
+  # site.yml is nothing but `import_playbook` statements; those cannot carry
+  # a `name:` of their own, so name[play] is unavoidable there.
+  - name[play]
+  # NodeSource distributes its repo setup as a shell script that must be
+  # piped to bash — there is no get_url/uri equivalent. pipefail is set, so
+  # a failed download still fails the task.
+  - command-instead-of-module
+
+exclude_paths:
+  - .github/

@@ -1,0 +1,52 @@
+---
+# =============================================================================
+# IdleX deployment variables
+#
+# Anything secret (database uri, jwt secrets, api keys) is deliberately NOT
+# here — see README "Secrets". Those arrive from environment variables or
+# ansible-vault, so this file stays safe to commit.
+# =============================================================================
+
+# --- Identity / tagging -----------------------------------------------------
+project_name: idlex
+env_name: prod                       # also the tag:Env used by the inventory
+
+# --- AWS --------------------------------------------------------------------
+aws_region: eu-north-1               # Stockholm; keep app + bucket colocated
+aws_vpc_subnet_id: ""                # optional; empty = the default VPC subnet
+
+# t3.small (2GB) is the floor, not a preference: `next build` peaks at ~969MB
+# and a 1GB t3.micro gets OOM-killed mid-build, taking sshd with it.
+ec2_instance_type: t3.small
+ec2_volume_size: 20                  # GB; 8GB fills up once node_modules + .next land
+ec2_ami_owner: "137112412989"        # Amazon's official AL2023 AMI owner id
+ec2_ami_name_filter: "al2023-ami-2023.*-kernel-6.1-x86_64"
+ec2_key_name: idlex-deploy           # existing EC2 keypair name
+ec2_ssh_private_key: "~/.ssh/idlex-dev.pem"
+
+# --- Application ------------------------------------------------------------
+app_user: ec2-user
+app_root: /opt/idlex
+app_repo: "git@github.com:srujansathwikp2005/IdelX.git"
+app_branch: main
+# Number of past releases kept on disk for rollback. Each is a full checkout
+# plus node_modules, so this trades disk for recovery options.
+keep_releases: 5
+
+backend_port: 5000
+frontend_port: 3000
+
+# --- Object storage ---------------------------------------------------------
+s3_bucket: "idlex-uploads-{{ env_name }}"
+s3_prefix: uploads
+s3_signed_url_ttl: 300
+
+# --- Node -------------------------------------------------------------------
+# AL2023 repos cap at Node 20, which reached EOL in April 2026, so the
+# NodeSource repo is used instead.
+nodejs_major: 22
+
+# --- Runtime ----------------------------------------------------------------
+# Swap is a safety net for build spikes, not a substitute for RAM.
+swapfile_size_mb: 2048
+nginx_client_max_body_size: 25M

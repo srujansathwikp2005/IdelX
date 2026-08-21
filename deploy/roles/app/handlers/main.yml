@@ -1,0 +1,21 @@
+---
+- name: Reload systemd
+  ansible.builtin.systemd:
+    daemon_reload: true
+  become: true
+
+- name: Restart idlex-backend
+  ansible.builtin.systemd:
+    name: idlex-backend
+    state: restarted
+  become: true
+  # During configure there may be no release yet; deploy.yml starts them
+  # properly once current/ exists.
+  failed_when: false
+
+- name: Restart idlex-frontend
+  ansible.builtin.systemd:
+    name: idlex-frontend
+    state: restarted
+  become: true
+  failed_when: false

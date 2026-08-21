@@ -1,0 +1,58 @@
+---
+# Install the systemd units and the shared environment file.
+# This role only puts the *scaffolding* in place — releases are handled by
+# playbooks/deploy.yml, so configure and deploy stay independently runnable.
+
+- name: Fail fast when required secrets are absent
+  # These have no safe default. mongo_uri especially: an empty value is
+  # falsy in src/config/env.js, so the app silently falls back to
+  # mongodb://127.0.0.1:27017/idlex and then hangs ~30s in mongoose server
+  # selection with no error printed. Catch it here instead.
+  ansible.builtin.assert:
+    that:
+      - mongo_uri is defined and mongo_uri | length > 0
+      - jwt_access_secret is defined and jwt_access_secret | length > 0
+      - jwt_refresh_secret is defined and jwt_refresh_secret | length > 0
+    fail_msg: >-
+      mongo_uri, jwt_access_secret and jwt_refresh_secret must be supplied.
+      Export IDLEX_MONGO_URI / IDLEX_JWT_ACCESS_SECRET / IDLEX_JWT_REFRESH_SECRET
+      before running, or pass them with -e. See README "Secrets".
+
+- name: Render the shared environment file
+  ansible.builtin.template:
+    src: env.j2
+    dest: "{{ app_root }}/shared/.env"
+    owner: "{{ app_user }}"
+    group: "{{ app_user }}"
+    mode: "0600"     # contains db credentials and jwt signing keys
+  become: true
+  notify:
+    - Restart idlex-backend
+
+- name: Install the systemd units
+  ansible.builtin.template:
+    src: "{{ item }}.service.j2"
+    dest: "/etc/systemd/system/{{ item }}.service"
+    owner: root
+    group: root
+    mode: "0644"
+  become: true
+  loop:
+    - idlex-backend
+    - idlex-frontend
+  notify:
+    - Reload systemd
+    - Restart idlex-backend
+    - Restart idlex-frontend
+
+- name: Enable the services at boot
+  # enabled here but not started: there is no release to run until
+  # deploy.yml has populated current/. Starting now would crash-loop.
+  ansible.builtin.systemd:
+    name: "{{ item }}"
+    enabled: true
+    daemon_reload: true
+  become: true
+  loop:
+    - idlex-backend
+    - idlex-frontend

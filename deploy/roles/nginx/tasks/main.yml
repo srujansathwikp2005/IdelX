@@ -1,0 +1,45 @@
+---
+# nginx as the single public entrypoint.
+#
+# Platform note: Amazon Linux 2023 follows the upstream/RHEL layout, so there
+# is no sites-available/sites-enabled pair. Server blocks live directly in
+# /etc/nginx/conf.d/*.conf, and the .conf suffix IS the enable mechanism.
+
+- name: Install nginx
+  ansible.builtin.dnf:
+    name: nginx
+    state: present
+  become: true
+
+- name: Disable the stock default server block
+  # The shipped nginx.conf contains an inline `server { listen 80; server_name _; }`
+  # that collides with ours over the catch-all name. Commenting it out removes
+  # the "conflicting server name" warning and any ambiguity about which block wins.
+  ansible.builtin.replace:
+    path: /etc/nginx/nginx.conf
+    # Matches the default block from `server {` through its closing brace.
+    regexp: '(?s)(\n    server \{\n        listen       80;.*?\n    \}\n)'
+    replace: '\n# Default server block disabled by Ansible — see conf.d/idlex.conf\n'
+    backup: true
+  become: true
+  notify: Reload nginx
+
+- name: Deploy the IdleX server block
+  ansible.builtin.template:
+    src: idlex.conf.j2
+    dest: /etc/nginx/conf.d/idlex.conf
+    owner: root
+    group: root
+    mode: "0644"
+    # Refuse to install a config that would not parse. Without this a bad
+    # template takes nginx down on the next restart.
+    validate: nginx -t -c /etc/nginx/nginx.conf
+  become: true
+  notify: Reload nginx
+
+- name: Enable and start nginx
+  ansible.builtin.service:
+    name: nginx
+    state: started
+    enabled: true
+  become: true

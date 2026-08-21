@@ -1,0 +1,53 @@
+---
+# =============================================================================
+# configure.yml — turn a bare Amazon Linux 2023 instance into an IdleX host.
+#
+# Everything here is idempotent and safe to re-run: it is the way to bring a
+# drifted box back to the known-good state, not just first-time setup.
+#
+#   ansible-playbook playbooks/configure.yml
+# =============================================================================
+- name: Configure IdleX application hosts
+  hosts: role_web
+  become: false
+
+  pre_tasks:
+    - name: Wait for cloud-init to finish
+      # A fresh instance may still be running cloud-init, which holds the dnf
+      # lock. Installing packages before it settles fails intermittently —
+      # exactly the kind of flake that makes a pipeline look unreliable.
+      ansible.builtin.raw: cloud-init status --wait || true
+      changed_when: false
+
+    - name: Gather facts
+      ansible.builtin.setup:
+
+    - name: Report the target's memory
+      # Surfaces an undersized instance before the build fails, rather than
+      # after an OOM kill takes sshd down with it.
+      ansible.builtin.debug:
+        msg: >-
+          {{ inventory_hostname }} — {{ ansible_memtotal_mb }}MB RAM.
+          {{ 'OK' if ansible_memtotal_mb >= 1800
+             else 'WARNING: below 1.8GB; next build peaks near 969MB and may be OOM-killed.' }}
+
+  roles:
+    - common     # packages, timezone, swap, directory tree
+    - nodejs     # Node 22 from NodeSource
+    - nginx      # reverse proxy, conf.d server block
+    - app        # systemd units + shared/.env
+
+  post_tasks:
+    - name: Confirm nginx is serving
+      ansible.builtin.uri:
+        url: "http://127.0.0.1/health"
+        status_code: [200, 502]   # 502 is expected until deploy.yml runs
+      register: health
+      changed_when: false
+
+    - name: Summarise
+      ansible.builtin.debug:
+        msg:
+          - "Host configured: {{ inventory_hostname }}"
+          - "nginx /health -> {{ health.status }} (502 is expected before first deploy)"
+          - "Next: ansible-playbook playbooks/deploy.yml"

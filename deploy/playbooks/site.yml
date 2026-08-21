@@ -1,0 +1,15 @@
+---
+# =============================================================================
+# site.yml — the single command in the acceptance criteria.
+#
+# Provisions infrastructure, configures the host, and deploys the app in one
+# uninterrupted run, starting from nothing:
+#
+#   ansible-playbook playbooks/site.yml
+#
+# Each stage is separately runnable (provision/configure/deploy) for day-two
+# work; this file only chains them in the right order.
+# =============================================================================
+- ansible.builtin.import_playbook: provision.yml
+- ansible.builtin.import_playbook: configure.yml
+- ansible.builtin.import_playbook: deploy.yml

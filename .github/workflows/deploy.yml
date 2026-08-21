@@ -1,0 +1,110 @@
+name: Deploy to EC2
+
+# Commit to production in one job.
+#   - push to main        -> deploy automatically
+#   - manual dispatch     -> choose deploy or rollback, pick a branch
+on:
+  push:
+    branches: [main]
+    paths-ignore:
+      - '**.md'          # documentation edits should not ship a release
+  workflow_dispatch:
+    inputs:
+      action:
+        description: 'What to run'
+        required: true
+        default: deploy
+        type: choice
+        options: [deploy, rollback, provision, check]
+      branch:
+        description: 'Branch to deploy'
+        required: false
+        default: main
+        type: string
+
+# One deploy at a time. Without this, two pushes in quick succession race
+# each other over the same `current` symlink and can leave a half-swapped host.
+concurrency:
+  group: deploy-production
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    name: ${{ github.event.inputs.action || 'deploy' }}
+    runs-on: ubuntu-latest
+    # Gate on a GitHub Environment so production deploys can require an
+    # approval and so the secrets below are scoped, not repo-wide.
+    environment: production
+    timeout-minutes: 30
+
+    steps:
+      - name: Check out the repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Cache Ansible collections
+        uses: actions/cache@v4
+        with:
+          path: ~/.ansible/collections
+          key: ansible-collections-${{ hashFiles('deploy/requirements.yml') }}
+
+      - name: Install Ansible and AWS dependencies
+        run: |
+          python -m pip install --upgrade pip
+          # boto3/botocore are required by the amazon.aws modules and by the
+          # aws_ec2 dynamic inventory plugin.
+          pip install "ansible-core>=2.16" boto3 botocore
+          ansible-galaxy install -r deploy/requirements.yml
+
+      - name: Configure the SSH agent
+        # The private key stays in the agent for the life of the job and is
+        # never written to the runner's disk. Agent forwarding then lets the
+        # EC2 instance authenticate to GitHub for the private-repo clone.
+        uses: webfactory/ssh-agent@v0.9.0
+        with:
+          ssh-private-key: |
+            ${{ secrets.EC2_SSH_PRIVATE_KEY }}
+            ${{ secrets.REPO_DEPLOY_KEY }}
+
+      - name: Run the pipeline
+        working-directory: deploy
+        env:
+          AWS_ACCESS_KEY_ID:     ${{ secrets.AWS_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          AWS_REGION:            ${{ vars.AWS_REGION || 'eu-north-1' }}
+
+          IDLEX_MONGO_URI:               ${{ secrets.MONGO_URI }}
+          IDLEX_JWT_ACCESS_SECRET:       ${{ secrets.JWT_ACCESS_SECRET }}
+          IDLEX_JWT_REFRESH_SECRET:      ${{ secrets.JWT_REFRESH_SECRET }}
+          IDLEX_RENFLAIR_API_KEY:        ${{ secrets.RENFLAIR_API_KEY }}
+          IDLEX_SMTP_HOST:               ${{ secrets.SMTP_HOST }}
+          IDLEX_SMTP_USER:               ${{ secrets.SMTP_USER }}
+          IDLEX_SMTP_PASS:               ${{ secrets.SMTP_PASS }}
+          IDLEX_SMTP_FROM:               ${{ secrets.SMTP_FROM }}
+          IDLEX_RAZORPAY_KEY_ID:         ${{ secrets.RAZORPAY_KEY_ID }}
+          IDLEX_RAZORPAY_KEY_SECRET:     ${{ secrets.RAZORPAY_KEY_SECRET }}
+          IDLEX_RAZORPAY_WEBHOOK_SECRET: ${{ secrets.RAZORPAY_WEBHOOK_SECRET }}
+          IDLEX_RAZORPAY_ACCOUNT_NUMBER: ${{ secrets.RAZORPAY_ACCOUNT_NUMBER }}
+          IDLEX_CLIENT_URL:              ${{ vars.CLIENT_URL }}
+
+          ANSIBLE_FORCE_COLOR: '1'
+        run: |
+          ./scripts/deploy.sh "${{ github.event.inputs.action || 'deploy' }}" \
+            -e "app_branch=${{ github.event.inputs.branch || github.ref_name }}"
+
+      - name: Report the deployed url
+        if: success()
+        run: echo "### Deployed ✅ ${{ vars.CLIENT_URL }}" >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Note the automatic rollback
+        if: failure()
+        # deploy.yml's rescue block already restored the previous release;
+        # this only makes that visible in the job summary.
+        run: |
+          echo "### Deploy failed ❌" >> "$GITHUB_STEP_SUMMARY"
+          echo "The playbook rolls back automatically on a failed health check." >> "$GITHUB_STEP_SUMMARY"
+          echo "Verify with: \`./scripts/deploy.sh rollback --tags list\`" >> "$GITHUB_STEP_SUMMARY"

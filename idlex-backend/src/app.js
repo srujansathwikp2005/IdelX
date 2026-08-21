@@ -54,10 +54,24 @@ app.post(
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
-// Serve locally-uploaded files (KYC docs, listing photos) — swap for a
-// cloud storage URL in production, same note as the Django doc's
-// django-storages recommendation.
-app.use('/uploads', express.static(path.join(process.cwd(), env.uploadDir)));
+// Serve uploaded files (KYC docs, listing photos). Both drivers answer on
+// the same `/uploads/<name>` path, so stored urls resolve either way.
+if (env.storage.isS3) {
+  // The bucket is private. Redirect to a short-lived presigned url instead
+  // of streaming the bytes through Node — S3 does the transfer, the app
+  // stays free for request handling, and nothing is publicly readable.
+  const { getSignedUrlFor } = require('./config/storage');
+  app.get('/uploads/:name', async (req, res, next) => {
+    try {
+      const url = await getSignedUrlFor(`${env.storage.prefix}/${req.params.name}`);
+      res.redirect(302, url);
+    } catch (err) {
+      next(err);
+    }
+  });
+} else {
+  app.use('/uploads', express.static(path.join(process.cwd(), env.uploadDir)));
+}
 
 app.get('/health', (req, res) => res.json({ status: 'ok' }));
 

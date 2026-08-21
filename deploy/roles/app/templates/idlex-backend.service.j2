@@ -1,0 +1,31 @@
+# {{ ansible_managed }}
+[Unit]
+Description=IdleX Backend (Express + Socket.IO)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User={{ app_user }}
+# Points at the `current` symlink, not a release directory. Rollback swaps
+# the symlink and restarts — systemd then picks up the older code with no
+# unit file edit.
+WorkingDirectory={{ app_root }}/current/idlex-backend
+EnvironmentFile={{ app_root }}/shared/.env
+ExecStart=/usr/bin/node src/server.js
+Restart=always
+RestartSec=5
+
+# --- Hardening -------------------------------------------------------------
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=full
+ProtectHome=read-only
+ReadWritePaths={{ app_root }}
+
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=idlex-backend
+
+[Install]
+WantedBy=multi-user.target

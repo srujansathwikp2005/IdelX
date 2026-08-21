@@ -1,0 +1,187 @@
+---
+# =============================================================================
+# deploy.yml — ship a release.
+#
+# Release model (the classic Capistrano layout):
+#
+#   {{ app_root }}/releases/<timestamp>-<sha>   full checkout + build
+#   {{ app_root }}/shared/.env                  secrets, survive releases
+#   {{ app_root }}/current -> releases/<id>     atomic symlink
+#
+# The symlink swap is the cutover: it is a single rename, so there is no
+# window where `current` points at a half-built tree. Rollback is the same
+# swap in reverse, which is why it is fast and boring.
+#
+#   ansible-playbook playbooks/deploy.yml
+#   ansible-playbook playbooks/deploy.yml -e app_branch=hotfix/foo
+# =============================================================================
+- name: Deploy IdleX
+  hosts: role_web
+  become: false
+  serial: 1        # one host at a time, so a bad release cannot take out the fleet
+
+  vars:
+    release_ts: "{{ lookup('pipe', 'date -u +%Y%m%d%H%M%S') }}"
+
+  tasks:
+    # -------------------------------------------------------------------
+    # Record where we are, so rollback has somewhere to go back to
+    # -------------------------------------------------------------------
+    - name: Resolve the currently deployed release
+      ansible.builtin.stat:
+        path: "{{ app_root }}/current"
+      register: current_link
+
+    - name: Remember the previous release path
+      ansible.builtin.set_fact:
+        previous_release: "{{ current_link.stat.lnk_target | default('') }}"
+
+    # -------------------------------------------------------------------
+    # Fetch
+    # -------------------------------------------------------------------
+    - name: Clone the repository into a new release directory
+      ansible.builtin.git:
+        repo: "{{ app_repo }}"
+        dest: "{{ app_root }}/releases/{{ release_ts }}"
+        version: "{{ app_branch }}"
+        depth: 1                 # no history needed; keeps releases small
+        accept_hostkey: true
+        # Auth comes from a forwarded ssh-agent (see README "Repository
+        # access"), so no deploy key is ever written to the instance.
+        key_file: "{{ deploy_key_file | default(omit) }}"
+      register: git_result
+
+    - name: Build the release identifier
+      ansible.builtin.set_fact:
+        release_dir: "{{ app_root }}/releases/{{ release_ts }}"
+        release_sha: "{{ git_result.after[:7] }}"
+
+    # -------------------------------------------------------------------
+    # Wire in shared state
+    # -------------------------------------------------------------------
+    - name: Link the shared .env into the backend
+      ansible.builtin.file:
+        src: "{{ app_root }}/shared/.env"
+        dest: "{{ release_dir }}/idlex-backend/.env"
+        state: link
+        force: true
+
+    # -------------------------------------------------------------------
+    # Build
+    # -------------------------------------------------------------------
+    - name: Install backend dependencies
+      ansible.builtin.command:
+        cmd: npm ci --omit=dev
+        chdir: "{{ release_dir }}/idlex-backend"
+      changed_when: true
+
+    - name: Install frontend dependencies
+      # Dev dependencies are required here: the Next.js build needs
+      # typescript, tailwind and the babel react-compiler plugin.
+      ansible.builtin.command:
+        cmd: npm ci
+        chdir: "{{ release_dir }}/client"
+      changed_when: true
+
+    - name: Build the Next.js production bundle
+      ansible.builtin.command:
+        cmd: npm run build
+        chdir: "{{ release_dir }}/client"
+      environment:
+        NODE_ENV: production
+        BACKEND_URL: "http://127.0.0.1:{{ backend_port }}"
+      # Peak RSS is ~969MB on this app; the 20-minute ceiling covers a slow
+      # burstable instance that has exhausted its CPU credits.
+      async: 1200
+      poll: 15
+      changed_when: true
+
+    # -------------------------------------------------------------------
+    # Cut over
+    # -------------------------------------------------------------------
+    - name: Point current at the new release
+      # Atomic: ansible writes a temp symlink and renames it over the old one.
+      ansible.builtin.file:
+        src: "{{ release_dir }}"
+        dest: "{{ app_root }}/current"
+        state: link
+        force: true
+
+    - name: Restart the application services
+      ansible.builtin.systemd:
+        name: "{{ item }}"
+        state: restarted
+        enabled: true
+        daemon_reload: true
+      become: true
+      loop:
+        - idlex-backend
+        - idlex-frontend
+
+    # -------------------------------------------------------------------
+    # Verify — and undo automatically if the release is bad
+    # -------------------------------------------------------------------
+    - name: Smoke test the release
+      block:
+        - name: Wait for the backend health endpoint
+          ansible.builtin.uri:
+            url: "http://127.0.0.1/health"
+            status_code: 200
+          register: health
+          retries: 12
+          delay: 5
+          until: health.status == 200
+
+        - name: Wait for the frontend to render
+          ansible.builtin.uri:
+            url: "http://127.0.0.1/"
+            status_code: 200
+          register: home
+          retries: 12
+          delay: 5
+          until: home.status == 200
+
+      rescue:
+        # A failed deploy that leaves the site down is worse than no deploy.
+        # Swap the symlink back and restart before failing the play.
+        - name: Roll back to the previous release
+          ansible.builtin.file:
+            src: "{{ previous_release }}"
+            dest: "{{ app_root }}/current"
+            state: link
+            force: true
+          when: previous_release | length > 0
+
+        - name: Restart services on the restored release
+          ansible.builtin.systemd:
+            name: "{{ item }}"
+            state: restarted
+          become: true
+          loop:
+            - idlex-backend
+            - idlex-frontend
+          when: previous_release | length > 0
+
+        - name: Fail with an explanation
+          ansible.builtin.fail:
+            msg: >-
+              Release {{ release_sha }} failed its health check and was rolled
+              back to {{ previous_release | default('(nothing — this was the first deploy)') }}.
+              Inspect with: journalctl -u idlex-backend -n 100 --no-pager
+
+    # -------------------------------------------------------------------
+    # Housekeeping
+    # -------------------------------------------------------------------
+    - name: Prune old releases
+      # Each release is a checkout plus node_modules (~1GB), so unbounded
+      # retention fills the disk and the next deploy fails on no space.
+      ansible.builtin.shell:
+        cmd: >-
+          set -o pipefail &&
+          ls -1dt {{ app_root }}/releases/*/ | tail -n +{{ keep_releases + 1 }} | xargs -r rm -rf
+        executable: /bin/bash
+      changed_when: true
+
+    - name: Report success
+      ansible.builtin.debug:
+        msg: "Deployed {{ release_sha }} ({{ app_branch }}) as {{ release_ts }}"

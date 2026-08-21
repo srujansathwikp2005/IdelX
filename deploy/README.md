@@ -1,0 +1,281 @@
+# IdleX — EC2 Deployment
+
+Ansible-driven provisioning and deployment for the IdleX rental marketplace.
+One command takes a fresh AWS account to a running, publicly reachable site.
+
+```bash
+./scripts/deploy.sh          # provision + configure + deploy
+```
+
+---
+
+## Architecture
+
+```
+                      Internet
+                         │  :80
+                    ┌────▼─────┐
+                    │  nginx   │   sole public listener
+                    └────┬─────┘
+          ┌──────────────┼───────────────┐
+          │ /            │ /api          │ /uploads
+          │ /_next       │ /socket.io    │
+    ┌─────▼─────┐  ┌─────▼──────┐        │  302 redirect
+    │ Next.js   │  │  Express   │────────┘  to presigned url
+    │  :3000    │  │   :5000    │              │
+    └───────────┘  └─────┬──────┘         ┌────▼─────┐
+                         │                │ S3       │
+                   ┌─────▼──────┐         │ (private)│
+                   │  MongoDB   │         └──────────┘
+                   │  (Atlas)   │
+                   └────────────┘
+```
+
+Both Node processes bind to **loopback only**. Ports 3000 and 5000 are never
+opened in the security group — everything public arrives through nginx.
+
+### Release layout on the host
+
+```
+/opt/idlex/
+├── releases/
+│   ├── 20260821T120000/      ← previous
+│   └── 20260821T143000/      ← new
+├── shared/
+│   └── .env                  ← secrets; survive every release
+└── current -> releases/20260821T143000
+```
+
+Deploys build a new release directory, then flip `current` in a single atomic
+symlink swap. Rollback is that swap in reverse — no rebuild, no fetch, seconds.
+
+---
+
+## Prerequisites
+
+| Requirement | Notes |
+|---|---|
+| Python 3.10+ | Control node only |
+| `ansible-core >= 2.16` | `pip install ansible-core` |
+| `boto3`, `botocore` | Required by `amazon.aws` and the dynamic inventory |
+| Collections | `ansible-galaxy install -r requirements.yml` |
+| AWS credentials | IAM user/role able to manage EC2, S3 and IAM |
+| EC2 keypair | Named in `ec2_key_name`, private key at `ec2_ssh_private_key` |
+| MongoDB Atlas cluster | Connection string supplied as a secret |
+| ssh-agent | Loaded with a key that can read the GitHub repo |
+
+```bash
+pip install "ansible-core>=2.16" boto3 botocore
+ansible-galaxy install -r requirements.yml
+```
+
+---
+
+## Secrets
+
+**Nothing secret is committed to this repository.** Values arrive as
+environment variables on the control node and are rendered into
+`/opt/idlex/shared/.env` (mode `0600`) on the instance.
+
+| Variable | Required | Purpose |
+|---|:--:|---|
+| `AWS_ACCESS_KEY_ID` / `AWS_SECRET_ACCESS_KEY` | ✅ | Provisioning + inventory |
+| `IDLEX_MONGO_URI` | ✅ | Atlas connection string |
+| `IDLEX_JWT_ACCESS_SECRET` | ✅ | Access token signing |
+| `IDLEX_JWT_REFRESH_SECRET` | ✅ | Refresh token signing |
+| `IDLEX_CLIENT_URL` | — | Public url; also the CORS origin |
+| `IDLEX_RENFLAIR_API_KEY` | — | SMS OTP. Unset ⇒ OTPs go to the journal |
+| `IDLEX_SMTP_*` | — | Email. Unset ⇒ email disabled |
+| `IDLEX_RAZORPAY_*` | — | Payments. Unset ⇒ payment routes fail |
+
+Generate JWT secrets with:
+
+```bash
+export IDLEX_JWT_ACCESS_SECRET=$(openssl rand -hex 48)
+export IDLEX_JWT_REFRESH_SECRET=$(openssl rand -hex 48)
+```
+
+> **`IDLEX_MONGO_URI` must be non-empty.** An empty value is *falsy* in
+> `src/config/env.js`, so the app silently falls back to
+> `mongodb://127.0.0.1:27017/idlex` and then hangs ~30s in mongoose server
+> selection printing nothing at all. The playbook asserts on this up front so
+> the failure is a clear message rather than a mystery hang.
+
+### Repository access
+
+The private repo is cloned **on the instance**. Authentication uses a
+forwarded ssh-agent, so no deploy key is ever written to the server:
+
+```bash
+eval "$(ssh-agent)" && ssh-add ~/.ssh/id_ed25519
+```
+
+To use a read-only GitHub deploy key instead, pass
+`-e deploy_key_file=/path/on/instance/key`.
+
+---
+
+## Variables
+
+Defaults live in `inventory/group_vars/all.yml`. Override any of them with
+`-e name=value`.
+
+| Variable | Default | Why |
+|---|---|---|
+| `ec2_instance_type` | `t3.small` | **Floor, not preference** — see below |
+| `ec2_volume_size` | `20` | 8 GB fills once `node_modules` + `.next` land |
+| `aws_region` | `eu-north-1` | Keep app and bucket colocated |
+| `nodejs_major` | `22` | AL2023 ships Node 20, EOL April 2026 |
+| `swapfile_size_mb` | `2048` | Absorbs the build's memory spike |
+| `keep_releases` | `5` | Rollback targets retained on disk |
+| `app_branch` | `main` | Branch to deploy |
+| `env_name` | `prod` | Also `tag:Env`, so one inventory serves many envs |
+
+### On instance sizing
+
+`next build` peaks at roughly **969 MB RSS**. On a 1 GB `t3.micro` the OOM
+killer intervenes — and it does not politely kill just the build. During the
+manual rollout it took `sshd` with it, locking the box out entirely and
+requiring a console reboot.
+
+`t3.small` (2 GB) is therefore the practical minimum. The swapfile helps, but
+EBS-backed swap is slow enough that it is insurance, not headroom.
+
+To keep `t3.micro`, build elsewhere and ship artifacts rather than building on
+the instance.
+
+---
+
+## Usage
+
+```bash
+./scripts/deploy.sh              # full pipeline: provision → configure → deploy
+./scripts/deploy.sh provision    # infrastructure only
+./scripts/deploy.sh configure    # OS, Node, nginx, systemd
+./scripts/deploy.sh deploy       # ship a release
+./scripts/deploy.sh rollback     # back to the previous release
+./scripts/deploy.sh check        # dry run; changes nothing
+```
+
+Deploy a specific branch:
+
+```bash
+./scripts/deploy.sh deploy -e app_branch=hotfix/payment-fix
+```
+
+Roll back to a specific release:
+
+```bash
+./scripts/deploy.sh rollback --tags list        # show what is available
+./scripts/deploy.sh rollback -e target=20260821120000
+```
+
+Lock SSH to your own address instead of the world:
+
+```bash
+./scripts/deploy.sh provision -e ssh_cidr=203.0.113.4/32
+```
+
+---
+
+## What each playbook does
+
+| Playbook | Responsibility |
+|---|---|
+| `provision.yml` | Security group, private S3 bucket, IAM role + instance profile, EC2 instance |
+| `configure.yml` | Base packages, swap, Node 22, nginx, systemd units, `shared/.env` |
+| `deploy.yml` | Clone → `npm ci` → build → atomic symlink swap → health check → prune |
+| `rollback.yml` | Symlink swap to a previous release + restart + verify |
+| `site.yml` | Chains the first three — the acceptance-criteria single command |
+
+All are idempotent. Re-running `configure.yml` is the way to bring a drifted
+host back to the known-good state.
+
+---
+
+## Automatic rollback
+
+`deploy.yml` wraps its smoke test in a `block`/`rescue`. If `/health` or `/`
+fails to return 200 after the cutover, the playbook restores the previous
+symlink, restarts both services, and *then* fails the run.
+
+A failed deploy leaves the site serving the last good release. The CI job
+surfaces this in its summary rather than leaving you to guess.
+
+---
+
+## CI/CD
+
+`.github/workflows/deploy.yml`:
+
+- **push to `main`** → deploy automatically (documentation-only changes skipped)
+- **manual dispatch** → choose `deploy` / `rollback` / `provision` / `check`
+- `concurrency` serialises deploys so two pushes cannot race over `current`
+- gated on the `production` GitHub Environment, so approvals can be required
+
+Configure under **Settings → Environments → production**:
+
+*Secrets:* `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`, `EC2_SSH_PRIVATE_KEY`,
+`REPO_DEPLOY_KEY`, `MONGO_URI`, `JWT_ACCESS_SECRET`, `JWT_REFRESH_SECRET`,
+plus optional `RENFLAIR_API_KEY`, `SMTP_*`, `RAZORPAY_*`.
+
+*Variables:* `AWS_REGION`, `CLIENT_URL`.
+
+---
+
+## Object storage
+
+Uploads go to a **private** S3 bucket. The app stores relative urls
+(`/uploads/<name>`) in MongoDB regardless of driver, so switching buckets,
+regions or CDNs later needs no data migration.
+
+Serving works by redirect: `GET /uploads/x.pdf` → 302 → presigned S3 url with
+a 300-second TTL. The bucket blocks public access at the account level, files
+are encrypted at rest, and versioning is on so an overwrite stays recoverable.
+
+This matters because KYC documents are **identity papers**. A public bucket
+plus an unguessable filename is not access control.
+
+The instance authenticates via an **IAM instance profile** scoped to
+`s3:GetObject/PutObject/DeleteObject` on `{bucket}/uploads/*` only — no AWS
+keys exist on the box, and the role cannot touch anything else in the account.
+
+Set `STORAGE_DRIVER=disk` to fall back to local-filesystem storage for
+development; the code path is unchanged from the original implementation.
+
+---
+
+## Troubleshooting
+
+**`/api` returns 502** — the backend is not running.
+```bash
+sudo systemctl status idlex-backend
+journalctl -u idlex-backend -n 100 --no-pager
+```
+Most often an empty or wrong `MONGO_URI`, or the Atlas IP allowlist not
+including the instance's public IP.
+
+**The instance became unreachable during a deploy** — almost certainly an OOM
+kill. Check `ec2_instance_type` and confirm swap is active (`free -h`). Reboot
+from the console, or use SSM Session Manager, which the IAM role enables.
+
+**`nginx -t` fails after a template change** — the `validate:` clause means the
+bad config was never installed; nginx is still serving the previous one. Fix
+the template and re-run.
+
+**Uploads 403 or 404** — verify the instance profile is attached
+(`aws sts get-caller-identity` on the box) and that `S3_PREFIX` matches the
+prefix in the IAM policy.
+
+**Public IP changed** — stop/start releases the address unless an Elastic IP
+is attached. The dynamic inventory finds the new one automatically, but
+`CLIENT_URL` must be updated or CORS and socket.io will reject requests.
+
+---
+
+## Known issues
+
+`multer@1.x` is deprecated and carries published advisories; the maintainers
+recommend 2.x. It is left at the pinned version here because upgrading is an
+application change with its own testing burden, outside the scope of the
+deployment work. It is worth scheduling.
