@@ -79,20 +79,55 @@ export const BOOKING_STATUS = {
 export type BookingStatus = (typeof BOOKING_STATUS)[keyof typeof BOOKING_STATUS];
 
 /**
- * Routes visible without logging in: the home page and the auth pages.
- * Every other page is protected by RouteGuard and requires a logged-in user.
+ * Routes visible without logging in: the catalogue, the legal and
+ * informational pages, and the auth pages. Every other page is protected by
+ * RouteGuard and requires a logged-in user.
+ *
+ * RouteGuard matches on prefix, so an entry here covers its children too.
+ * Add a route only when it must be readable by a stranger — anything showing
+ * a specific person's data (bookings, messages, wishlist, payments, KYC)
+ * belongs behind the guard.
  * /verify-email stays public so a freshly registered (already signed-in)
  * user can complete verification; it is deliberately NOT an AUTH_PAGES
  * entry, or RouteGuard would bounce the new user straight back home.
  */
 export const PUBLIC_ROUTES = [
   "/",
+
+  // Authentication.
   "/login",
   "/register",
   "/sign-up",
   "/forgot-password",
   "/verify-otp",
   "/verify-email",
+
+  // Browsing. A visitor has to be able to see what is for rent before they
+  // have any reason to create an account; requiring a login to view the
+  // catalogue asks for commitment before showing the product.
+  // RouteGuard matches a prefix, so "/product" covers "/product/<id>".
+  "/search",
+  "/categories",
+  "/product",
+  "/reviews",
+
+  // Legal. These must be reachable without an account: a visitor cannot be
+  // expected to agree to terms they can only read after signing up, and a
+  // privacy policy exists precisely for people deciding whether to hand over
+  // their data.
+  "/terms",
+  "/privacy-policy",
+  "/security-deposit-policy",
+  "/cancellation-refund-policy",
+  "/community-guidelines",
+
+  // Information and marketing pages.
+  "/about",
+  "/help",
+  "/safety",
+  "/contact",
+  "/faq",
+  "/become-a-host",
 ] as const;
 
 /** Auth pages a signed-in user should be redirected away from. */
