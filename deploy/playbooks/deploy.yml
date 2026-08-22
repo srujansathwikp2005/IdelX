@@ -143,6 +143,16 @@
         chdir: "{{ release_dir }}/client"
       changed_when: true
 
+    - name: Lint the frontend before building
+      # rules-of-hooks is an error, so a hook after a conditional return
+      # fails here rather than crashing every visitor's page. That exact bug
+      # shipped twice while the server kept returning 200 — nothing but a
+      # real browser revealed it, which is far too late.
+      ansible.builtin.command:
+        cmd: npx eslint src --max-warnings=-1
+        chdir: "{{ release_dir }}/client"
+      changed_when: false
+
     - name: Build the Next.js production bundle
       ansible.builtin.command:
         cmd: npm run build
