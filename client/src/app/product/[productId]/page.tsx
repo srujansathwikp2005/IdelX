@@ -29,6 +29,13 @@ export default function ProductPage({ params }: { params: Promise<{ productId: s
   const signedIn = mounted && (!!user || !!getToken());
 
   const { data: listing, isLoading, error } = useFetchData<Listing>(`/api/listings/${productId}`, [productId]);
+  // Declared here, with the other hooks, and NOT next to the handler that
+  // uses them: the early returns below for loading and error states mean any
+  // hook placed after them is skipped on those renders. React compares hook
+  // counts between renders, so a hook after a conditional return crashes the
+  // whole page the moment the condition flips.
+  const [messageBusy, setMessageBusy] = React.useState(false);
+  const [messageError, setMessageError] = React.useState<string | null>(null);
   React.useEffect(() => setActivePhoto(0), [productId]);
 
   const { data: reviews } = useFetchData<Review[]>(`/api/listings/${productId}/reviews`, [productId]);
@@ -76,9 +83,6 @@ export default function ProductPage({ params }: { params: Promise<{ productId: s
   const owner = ownerName(listing.owner);
   const ownerId = typeof listing.owner === "object" && listing.owner !== null ? listing.owner._id : listing.owner;
   const isOwn = mounted && !!user && ownerId === user._id;
-  const [messageBusy, setMessageBusy] = React.useState(false);
-  const [messageError, setMessageError] = React.useState<string | null>(null);
-
   // Opens the thread with this listing's owner, creating it if needed. The
   // endpoint is idempotent on the participant pair plus listing, so clicking
   // twice reuses the same conversation rather than forking it.
