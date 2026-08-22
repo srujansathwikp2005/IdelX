@@ -365,6 +365,7 @@ export function ListingStepperForm({ edit = false, listingId }: { edit?: boolean
   // an array here rather than a single file is what makes a gallery possible.
   const [selectedPhotos, setSelectedPhotos] = React.useState<Array<{ id: number; file: File; url: string }>>([]);
   const MAX_PHOTOS = 10;
+  const [photoError, setPhotoError] = React.useState<string | null>(null);
   const nextPhotoId = React.useRef(0);
   const [existingPhotos, setExistingPhotos] = React.useState<Listing["photos"]>([]);
   const [error, setError] = React.useState<string | null>(null);
@@ -406,12 +407,21 @@ export function ListingStepperForm({ edit = false, listingId }: { edit?: boolean
     };
   }, [edit, listingId]);
 
-  const uploadPhotos = async (id: string) => {
-    if (selectedPhotos.length === 0) return;
+  // Returns an error string instead of throwing. The listing is already
+  // created by the time this runs, so letting it throw would show "failed"
+  // for a listing that actually exists — the owner would try again and
+  // create a duplicate.
+  const uploadPhotos = async (id: string): Promise<string | null> => {
+    if (selectedPhotos.length === 0) return null;
     const form = new FormData();
     // Repeated field name — multer's upload.array collects them into req.files.
     for (const photo of selectedPhotos) form.append("photos", photo.file);
-    await api.post<Listing["photos"]>(`/api/listings/${id}/photos`, form, { headers: {} });
+    try {
+      await api.post<Listing["photos"]>(`/api/listings/${id}/photos`, form, { headers: {} });
+      return null;
+    } catch (err) {
+      return errorMessage(err);
+    }
   };
 
   React.useEffect(() => {
@@ -422,17 +432,44 @@ export function ListingStepperForm({ edit = false, listingId }: { edit?: boolean
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  // Mirrors the server's multer config. Rejecting here means the owner finds
+  // out at the moment they pick the file, rather than after filling in the
+  // whole form and waiting for an OTP.
+  const ACCEPTED_TYPES = ["image/jpeg", "image/png", "image/webp"];
+  const MAX_FILE_BYTES = 10 * 1024 * 1024;
+
   const addPhotos = (files: FileList) => {
+    const rejected: string[] = [];
+
     setSelectedPhotos((prev) => {
-      // Silently dropping extras would be confusing, but so would rejecting
-      // the whole selection; take what fits and leave the rest.
       const room = MAX_PHOTOS - prev.length - existingPhotos.length;
-      if (room <= 0) return prev;
-      const added = Array.from(files)
-        .slice(0, room)
-        .map((file) => ({ id: nextPhotoId.current++, file, url: URL.createObjectURL(file) }));
-      return [...prev, ...added];
+      if (room <= 0) {
+        rejected.push(`You can upload at most ${MAX_PHOTOS} photos.`);
+        return prev;
+      }
+
+      const usable: typeof prev = [];
+      for (const file of Array.from(files)) {
+        if (usable.length >= room) {
+          rejected.push(`Only ${room} more photo${room === 1 ? "" : "s"} could be added.`);
+          break;
+        }
+        if (!ACCEPTED_TYPES.includes(file.type)) {
+          // The server rejects anything else, so accepting it here would only
+          // fail later with a less useful message.
+          rejected.push(`${file.name} is not a JPG, PNG or WebP image.`);
+          continue;
+        }
+        if (file.size > MAX_FILE_BYTES) {
+          rejected.push(`${file.name} is larger than 10MB.`);
+          continue;
+        }
+        usable.push({ id: nextPhotoId.current++, file, url: URL.createObjectURL(file) });
+      }
+      return [...prev, ...usable];
     });
+
+    setPhotoError(rejected.length ? rejected.join(" ") : null);
   };
 
   const removePhoto = (id: number) => {
@@ -496,7 +533,11 @@ export function ListingStepperForm({ edit = false, listingId }: { edit?: boolean
       };
       if (edit && listingId) {
         const listing = await api.put<Listing>(`/api/listings/${listingId}`, payload);
-        await uploadPhotos(listing._id);
+        const uploadFailed = await uploadPhotos(listing._id);
+        if (uploadFailed) {
+          setError(`Listing saved, but the photos did not upload: ${uploadFailed}`);
+          return;
+        }
         router.push(ROUTES.MY_LISTINGS);
         return;
       }
@@ -511,7 +552,16 @@ export function ListingStepperForm({ edit = false, listingId }: { edit?: boolean
         return;
       }
       const listing = await api.post<Listing>("/api/listings", { ...payload, otpCode: otpCode.trim() });
-      await uploadPhotos(listing._id);
+      const uploadFailed = await uploadPhotos(listing._id);
+      if (uploadFailed) {
+        // The listing exists — say so, or the owner submits again and ends
+        // up with a duplicate.
+        setError(
+          `Your listing was created, but the photos did not upload: ${uploadFailed} ` +
+            `Open it from My Listings to add them.`
+        );
+        return;
+      }
       router.push(ROUTES.MY_LISTINGS);
     } catch (err) {
       setError(errorMessage(err));
@@ -575,7 +625,9 @@ export function ListingStepperForm({ edit = false, listingId }: { edit?: boolean
               <span>Upload</span>
               <input
                 type="file"
-                accept="image/*"
+                // Matches ACCEPTED_TYPES: image/* would let the picker offer
+                // HEIC and GIF, which the server then rejects.
+                accept="image/jpeg,image/png,image/webp"
                 multiple
                 className="hidden"
                 onChange={(e) => {
@@ -585,6 +637,12 @@ export function ListingStepperForm({ edit = false, listingId }: { edit?: boolean
                 }}
               />
             </label>
+
+            {photoError && (
+              <p className="w-full text-sm text-danger" role="alert">
+                {photoError}
+              </p>
+            )}
 
             {selectedPhotos.length > 0 ? (
               <div className="grid w-full max-w-md grid-cols-3 gap-2">
