@@ -92,6 +92,15 @@ export default function CheckoutPage({ params }: { params: Promise<{ productId: 
     // from the server response rather than being hardcoded here.
     const cashfree = factory({ mode: order.mode === "production" ? "production" : "sandbox" });
 
+    // The SDK's own result is treated as a hint, never as the answer. It has
+    // been observed throwing internally ("paymentId is not defined") AFTER a
+    // payment succeeds — which surfaced that error to the renter even though
+    // their money had gone through and the booking existed.
+    //
+    // The gateway is the source of truth either way: whatever the SDK does,
+    // ask our backend, which asks Cashfree what actually happened to the
+    // order. That makes an SDK bug cosmetic instead of a lost booking.
+    let sdkError: string | null = null;
     try {
       // _modal keeps the user on the page; a redirect would lose React state
       // and force the whole booking context to be rebuilt on return.
@@ -99,19 +108,20 @@ export default function CheckoutPage({ params }: { params: Promise<{ productId: 
         paymentSessionId: order.paymentSessionId,
         redirectTarget: "_modal",
       });
+      if (result?.error) sdkError = result.error.message || "Payment was cancelled or failed.";
+    } catch (err) {
+      sdkError = errorMessage(err);
+    }
 
-      if (result?.error) {
-        setError(result.error.message || "Payment was cancelled or failed.");
-        return false;
-      }
-
-      // The modal closing does not mean the payment succeeded — only the
-      // backend's check against Cashfree decides that.
+    try {
       const booking = await verifyPayment(order);
       setDone(booking);
       return true;
-    } catch (err) {
-      setError(errorMessage(err));
+    } catch (verifyErr) {
+      // Only now is a failure real. Prefer the SDK's message when it has one,
+      // since "payment cancelled" is more useful than "payment not
+      // successful"; otherwise report what the gateway said.
+      setError(sdkError || errorMessage(verifyErr));
       return false;
     }
   };

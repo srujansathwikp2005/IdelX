@@ -2,6 +2,7 @@
 
 import * as React from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { PublicShell } from "@/components/marketplace/app-shell";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -14,11 +15,12 @@ import { useFetchData } from "@/lib/use-fetch-data";
 import { useAuth, useIsMounted, errorMessage } from "@/lib/auth";
 import { api, getToken } from "@/lib/api-client";
 import { ownerName, listingImage } from "@/lib/api-types";
-import type { Listing, Review } from "@/lib/api-types";
+import type { Conversation, Listing, Review } from "@/lib/api-types";
 import { ROUTES } from "@/lib/constants";
 
 export default function ProductPage({ params }: { params: Promise<{ productId: string }> }) {
   const { productId } = React.use(params);
+  const router = useRouter();
   const { user } = useAuth();
   // Index into the gallery. Reset on navigation so opening a second listing
   // does not start on whatever index the previous one was showing.
@@ -74,6 +76,28 @@ export default function ProductPage({ params }: { params: Promise<{ productId: s
   const owner = ownerName(listing.owner);
   const ownerId = typeof listing.owner === "object" && listing.owner !== null ? listing.owner._id : listing.owner;
   const isOwn = mounted && !!user && ownerId === user._id;
+  const [messageBusy, setMessageBusy] = React.useState(false);
+  const [messageError, setMessageError] = React.useState<string | null>(null);
+
+  // Opens the thread with this listing's owner, creating it if needed. The
+  // endpoint is idempotent on the participant pair plus listing, so clicking
+  // twice reuses the same conversation rather than forking it.
+  const messageOwner = async () => {
+    if (!ownerId || messageBusy) return;
+    setMessageBusy(true);
+    setMessageError(null);
+    try {
+      const conversation = await api.post<Conversation>("/api/chat/conversations", {
+        userId: ownerId,
+        listingId: listing?._id,
+      });
+      router.push(`/messages/${conversation._id}`);
+    } catch (err) {
+      setMessageError(errorMessage(err));
+    } finally {
+      setMessageBusy(false);
+    }
+  };
 
   return (
     <PublicShell>
@@ -197,6 +221,18 @@ export default function ProductPage({ params }: { params: Promise<{ productId: s
               </div>
             ) : (
               <Link href={ROUTES.CHECKOUT(listing._id)}><Button fullWidth>Reserve Item</Button></Link>
+            )}
+
+            {/* The messages page tells people to "message an owner from a
+                listing", but there was no way to do it — conversations could
+                only be opened by knowing a URL. */}
+            {signedIn && !isOwn && (
+              <Button variant="outline" fullWidth loading={messageBusy} onClick={messageOwner}>
+                Message owner
+              </Button>
+            )}
+            {messageError && (
+              <p className="rounded-md bg-danger-50 p-2 text-xs text-danger">{messageError}</p>
             )}
             {signedIn && (
               <>
