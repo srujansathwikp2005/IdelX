@@ -380,3 +380,38 @@ export function toCard(listing: Listing): ListingCardShape {
     status: listing.status,
   };
 }
+
+export type SupportReply = {
+  _id: string;
+  author: { _id: string; name: string } | string;
+  isAdmin: boolean;
+  message: string;
+  createdAt: string;
+};
+
+export type SupportTicket = {
+  _id: string;
+  user: { _id: string; name: string; email: string; phone?: string } | string;
+  subject: string;
+  message: string;
+  status: "open" | "answered" | "closed";
+  replies: SupportReply[];
+  createdAt: string;
+};
+
+export type AdminCategory = {
+  name: string;
+  listings: number;
+  published: number;
+  avgPricePerDay: number;
+};
+
+export type AdminExtensionRequest = {
+  _id: string;
+  bookingId: string;
+  status: string;
+  requestedUntil?: string;
+  createdAt: string;
+  renter?: { _id: string; name: string; email: string } | string;
+  listing?: { _id: string; title: string } | string;
+};
