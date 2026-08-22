@@ -2,6 +2,7 @@ const asyncHandler = require('../../utils/asyncHandler');
 const ApiResponse = require('../../utils/ApiResponse');
 const ApiError = require('../../utils/ApiError');
 const Listing = require('../../models/Listing');
+const Review = require('../../models/Review');
 const listingsService = require('./listings.service');
 const { logAudit } = require('../../utils/audit');
 
@@ -126,7 +127,20 @@ const addAvailabilityBlock = asyncHandler(async (req, res) => {
   return new ApiResponse(201, listing.availability, 'Availability block added').send(res);
 });
 
+// Public: every review left on a listing, newest first. Reviews are part of
+// how a stranger decides whether to rent, so this is deliberately readable
+// without a session — the same reason the listing itself is public.
+const listListingReviews = asyncHandler(async (req, res) => {
+  const reviews = await Review.find({ listing: req.params.id })
+    .sort('-createdAt')
+    // Only what the UI renders. Selecting explicitly keeps the reviewer's
+    // email, phone and everything else off a public endpoint.
+    .populate('reviewer', 'name avatarUrl');
+  return new ApiResponse(200, reviews, 'Listing reviews').send(res);
+});
+
 module.exports = {
+  listListingReviews,
   listListings,
   getListing,
   myListings,

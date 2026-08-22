@@ -361,7 +361,10 @@ export function ListingStepperForm({ edit = false, listingId }: { edit?: boolean
   const [extensionRequestBefore, setExtensionRequestBefore] = React.useState("12");
   const [extensionMaxDays, setExtensionMaxDays] = React.useState("3");
   const [extensionTouched, setExtensionTouched] = React.useState(false);
-  const [selectedPhoto, setSelectedPhoto] = React.useState<{ id: number; file: File; url: string } | null>(null);
+  // The backend accepts up to 10 photos per listing (upload.array). Keeping
+  // an array here rather than a single file is what makes a gallery possible.
+  const [selectedPhotos, setSelectedPhotos] = React.useState<Array<{ id: number; file: File; url: string }>>([]);
+  const MAX_PHOTOS = 10;
   const nextPhotoId = React.useRef(0);
   const [existingPhotos, setExistingPhotos] = React.useState<Listing["photos"]>([]);
   const [error, setError] = React.useState<string | null>(null);
@@ -404,30 +407,39 @@ export function ListingStepperForm({ edit = false, listingId }: { edit?: boolean
   }, [edit, listingId]);
 
   const uploadPhotos = async (id: string) => {
-    if (!selectedPhoto) return;
+    if (selectedPhotos.length === 0) return;
     const form = new FormData();
-    form.append("photos", selectedPhoto.file);
+    // Repeated field name — multer's upload.array collects them into req.files.
+    for (const photo of selectedPhotos) form.append("photos", photo.file);
     await api.post<Listing["photos"]>(`/api/listings/${id}/photos`, form, { headers: {} });
   };
 
   React.useEffect(() => {
     return () => {
-      if (selectedPhoto) URL.revokeObjectURL(selectedPhoto.url);
+      // Revoke every preview, not just the last one, or the blobs leak.
+      for (const photo of selectedPhotos) URL.revokeObjectURL(photo.url);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const addPhoto = (file: File) => {
-    setSelectedPhoto((prev) => {
-      if (prev) URL.revokeObjectURL(prev.url);
-      return { id: nextPhotoId.current++, file, url: URL.createObjectURL(file) };
+  const addPhotos = (files: FileList) => {
+    setSelectedPhotos((prev) => {
+      // Silently dropping extras would be confusing, but so would rejecting
+      // the whole selection; take what fits and leave the rest.
+      const room = MAX_PHOTOS - prev.length - existingPhotos.length;
+      if (room <= 0) return prev;
+      const added = Array.from(files)
+        .slice(0, room)
+        .map((file) => ({ id: nextPhotoId.current++, file, url: URL.createObjectURL(file) }));
+      return [...prev, ...added];
     });
   };
 
-  const removePhoto = () => {
-    setSelectedPhoto((prev) => {
-      if (prev) URL.revokeObjectURL(prev.url);
-      return null;
+  const removePhoto = (id: number) => {
+    setSelectedPhotos((prev) => {
+      const gone = prev.find((p) => p.id === id);
+      if (gone) URL.revokeObjectURL(gone.url);
+      return prev.filter((p) => p.id !== id);
     });
   };
 
@@ -455,7 +467,7 @@ export function ListingStepperForm({ edit = false, listingId }: { edit?: boolean
 
   const submit = async (publish: boolean) => {
     setError(null);
-    if (!selectedPhoto && existingPhotos.length === 0) {
+    if (selectedPhotos.length === 0 && existingPhotos.length === 0) {
       setError("Please add a photo of your item — it's required before saving.");
       return;
     }
@@ -510,7 +522,7 @@ export function ListingStepperForm({ edit = false, listingId }: { edit?: boolean
 
   const basicsComplete = title.trim().length >= 3 && description.trim().length >= 10;
   const pricingComplete = Number(pricePerDay) > 0;
-  const photosComplete = !!selectedPhoto || existingPhotos.length > 0;
+  const photosComplete = selectedPhotos.length > 0 || existingPhotos.length > 0;
 
   return (
     <div className="animate-[fadeInUp_0.4s_ease-out] space-y-6">
@@ -564,30 +576,42 @@ export function ListingStepperForm({ edit = false, listingId }: { edit?: boolean
               <input
                 type="file"
                 accept="image/*"
+                multiple
                 className="hidden"
                 onChange={(e) => {
-                  const file = e.target.files?.[0] ?? null;
-                  if (file) addPhoto(file);
+                  if (e.target.files?.length) addPhotos(e.target.files);
+                  // Reset so picking the same file twice still fires onChange.
                   e.target.value = "";
                 }}
               />
             </label>
 
-            {selectedPhoto ? (
-              <div className="relative w-full max-w-md overflow-hidden rounded-2xl border border-border bg-white shadow-md shadow-black/5">
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img src={selectedPhoto.url} alt={selectedPhoto.file.name} className="max-h-80 w-full object-cover" />
-                <span className="absolute bottom-2 left-2 max-w-[calc(100%-5.5rem)] truncate rounded-full bg-black/60 px-2.5 py-1 text-xs font-medium text-white backdrop-blur-sm">
-                  {selectedPhoto.file.name}
-                </span>
-                <button
-                  type="button"
-                  aria-label="Remove photo"
-                  onClick={removePhoto}
-                  className="absolute right-2 top-2 grid h-7 w-7 place-items-center rounded-full border border-white/40 bg-black/60 text-sm font-semibold leading-none text-white backdrop-blur-sm transition-all hover:scale-110 hover:bg-danger"
-                >
-                  ×
-                </button>
+            {selectedPhotos.length > 0 ? (
+              <div className="grid w-full max-w-md grid-cols-3 gap-2">
+                {selectedPhotos.map((photo, i) => (
+                  <div
+                    key={photo.id}
+                    className="relative aspect-square overflow-hidden rounded-lg border border-border bg-white shadow-sm"
+                  >
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img src={photo.url} alt={photo.file.name} className="h-full w-full object-cover" />
+                    {i === 0 && (
+                      // photos[0] is what listing cards render, so say which
+                      // one that is rather than leaving the owner to guess.
+                      <span className="absolute bottom-1 left-1 rounded-full bg-black/70 px-2 py-0.5 text-[10px] font-medium text-white">
+                        Main
+                      </span>
+                    )}
+                    <button
+                      type="button"
+                      aria-label={`Remove ${photo.file.name}`}
+                      onClick={() => removePhoto(photo.id)}
+                      className="absolute right-1 top-1 grid h-6 w-6 place-items-center rounded-full border border-white/40 bg-black/60 text-xs font-semibold leading-none text-white transition-all hover:scale-110 hover:bg-danger"
+                    >
+                      ×
+                    </button>
+                  </div>
+                ))}
               </div>
             ) : existingPhotos.length > 0 ? (
               <div className="relative w-full max-w-md overflow-hidden rounded-2xl border border-border bg-white shadow-md shadow-black/5">

@@ -13,6 +13,10 @@ const router = express.Router();
 router.get('/', controller.listListings);
 router.get('/:id', controller.getListing);
 router.get('/:id/availability', controller.getAvailability);
+// Public: reviews inform a rental decision, so they must be readable before
+// signing up. Placed above `router.use(protect)` deliberately — below it,
+// this path 401s instead of 404ing, which is how the missing route hid.
+router.get('/:id/reviews', controller.listListingReviews);
 
 // Owner-only. Every write route requires an admin-approved KYC — until
 // then the user's account is view-only and listing is disabled.
