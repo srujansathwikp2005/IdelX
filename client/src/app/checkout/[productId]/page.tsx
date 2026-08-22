@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { PublicShell } from "@/components/marketplace/app-shell";
 import { Button } from "@/components/ui/button";
@@ -49,6 +49,7 @@ function loadCashfreeSdk(): Promise<boolean> {
 export default function CheckoutPage({ params }: { params: Promise<{ productId: string }> }) {
   const { productId } = React.use(params);
   const router = useRouter();
+  const searchParams = useSearchParams();
   const { user } = useAuth();
   const { data: listing, isLoading } = useFetchData<Listing>(`/api/listings/${productId}`, [productId]);
 
@@ -81,6 +82,37 @@ export default function CheckoutPage({ params }: { params: Promise<{ productId: 
   const verifyPayment = (order: CheckoutOrder) =>
     api.post<Booking>("/api/payments/verify", { orderId: order.orderId });
 
+  // Cashfree's return_url sends the renter back here as
+  // /checkout/<listing>?order_id=... after a redirect-style payment — which
+  // is what UPI and QR do, since those leave the page rather than resolving
+  // inside the modal. Without this the payment succeeds, the renter lands
+  // back on an ordinary checkout page, and nothing tells them it worked.
+  React.useEffect(() => {
+    const returned = searchParams.get("order_id");
+    if (!returned || done || paying) return;
+
+    let cancelled = false;
+    (async () => {
+      setPaying(true);
+      try {
+        const booking = await api.post<Booking>("/api/payments/verify", { orderId: returned });
+        if (!cancelled) setDone(booking);
+      } catch {
+        if (!cancelled) {
+          setError(
+            "We could not confirm that payment. If money left your account, check My Rentals before paying again."
+          );
+        }
+      } finally {
+        if (!cancelled) setPaying(false);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   const openCashfreeCheckout = async (order: CheckoutOrder): Promise<boolean> => {
     const factory = (window as unknown as { Cashfree?: CashfreeFactory }).Cashfree;
     if (!factory || !order.paymentSessionId) {
@@ -108,9 +140,9 @@ export default function CheckoutPage({ params }: { params: Promise<{ productId: 
         paymentSessionId: order.paymentSessionId,
         redirectTarget: "_modal",
       });
-      if (result?.error) sdkError = result.error.message || "Payment was cancelled or failed.";
+      if (result?.error) sdkError = result.error.message || null;
     } catch (err) {
-      sdkError = errorMessage(err);
+      sdkError = err instanceof Error ? err.message : String(err);
     }
 
     try {
@@ -118,10 +150,24 @@ export default function CheckoutPage({ params }: { params: Promise<{ productId: 
       setDone(booking);
       return true;
     } catch (verifyErr) {
-      // Only now is a failure real. Prefer the SDK's message when it has one,
-      // since "payment cancelled" is more useful than "payment not
-      // successful"; otherwise report what the gateway said.
-      setError(sdkError || errorMessage(verifyErr));
+      // Only now is a failure real — the gateway says the order was not paid.
+      //
+      // The SDK's text is used only when it reads as a payment outcome. It
+      // has been seen throwing its own internal ReferenceError
+      // ("paymentId is not defined"), which is a bug in their bundle and
+      // means nothing to a renter staring at a checkout page. Surfacing raw
+      // JavaScript errors as payment status is how "your payment failed"
+      // gets shown for a payment that never started.
+      const looksInternal =
+        !sdkError ||
+        /is not defined|undefined is not|cannot read|null is not|\bReferenceError\b|\bTypeError\b/i.test(
+          sdkError
+        );
+      setError(
+        looksInternal
+          ? "Payment was not completed. If money left your account, it will be returned automatically — please check My Rentals before paying again."
+          : sdkError
+      );
       return false;
     }
   };
