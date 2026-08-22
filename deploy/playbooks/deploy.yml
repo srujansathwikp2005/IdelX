@@ -96,6 +96,27 @@
         state: link
         force: true
 
+    - name: Seed shared uploads with any files the repo ships
+      # The repo tracks sample files under uploads/. Copy them across once so
+      # the shared directory is a superset of a fresh checkout; -n means an
+      # existing file is never overwritten by the repo's copy.
+      ansible.builtin.command:
+        cmd: "cp -rn {{ release_dir }}/uploads/. {{ app_root }}/shared/uploads/"
+      changed_when: false
+      failed_when: false
+
+    - name: Point the release's uploads directory at shared storage
+      # UPLOAD_DIR resolves to <release>/uploads. Without this link every
+      # deploy hands the app an empty directory while the database still
+      # references the previous release's files — uploaded images 404, and
+      # once keep_releases prunes that directory the files are gone for good.
+      # KYC documents live here too, so the data loss is not cosmetic.
+      ansible.builtin.file:
+        src: "{{ app_root }}/shared/uploads"
+        dest: "{{ release_dir }}/uploads"
+        state: link
+        force: true
+
     # -------------------------------------------------------------------
     # Build
     # -------------------------------------------------------------------
