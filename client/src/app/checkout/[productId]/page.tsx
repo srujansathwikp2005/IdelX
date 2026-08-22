@@ -9,7 +9,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input, Select } from "@/components/ui/input";
 import { Modal } from "@/components/ui/modal";
 import { formatCurrency } from "@/lib/formatters";
-import { api } from "@/lib/api-client";
+import { api, ApiError } from "@/lib/api-client";
 import { useFetchData } from "@/lib/use-fetch-data";
 import { useAuth, errorMessage, RequireKyc } from "@/lib/auth";
 import { listingImage } from "@/lib/api-types";
@@ -56,6 +56,7 @@ export default function CheckoutPage({ params }: { params: Promise<{ productId: 
   const [startDate, setStartDate] = React.useState("");
   const [endDate, setEndDate] = React.useState("");
   const [error, setError] = React.useState<string | null>(null);
+  const [trackingId, setTrackingId] = React.useState<string | null>(null);
   const [loading, setLoading] = React.useState(false);
   const [done, setDone] = React.useState<Booking | null>(null);
   // Dev-mode simulated gateway step: when Cashfree keys are not configured,
@@ -163,6 +164,11 @@ export default function CheckoutPage({ params }: { params: Promise<{ productId: 
         /is not defined|undefined is not|cannot read|null is not|\bReferenceError\b|\bTypeError\b/i.test(
           sdkError
         );
+      // The tracking id comes back in the error details so the renter has
+      // something to quote. It is also emailed, because the moment a payment
+      // looks failed is exactly when someone closes the tab.
+      const details = verifyErr instanceof ApiError ? (verifyErr.details as { trackingId?: string } | undefined) : undefined;
+      setTrackingId(details?.trackingId ?? order.orderId);
       setError(
         looksInternal
           ? "Payment was not completed. If money left your account, it will be returned automatically — please check My Rentals before paying again."
@@ -277,7 +283,23 @@ export default function CheckoutPage({ params }: { params: Promise<{ productId: 
             <p className="flex justify-between"><span>Refundable deposit</span><strong>{formatCurrency(listing.securityDeposit)}</strong></p>
             <hr className="border-border" />
             <p className="flex justify-between text-base"><span>Total today</span><strong>{formatCurrency(total)}</strong></p>
-            {error && <p className="rounded-md bg-danger-50 p-3 text-danger">{error}</p>}
+            {error && (
+              <div className="rounded-md bg-danger-50 p-3 text-danger">
+                <p>{error}</p>
+                {trackingId && (
+                  <div className="mt-3 border-t border-danger/20 pt-3">
+                    <p className="text-xs font-semibold uppercase tracking-wide opacity-80">
+                      Tracking ID
+                    </p>
+                    {/* Monospace and selectable: this exists to be copied. */}
+                    <p className="mt-1 select-all break-all font-mono text-xs">{trackingId}</p>
+                    <p className="mt-2 text-xs opacity-80">
+                      We&apos;ve emailed this to you. Quote it if you contact support.
+                    </p>
+                  </div>
+                )}
+              </div>
+            )}
             {done && <p className="rounded-md bg-secondary-50 p-3 text-secondary-700">Booking requested! The owner will confirm shortly.</p>}
             {isOwn && (
               <p className="rounded-md border border-border bg-muted p-3 text-center text-sm text-muted-foreground">
