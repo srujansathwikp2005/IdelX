@@ -32,7 +32,10 @@ const paymentSchema = new mongoose.Schema(
 
     status: {
       type: String,
-      enum: ['created', 'authorized', 'captured', 'failed', 'refunded'],
+      // 'capturing' is a short-lived lock: one request claims the payment
+      // before creating a booking so a concurrent verify cannot create a
+      // second one. It is released to 'created' if booking creation fails.
+      enum: ['created', 'capturing', 'authorized', 'captured', 'failed', 'refunded'],
       default: 'created',
       index: true,
     },

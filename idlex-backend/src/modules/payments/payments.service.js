@@ -273,11 +273,47 @@ async function markPaymentCaptured({ gatewayOrderId, gatewayPaymentId, signature
     throw ApiError.badRequest('Payment was failed at the gateway');
   }
 
-  const booking = await bookingsService.createBooking(payment.payer, {
-    listingId: payment.listing,
-    startDate: payment.startDate,
-    endDate: payment.endDate,
-  });
+  // Claim the payment atomically before creating anything. A read-then-write
+  // guard is not enough: the QR flow verifies twice — once when the checkout
+  // modal closes and once from the ?order_id= redirect — and both requests
+  // arrive together, both read status 'created', and both create a booking.
+  // That happened in production: two bookings 6ms apart from one payment.
+  //
+  // findOneAndUpdate matching on the pre-claim status is a single atomic
+  // operation, so exactly one caller wins.
+  const claimed = await Payment.findOneAndUpdate(
+    { _id: payment._id, status: { $ne: 'capturing' }, booking: { $in: [null, undefined] } },
+    { $set: { status: 'capturing' } },
+    { new: true }
+  );
+
+  if (!claimed) {
+    // Another request is mid-capture. Wait briefly for it to finish and
+    // return its booking rather than creating a second one.
+    for (let i = 0; i < 10; i += 1) {
+      await new Promise((resolve) => setTimeout(resolve, 200));
+      const settled = await Payment.findById(payment._id);
+      if (settled?.booking) {
+        const booking = await Booking.findById(settled.booking);
+        if (booking) return { payment: settled, booking, created: false };
+      }
+    }
+    throw ApiError.badRequest('This payment is still being processed. Check My Rentals in a moment.');
+  }
+
+  let booking;
+  try {
+    booking = await bookingsService.createBooking(payment.payer, {
+      listingId: payment.listing,
+      startDate: payment.startDate,
+      endDate: payment.endDate,
+    });
+  } catch (err) {
+    // Release the claim so a retry is possible rather than the payment being
+    // stuck in 'capturing' forever.
+    await Payment.updateOne({ _id: payment._id }, { $set: { status: 'created' } });
+    throw err;
+  }
 
   payment.status = 'captured';
   payment.gatewayPaymentId = gatewayPaymentId;
