@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Heart, MapPin, Repeat, ShieldCheck } from "@/components/ui/icons";
 import { StarRating } from "@/components/ui/star-rating";
+import { cn } from "@/lib/utils";
 import { formatCurrency, formatDate } from "@/lib/formatters";
 import { useFetchData } from "@/lib/use-fetch-data";
 import { useAuth, useIsMounted, errorMessage } from "@/lib/auth";
@@ -19,10 +20,15 @@ import { ROUTES } from "@/lib/constants";
 export default function ProductPage({ params }: { params: Promise<{ productId: string }> }) {
   const { productId } = React.use(params);
   const { user } = useAuth();
+  // Index into the gallery. Reset on navigation so opening a second listing
+  // does not start on whatever index the previous one was showing.
+  const [activePhoto, setActivePhoto] = React.useState(0);
   const mounted = useIsMounted();
   const signedIn = mounted && (!!user || !!getToken());
 
   const { data: listing, isLoading, error } = useFetchData<Listing>(`/api/listings/${productId}`, [productId]);
+  React.useEffect(() => setActivePhoto(0), [productId]);
+
   const { data: reviews } = useFetchData<Review[]>(`/api/listings/${productId}/reviews`, [productId]);
   const { data: wishlist, refetch: refetchWishlist } = useFetchData<Listing[]>(
     signedIn ? "/api/wishlist" : null,
@@ -61,7 +67,10 @@ export default function ProductPage({ params }: { params: Promise<{ productId: s
     );
   }
 
-  const image = listingImage(listing);
+  // Gallery source. Fall back to listingImage() when a listing has no
+  // photos so the placeholder still renders rather than an empty frame.
+  const gallery = (listing.photos ?? []).filter((p) => p.url);
+  const image = gallery[activePhoto]?.url ?? listingImage(listing);
   const owner = ownerName(listing.owner);
   const ownerId = typeof listing.owner === "object" && listing.owner !== null ? listing.owner._id : listing.owner;
   const isOwn = mounted && !!user && ownerId === user._id;
@@ -72,6 +81,35 @@ export default function ProductPage({ params }: { params: Promise<{ productId: s
         <div>
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img src={image} alt={listing.title} className="aspect-video w-full rounded-lg object-cover" />
+
+          {gallery.length > 1 && (
+            // Thumbnail strip. Only shown for more than one photo — a single
+            // thumbnail under its own full-size image is just noise.
+            <div className="mt-3 flex gap-2 overflow-x-auto pb-1">
+              {gallery.map((photo, i) => (
+                <button
+                  key={photo._id ?? photo.url}
+                  type="button"
+                  onClick={() => setActivePhoto(i)}
+                  aria-label={`View photo ${i + 1} of ${gallery.length}`}
+                  aria-current={i === activePhoto}
+                  className={cn(
+                    "h-16 w-20 shrink-0 overflow-hidden rounded-md border-2 transition-all",
+                    i === activePhoto
+                      ? "border-primary"
+                      : "border-transparent opacity-70 hover:opacity-100"
+                  )}
+                >
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img
+                    src={photo.url}
+                    alt={photo.caption || `${listing.title} photo ${i + 1}`}
+                    className="h-full w-full object-cover"
+                  />
+                </button>
+              ))}
+            </div>
+          )}
           <div className="mt-6">
             <Badge variant="outline">{listing.category}</Badge>
             <h1 className="mt-3 text-3xl font-bold">{listing.title}</h1>
