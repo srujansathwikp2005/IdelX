@@ -6,9 +6,10 @@ import { AdminShell } from "@/components/marketplace/admin-shell";
 import { StatCard } from "@/components/shared/stat-card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Input, Select } from "@/components/ui/input";
+import { Input, Select, Textarea } from "@/components/ui/input";
 import { Table, Td, Th } from "@/components/ui/data-table";
 import { Modal } from "@/components/ui/modal";
+import { cn } from "@/lib/utils";
 import { LineChart, BarChart, DonutChart, ProgressRows, type ChartDatum } from "@/components/marketplace/charts";
 import { api } from "@/lib/api-client";
 import { RequireAuth, useAuth, errorMessage, useIsMounted } from "@/lib/auth";
@@ -29,6 +30,10 @@ import type {
   Payment,
   SeriesPoint,
   User,
+  Conversation,
+  SupportTicket,
+  AdminCategory,
+  AdminExtensionRequest,
 } from "@/lib/api-types";
 import { ROUTES } from "@/lib/constants";
 
@@ -1034,3 +1039,273 @@ export function AdminGate({ children }: { children: React.ReactNode }) {
 }
 
 export { RequireAuth };
+
+// --- Sections that previously rendered from static mock data ---------------
+
+export function AdminMessagesPage() {
+  const { data, isLoading, error } = useFetchData<Conversation[]>("/api/admin/conversations", []);
+
+  return (
+    <AdminShell>
+      <div className="mb-5">
+        <h1 className="text-2xl font-bold">Messages</h1>
+        <p className="text-sm text-muted-foreground">Conversations between renters and owners.</p>
+      </div>
+      <AdminError error={error} />
+      <section className="mt-6 rounded-lg border border-border bg-card p-5">
+        {isLoading ? (
+          <p className="text-sm text-muted-foreground">Loading…</p>
+        ) : (data ?? []).length === 0 ? (
+          <p className="text-sm text-muted-foreground">No conversations yet.</p>
+        ) : (
+          <Table>
+            <thead>
+              <tr>
+                <Th>Participants</Th>
+                <Th>Listing</Th>
+                <Th>Last message</Th>
+                <Th>When</Th>
+              </tr>
+            </thead>
+            <tbody>
+              {(data ?? []).map((c) => (
+                <tr key={c._id}>
+                  <Td>
+                    {(c.participants ?? [])
+                      .map((p) => (typeof p === "object" && p !== null ? p.name : "Unknown"))
+                      .join(" ↔ ")}
+                  </Td>
+                  <Td>{typeof c.listing === "object" && c.listing !== null ? c.listing.title : "—"}</Td>
+                  <Td className="max-w-md truncate">{c.lastMessage || "—"}</Td>
+                  <Td>{c.lastMessageAt ? formatDate(c.lastMessageAt) : "—"}</Td>
+                </tr>
+              ))}
+            </tbody>
+          </Table>
+        )}
+      </section>
+    </AdminShell>
+  );
+}
+
+export function AdminCategoriesPage() {
+  const { data, isLoading, error } = useFetchData<AdminCategory[]>("/api/admin/categories", []);
+
+  return (
+    <AdminShell>
+      <div className="mb-5">
+        <h1 className="text-2xl font-bold">Categories</h1>
+        {/* Categories are a free-text field on listings rather than a fixed
+            list, so this reflects what owners actually use. */}
+        <p className="text-sm text-muted-foreground">Categories in use across the marketplace.</p>
+      </div>
+      <AdminError error={error} />
+      <section className="mt-6 rounded-lg border border-border bg-card p-5">
+        {isLoading ? (
+          <p className="text-sm text-muted-foreground">Loading…</p>
+        ) : (data ?? []).length === 0 ? (
+          <p className="text-sm text-muted-foreground">No categories yet — no listings have been created.</p>
+        ) : (
+          <Table>
+            <thead>
+              <tr>
+                <Th>Category</Th>
+                <Th>Listings</Th>
+                <Th>Published</Th>
+                <Th>Avg / day</Th>
+              </tr>
+            </thead>
+            <tbody>
+              {(data ?? []).map((c) => (
+                <tr key={c.name}>
+                  <Td className="font-medium">{c.name}</Td>
+                  <Td>{c.listings}</Td>
+                  <Td>{c.published}</Td>
+                  <Td>₹{c.avgPricePerDay}</Td>
+                </tr>
+              ))}
+            </tbody>
+          </Table>
+        )}
+      </section>
+    </AdminShell>
+  );
+}
+
+export function AdminExtensionRequestsPage() {
+  const { data, isLoading, error } = useFetchData<AdminExtensionRequest[]>("/api/admin/extension-requests", []);
+
+  return (
+    <AdminShell>
+      <div className="mb-5">
+        <h1 className="text-2xl font-bold">Extension requests</h1>
+        <p className="text-sm text-muted-foreground">Requests to extend an active rental.</p>
+      </div>
+      <AdminError error={error} />
+      <section className="mt-6 rounded-lg border border-border bg-card p-5">
+        {isLoading ? (
+          <p className="text-sm text-muted-foreground">Loading…</p>
+        ) : (data ?? []).length === 0 ? (
+          <p className="text-sm text-muted-foreground">No extension requests yet.</p>
+        ) : (
+          <Table>
+            <thead>
+              <tr>
+                <Th>Renter</Th>
+                <Th>Listing</Th>
+                <Th>Requested until</Th>
+                <Th>Status</Th>
+                <Th>Raised</Th>
+              </tr>
+            </thead>
+            <tbody>
+              {(data ?? []).map((r) => (
+                <tr key={r._id}>
+                  <Td>{typeof r.renter === "object" && r.renter !== null ? r.renter.name : "—"}</Td>
+                  <Td>{typeof r.listing === "object" && r.listing !== null ? r.listing.title : "—"}</Td>
+                  <Td>{r.requestedUntil ? formatDate(r.requestedUntil) : "—"}</Td>
+                  <Td><Badge variant={r.status === "approved" ? "success" : r.status === "rejected" ? "danger" : "warning"}>{r.status}</Badge></Td>
+                  <Td>{formatDate(r.createdAt)}</Td>
+                </tr>
+              ))}
+            </tbody>
+          </Table>
+        )}
+      </section>
+    </AdminShell>
+  );
+}
+
+export function AdminSupportTicketsPage() {
+  const { data, isLoading, error, refetch } = useFetchData<SupportTicket[]>("/api/admin/support-tickets", []);
+  const [openTicket, setOpenTicket] = React.useState<SupportTicket | null>(null);
+  const [reply, setReply] = React.useState("");
+  const [busy, setBusy] = React.useState(false);
+  const [replyError, setReplyError] = React.useState<string | null>(null);
+
+  const sendReply = async () => {
+    if (!openTicket || !reply.trim()) return;
+    setBusy(true);
+    setReplyError(null);
+    try {
+      await api.post<SupportTicket>(`/api/admin/support-tickets/${openTicket._id}/replies`, { message: reply.trim() });
+      setReply("");
+      setOpenTicket(null);
+      refetch();
+    } catch (err) {
+      // Keep the dialog open and the text intact so the reply is not lost.
+      setReplyError(err instanceof Error ? err.message : "Could not send the reply.");
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const close = async (id: string) => {
+    await api.patch<SupportTicket>(`/api/admin/support-tickets/${id}/close`, {});
+    refetch();
+  };
+
+  return (
+    <AdminShell>
+      <div className="mb-5">
+        <h1 className="text-2xl font-bold">Support requests</h1>
+        <p className="text-sm text-muted-foreground">Issues raised by users.</p>
+      </div>
+      <AdminError error={error} />
+      <section className="mt-6 rounded-lg border border-border bg-card p-5">
+        {isLoading ? (
+          <p className="text-sm text-muted-foreground">Loading…</p>
+        ) : (data ?? []).length === 0 ? (
+          <p className="text-sm text-muted-foreground">No support requests yet.</p>
+        ) : (
+          <Table>
+            <thead>
+              <tr>
+                <Th>From</Th>
+                <Th>Subject</Th>
+                <Th>Status</Th>
+                <Th>Replies</Th>
+                <Th>Raised</Th>
+                <Th>Action</Th>
+              </tr>
+            </thead>
+            <tbody>
+              {(data ?? []).map((t) => (
+                <tr key={t._id}>
+                  <Td>{typeof t.user === "object" && t.user !== null ? t.user.name : "—"}</Td>
+                  <Td className="max-w-xs truncate">{t.subject}</Td>
+                  <Td>
+                    <Badge variant={t.status === "answered" ? "success" : t.status === "closed" ? "default" : "warning"}>
+                      {t.status}
+                    </Badge>
+                  </Td>
+                  <Td>{t.replies?.length ?? 0}</Td>
+                  <Td>{formatDate(t.createdAt)}</Td>
+                  <Td>
+                    <div className="flex gap-2">
+                      <Button size="sm" variant="outline" onClick={() => setOpenTicket(t)}>View</Button>
+                      {t.status !== "closed" && (
+                        <Button size="sm" variant="danger" onClick={() => close(t._id)}>Close</Button>
+                      )}
+                    </div>
+                  </Td>
+                </tr>
+              ))}
+            </tbody>
+          </Table>
+        )}
+      </section>
+
+      <Modal
+        open={!!openTicket}
+        onClose={() => { setOpenTicket(null); setReplyError(null); }}
+        title={openTicket?.subject}
+        description={
+          typeof openTicket?.user === "object" && openTicket.user !== null
+            ? `${openTicket.user.name} · ${openTicket.user.email}`
+            : undefined
+        }
+      >
+        {openTicket && (
+          <div className="space-y-4">
+            <div className="rounded-md bg-muted p-3 text-sm">{openTicket.message}</div>
+
+            {openTicket.replies?.map((r) => (
+              <div
+                key={r._id}
+                className={cn(
+                  "rounded-md p-3 text-sm",
+                  // Admin replies are visually distinct so a long thread stays
+                  // readable at a glance.
+                  r.isAdmin ? "ml-6 bg-primary-50" : "mr-6 bg-muted"
+                )}
+              >
+                <p className="mb-1 text-xs font-semibold text-muted-foreground">
+                  {r.isAdmin ? "Support" : typeof r.author === "object" && r.author !== null ? r.author.name : "User"}
+                  {" · "}
+                  {formatDate(r.createdAt)}
+                </p>
+                {r.message}
+              </div>
+            ))}
+
+            {openTicket.status !== "closed" && (
+              <div className="space-y-2">
+                <Textarea
+                  label="Reply"
+                  value={reply}
+                  onChange={(e) => setReply(e.target.value)}
+                  placeholder="Type your response…"
+                />
+                {replyError && <p className="text-sm text-danger">{replyError}</p>}
+                <Button onClick={sendReply} disabled={busy || !reply.trim()}>
+                  {busy ? "Sending…" : "Send reply"}
+                </Button>
+              </div>
+            )}
+          </div>
+        )}
+      </Modal>
+    </AdminShell>
+  );
+}

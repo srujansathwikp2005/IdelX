@@ -2,6 +2,7 @@ const asyncHandler = require('../../utils/asyncHandler');
 const ApiResponse = require('../../utils/ApiResponse');
 const ApiError = require('../../utils/ApiError');
 const User = require('../../models/User');
+const Conversation = require('../../models/Conversation');
 const Listing = require('../../models/Listing');
 const Booking = require('../../models/Booking');
 const Payment = require('../../models/Payment');
@@ -359,7 +360,72 @@ const reviewKyc = asyncHandler(async (req, res) => {
   return new ApiResponse(200, kyc, `KYC ${status}`).send(res);
 });
 
+
+// --- Sections that previously rendered from static mock data ---------------
+
+// Every conversation on the platform, most recent first. Admins moderate
+// disputes, so they need the real threads rather than a sample.
+const listConversations = asyncHandler(async (req, res) => {
+  const conversations = await Conversation.find({})
+    .sort('-lastMessageAt')
+    .limit(200)
+    .populate('participants', 'name email')
+    .populate('listing', 'title');
+  return new ApiResponse(200, conversations, 'Conversations').send(res);
+});
+
+// Categories are a free-text field on Listing rather than their own
+// collection, so the real marketplace categories are whatever owners have
+// actually used. Aggregating gives the true list plus how many listings sit
+// in each — more useful than a fixed enum that drifts from reality.
+const listCategories = asyncHandler(async (req, res) => {
+  const categories = await Listing.aggregate([
+    { $match: { category: { $nin: [null, ''] } } },
+    {
+      $group: {
+        _id: '$category',
+        listings: { $sum: 1 },
+        published: { $sum: { $cond: [{ $eq: ['$status', 'published'] }, 1, 0] } },
+        avgPricePerDay: { $avg: '$pricePerDay' },
+      },
+    },
+    { $project: { _id: 0, name: '$_id', listings: 1, published: 1, avgPricePerDay: { $round: ['$avgPricePerDay', 0] } } },
+    { $sort: { listings: -1, name: 1 } },
+  ]);
+  return new ApiResponse(200, categories, 'Categories').send(res);
+});
+
+// Extension requests are embedded in bookings, so they have to be unwound to
+// be reviewed as a queue.
+const listExtensionRequests = asyncHandler(async (req, res) => {
+  const requests = await Booking.aggregate([
+    { $match: { 'extensionRequests.0': { $exists: true } } },
+    { $unwind: '$extensionRequests' },
+    { $sort: { 'extensionRequests.createdAt': -1 } },
+    { $limit: 200 },
+    {
+      $project: {
+        _id: '$extensionRequests._id',
+        bookingId: '$_id',
+        status: '$extensionRequests.status',
+        requestedUntil: '$extensionRequests.requestedUntil',
+        createdAt: '$extensionRequests.createdAt',
+        renter: 1,
+        listing: 1,
+      },
+    },
+  ]);
+  await Booking.populate(requests, [
+    { path: 'renter', select: 'name email' },
+    { path: 'listing', select: 'title' },
+  ]);
+  return new ApiResponse(200, requests, 'Extension requests').send(res);
+});
+
 module.exports = {
+  listConversations,
+  listCategories,
+  listExtensionRequests,
   getStats,
   getAnalytics,
   listAuditLogs,

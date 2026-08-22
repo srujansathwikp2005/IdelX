@@ -19,6 +19,9 @@ async function start() {
   const io = new Server(server, {
     cors: { origin: env.clientUrl, credentials: true },
   });
+  // Expose the socket server to HTTP handlers so a message sent over REST
+  // still reaches anyone watching the thread over the websocket.
+  app.set('io', io);
   registerChatSocket(io);
 
   server.listen(env.port, () => {

@@ -5,7 +5,7 @@ import { io, type Socket } from "socket.io-client";
 import { DashboardShell } from "@/components/marketplace/dashboard-shell";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { RequireAuth, useAuth } from "@/lib/auth";
+import { RequireAuth, useAuth, errorMessage } from "@/lib/auth";
 import { api, getToken } from "@/lib/api-client";
 import { useFetchData } from "@/lib/use-fetch-data";
 import { formatDateTime } from "@/lib/formatters";
@@ -59,15 +59,22 @@ function ThreadInner({ conversationId }: { conversationId: string }) {
     if (socket?.connected) {
       socket.emit("message:send", { conversationId, text: trimmed }, (ack: { success?: boolean; error?: string }) => {
         if (ack?.error) setError(ack.error);
+        else setText("");
       });
     } else {
+      // HTTP fallback for when the websocket has not connected — a proxy that
+      // blocks upgrades, a flaky network, or simply a socket still handshaking.
+      // This previously posted an empty body to a route that did not exist,
+      // so the message was silently dropped and the box cleared anyway.
       try {
-        await api.post<Message>("/api/chat/conversations", {});
-      } catch {
-        setError("Connection lost. Message history is read-only for now.");
+        await api.post<Message>(`/api/chat/conversations/${conversationId}/messages`, { text: trimmed });
+        setText("");
+      } catch (err) {
+        // Keep the text in the box: clearing it destroys what the user wrote.
+        setError(errorMessage(err));
+        return;
       }
     }
-    setText("");
     setTimeout(refetch, 300);
   };
 
