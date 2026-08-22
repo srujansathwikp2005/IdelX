@@ -26,6 +26,9 @@ router.post('/:id/cancel', validate(cancelBookingSchema), controller.cancelBooki
 router.post('/:id/start', controller.startRental);
 router.post('/:id/request-return', controller.requestReturn);
 router.post('/:id/confirm-return', controller.confirmReturn);
+// Step 10B: the owner reports damage/loss instead of confirming a clean
+// return. Holds the deposit pending an admin decision.
+router.post('/:id/report-issue', controller.reportIssue);
 router.post('/:id/extension-request', validate(extensionRequestSchema), controller.requestExtension);
 router.post('/:id/extension-request/:reqId/respond', validate(extensionRespondSchema), controller.respondExtension);
 

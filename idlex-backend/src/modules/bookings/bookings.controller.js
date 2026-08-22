@@ -2,6 +2,7 @@ const asyncHandler = require('../../utils/asyncHandler');
 const ApiResponse = require('../../utils/ApiResponse');
 const ApiError = require('../../utils/ApiError');
 const Booking = require('../../models/Booking');
+const Dispute = require('../../models/Dispute');
 const paymentsService = require('../payments/payments.service');
 const Listing = require('../../models/Listing');
 const bookingsService = require('./bookings.service');
@@ -247,6 +248,73 @@ const requestReturn = asyncHandler(async (req, res) => {
   return new ApiResponse(200, booking, 'Return requested').send(res);
 });
 
+
+// ESCROW step 10B: the owner reports a problem instead of confirming a clean
+// return. This is the branch that was missing — without it a damaged item
+// still auto-refunded the deposit, because confirm-return was the only exit
+// from 'return_requested'.
+//
+// Raising an issue HOLDS the deposit; it does not deduct from it. The owner
+// states a claim, an admin decides (step 12B). Letting the owner both accuse
+// and collect would make the deposit theirs on assertion alone.
+const reportIssue = asyncHandler(async (req, res) => {
+  const booking = await Booking.findById(req.params.id);
+  if (!booking) throw ApiError.notFound('Booking not found');
+  if (booking.owner.toString() !== req.user._id.toString()) {
+    throw ApiError.forbidden('Only the owner can report an issue with a return');
+  }
+  if (!['active', 'return_requested'].includes(booking.status)) {
+    throw ApiError.badRequest(`Cannot report an issue on a booking in '${booking.status}' state`);
+  }
+
+  const reason = String(req.body.reason || '').trim();
+  if (!reason) throw ApiError.badRequest('Describe the issue so it can be reviewed');
+
+  const dispute = await Dispute.create({
+    booking: booking._id,
+    raisedBy: req.user._id,
+    reason,
+    category: req.body.category || 'other',
+    // Cannot exceed the deposit: claiming more than was held is meaningless,
+    // and an inflated number anchors the admin's decision unfairly.
+    claimedAmount: Math.min(Number(req.body.claimedAmount || 0), booking.securityDeposit || 0),
+    evidence: Array.isArray(req.body.evidence) ? req.body.evidence : [],
+  });
+
+  booking.status = 'disputed';
+  await booking.save();
+
+  logAudit({
+    actor: req.user._id,
+    action: 'dispute.raised',
+    // 'booking', not 'dispute': the AuditLog category enum is a fixed set of
+    // coarse buckets, and an unknown value fails validation silently inside
+    // logAudit's catch — the entry simply never appears.
+    category: 'booking',
+    resourceType: 'booking',
+    resourceId: booking._id.toString(),
+    summary: 'Owner reported an issue with a returned item',
+    details: {
+      dispute: dispute._id,
+      category: dispute.category,
+      claimedAmount: dispute.claimedAmount,
+      depositHeld: booking.securityDeposit,
+    },
+    req,
+  });
+
+  // The renter must know their deposit is held and why — this is the point
+  // where they would otherwise expect a refund.
+  await notify(booking.renter, {
+    type: 'dispute',
+    title: 'An issue was reported with your rental',
+    body: `The owner reported: ${reason}. Your security deposit is held until this is reviewed.`,
+    link: `/my-rentals/${booking._id}`,
+  }).catch(() => {});
+
+  return new ApiResponse(201, dispute, 'Issue reported — an admin will review it').send(res);
+});
+
 // Owner confirms they received the item back — booking is completed.
 const confirmReturn = asyncHandler(async (req, res) => {
   const booking = await Booking.findById(req.params.id);
@@ -295,6 +363,7 @@ const confirmReturn = asyncHandler(async (req, res) => {
 });
 
 module.exports = {
+  reportIssue,
   startRental,
   createBooking,
   myBookings,
