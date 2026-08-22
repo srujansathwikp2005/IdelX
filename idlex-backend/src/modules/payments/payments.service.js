@@ -198,6 +198,14 @@ async function createCheckoutOrder(payerId, { listingId, startDate, endDate }) {
       order_meta: {
         return_url: `${env.clientUrl}/checkout/${listing._id}?order_id={order_id}`,
         notify_url: `${env.clientUrl}/api/webhooks/payments`,
+        // Allowed methods are fixed on the ORDER, not in the browser SDK, so
+        // a tampered client cannot re-enable what is excluded here.
+        //
+        // EMI and Pay Later are deliberately absent: both settle over time or
+        // through a lender, while a rental carries a refundable security
+        // deposit that must go back to the renter days later. Refunding a
+        // deposit against a part-paid EMI is a mess for everyone.
+        payment_methods: 'cc,dc,upi,nb,app',
       },
       order_note: `Rental of ${listing.title}`,
     });

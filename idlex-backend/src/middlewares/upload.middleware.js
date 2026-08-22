@@ -2,6 +2,7 @@ const multer = require('multer');
 const path = require('path');
 const fs = require('fs');
 const env = require('../config/env');
+const ApiError = require('../utils/ApiError');
 
 // Local-disk storage for development. In production, swap `storage` for
 // an S3/Cloudinary multer-storage adapter — nothing else in the app
@@ -20,8 +21,18 @@ const storage = multer.diskStorage({
 const fileFilter = (req, file, cb) => {
   // Images for listing photos/selfies and PDF for the KYC document.
   const allowed = ['image/jpeg', 'image/png', 'image/webp', 'application/pdf'];
-  if (allowed.includes(file.mimetype)) cb(null, true);
-  else cb(new Error('Unsupported file type'), false);
+  if (allowed.includes(file.mimetype)) return cb(null, true);
+  // ApiError, not a bare Error: a plain Error falls through the error
+  // middleware's known cases and surfaces as a 500, telling the user the
+  // server broke when in fact they picked the wrong kind of file.
+  return cb(
+    ApiError.badRequest(
+      `Unsupported file type "${file.mimetype}". Upload a JPG, PNG or WebP image${
+        file.fieldname === 'photos' ? '' : ', or a PDF'
+      }.`
+    ),
+    false
+  );
 };
 
 const upload = multer({
