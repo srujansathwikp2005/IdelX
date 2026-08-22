@@ -96,6 +96,8 @@ jobs:
           IDLEX_CASHFREE_SECRET_KEY:     ${{ secrets.CASHFREE_SECRET_KEY }}
           IDLEX_CASHFREE_WEBHOOK_SECRET: ${{ secrets.CASHFREE_WEBHOOK_SECRET }}
           IDLEX_CASHFREE_MODE:           ${{ vars.CASHFREE_MODE || 'sandbox' }}
+          IDLEX_CASHFREE_PAYOUT_APP_ID:     ${{ secrets.CASHFREE_PAYOUT_APP_ID }}
+          IDLEX_CASHFREE_PAYOUT_SECRET_KEY: ${{ secrets.CASHFREE_PAYOUT_SECRET_KEY }}
           IDLEX_CLIENT_URL:              ${{ vars.CLIENT_URL }}
 
           ANSIBLE_FORCE_COLOR: '1'

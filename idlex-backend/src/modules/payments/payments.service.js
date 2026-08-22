@@ -19,12 +19,16 @@ function isGatewayConfigured() {
 // rather than basic auth, and requires an explicit API version — an
 // unversioned request is rejected outright.
 async function cashfreeRequest(method, path, data) {
+  // Payouts and Payments are separate products: different API version, and
+  // usually different credentials. Routing on the path keeps every caller
+  // unchanged while sending each product what it expects.
+  const isPayout = path.startsWith('/payout');
   const res = await fetch(`${env.cashfree.apiBase}${path}`, {
     method,
     headers: {
-      'x-client-id': env.cashfree.appId,
-      'x-client-secret': env.cashfree.secretKey,
-      'x-api-version': env.cashfree.apiVersion,
+      'x-client-id': isPayout ? env.cashfree.payoutAppId : env.cashfree.appId,
+      'x-client-secret': isPayout ? env.cashfree.payoutSecretKey : env.cashfree.secretKey,
+      'x-api-version': isPayout ? env.cashfree.payoutApiVersion : env.cashfree.apiVersion,
       'Content-Type': 'application/json',
     },
     body: data ? JSON.stringify(data) : undefined,
