@@ -24,6 +24,7 @@ export const ROUTES = {
   REGISTER: "/register",
   LOGIN: "/login",
   FORGOT_PASSWORD: "/forgot-password",
+  RESET_PASSWORD: "/reset-password",
   VERIFY_OTP: "/verify-otp",
   VERIFY_EMAIL: "/verify-email",
 
@@ -99,6 +100,7 @@ export const PUBLIC_ROUTES = [
   "/register",
   "/sign-up",
   "/forgot-password",
+  "/reset-password",
   "/verify-otp",
   "/verify-email",
 
