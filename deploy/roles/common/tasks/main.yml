@@ -94,5 +94,6 @@
   become: true
   loop:
     - "{{ app_root }}"
-    - "{{ app_root }}/releases"   # one timestamped checkout per deploy
-    - "{{ app_root }}/shared"     # persists across releases (.env, uploads)
+    - "{{ app_root }}/releases"        # one timestamped checkout per deploy
+    - "{{ app_root }}/shared"          # persists across releases
+    - "{{ app_root }}/shared/uploads"  # user-uploaded files; see deploy.yml
