@@ -5,6 +5,7 @@ const Booking = require('../../models/Booking');
 const { Payout, PayoutSettings } = require('../../models/Payout');
 const ApiError = require('../../utils/ApiError');
 const bookingsService = require('../bookings/bookings.service');
+const { logAudit } = require('../../utils/audit');
 
 // Accepted in dev only (Cashfree credentials unset) so the full
 // pay -> verify -> booking flow can be exercised before real keys exist.
@@ -117,12 +118,32 @@ async function settleOwnerPayout(payment, booking) {
     payout.gatewayPayoutId = result.cf_transfer_id || transferId;
     payout.status = 'paid';
     await payout.save();
+
+    logAudit({
+      action: 'payout.sent',
+      category: 'payment',
+      resourceType: 'booking',
+      resourceId: booking._id.toString(),
+      summary: 'Owner payout transferred',
+      details: { owner: listing.owner, amount: booking.subtotal, transferId: payout.gatewayPayoutId },
+    });
     return payout;
   } catch (err) {
     console.error(`[payout] failed for booking ${booking._id}:`, err.message);
     payout.status = 'failed';
     payout.gatewayPayoutId = err.details?.metadata?.payout_id || null;
     await payout.save();
+
+    // A failed payout is money the owner is owed and has not received, so it
+    // belongs in the trail as much as a successful one.
+    logAudit({
+      action: 'payout.failed',
+      category: 'payment',
+      resourceType: 'booking',
+      resourceId: booking._id.toString(),
+      summary: 'Owner payout failed',
+      details: { owner: listing.owner, amount: booking.subtotal, error: err.message },
+    });
     return payout;
   }
 }
@@ -252,6 +273,23 @@ async function markPaymentCaptured({ gatewayOrderId, gatewayPaymentId, signature
   payment.booking = booking._id;
   await payment.save();
 
+  // Box F: the escrow hold itself is an auditable event. Without it the
+  // trail shows money arriving and later leaving, with nothing recording
+  // that it was held on someone's behalf in between.
+  logAudit({
+    action: 'escrow.held',
+    category: 'payment',
+    resourceType: 'booking',
+    resourceId: booking._id.toString(),
+    summary: 'Funds held in escrow',
+    details: {
+      rent: booking.subtotal,
+      securityDeposit: booking.securityDeposit,
+      platformFee: booking.serviceFee,
+      total: booking.totalAmount,
+    },
+  });
+
   // ESCROW: the owner is NOT paid here. At capture the money is held —
   // rent until the rental starts, deposit until the item comes back. Paying
   // at capture would mean the owner has the rent before the renter has the
@@ -314,6 +352,20 @@ async function releaseRentToOwner(booking) {
   booking.escrow.rentReleasedAt = new Date();
   await booking.save();
 
+  logAudit({
+    action: 'escrow.rent_released',
+    category: 'payment',
+    resourceType: 'booking',
+    resourceId: booking._id.toString(),
+    summary: 'Rental amount released to the owner',
+    details: {
+      amount: booking.subtotal,
+      payout: payout?._id,
+      payoutStatus: payout?.status,
+      gatewayPayoutId: payout?.gatewayPayoutId || null,
+    },
+  });
+
   return { payout, amount: booking.subtotal };
 }
 
@@ -339,16 +391,40 @@ async function refundDepositToRenter(booking, { deduction = 0, reason = null } =
   const payment = await Payment.findOne({ booking: booking._id, status: 'captured' });
   let gatewayRefundId = null;
 
+  let refundError = null;
+
   if (refundAmount > 0 && payment?.gatewayPaymentId && isGatewayConfigured()) {
-    // Back to the original payment instrument, as the spec requires — the
-    // renter should not have to supply bank details to get their own money.
-    const refund = await cashfreeRequest('POST', `/pg/orders/${payment.gatewayOrderId}/refunds`, {
-      refund_amount: refundAmount,
-      refund_id: `dep_${booking._id}`,
-      refund_note: reason || 'Security deposit refund',
-      refund_speed: 'STANDARD',
-    });
-    gatewayRefundId = refund.cf_refund_id || refund.refund_id || null;
+    try {
+      // Back to the original payment instrument, as the spec requires — the
+      // renter should not have to supply bank details to get their own money.
+      const refund = await cashfreeRequest('POST', `/pg/orders/${payment.gatewayOrderId}/refunds`, {
+        refund_amount: refundAmount,
+        refund_id: `dep_${booking._id}`,
+        refund_note: reason || 'Security deposit refund',
+        refund_speed: 'STANDARD',
+      });
+      gatewayRefundId = refund.cf_refund_id || refund.refund_id || null;
+    } catch (err) {
+      // A gateway failure must not be silent. Leaving the deposit 'held'
+      // with nothing recorded is how a renter's money goes missing: the
+      // admin's decision looks applied, the booking looks settled, and
+      // nobody knows a refund was owed. Record it and re-throw so the
+      // caller reports the failure rather than claiming success.
+      refundError = err.message;
+      logAudit({
+        action: 'escrow.deposit_refund_failed',
+        category: 'payment',
+        resourceType: 'booking',
+        resourceId: booking._id.toString(),
+        summary: 'Security deposit refund failed at the gateway',
+        details: {
+          amount: refundAmount,
+          orderId: payment.gatewayOrderId,
+          error: refundError,
+        },
+      });
+      throw ApiError.badRequest(`Deposit refund failed at the gateway: ${refundError}`);
+    }
   }
 
   booking.escrow.depositStatus =
@@ -357,6 +433,38 @@ async function refundDepositToRenter(booking, { deduction = 0, reason = null } =
   booking.escrow.depositDeducted = withheld;
   booking.escrow.depositDeductionReason = reason;
   await booking.save();
+
+  logAudit({
+    action: 'escrow.deposit_released',
+    category: 'payment',
+    resourceType: 'booking',
+    resourceId: booking._id.toString(),
+    summary:
+      withheld === 0
+        ? 'Security deposit refunded in full'
+        : `Security deposit settled with a deduction of ${withheld}`,
+    details: {
+      depositHeld: deposit,
+      refundedToRenter: refundAmount,
+      deducted: withheld,
+      reason,
+      outcome: booking.escrow.depositStatus,
+      gatewayRefundId,
+    },
+  });
+
+  // A deduction is money the renter did not get back, so it is recorded as
+  // its own event rather than only as a field on the refund entry.
+  if (withheld > 0) {
+    logAudit({
+      action: 'escrow.deposit_deducted',
+      category: 'payment',
+      resourceType: 'booking',
+      resourceId: booking._id.toString(),
+      summary: `Deducted ${withheld} from the security deposit`,
+      details: { deducted: withheld, of: deposit, reason },
+    });
+  }
 
   return { refunded: refundAmount, withheld, gatewayRefundId };
 }

@@ -296,7 +296,11 @@ const resolveDispute = asyncHandler(async (req, res) => {
           reason: req.body.resolutionNote || 'Dispute resolution',
         });
       } catch (err) {
+        // Reported, not swallowed: the admin needs to know the deduction was
+        // recorded but the renter's money did not move, so they can retry
+        // rather than assume it is done.
         console.error(`[escrow] deposit settlement failed for booking ${booking._id}:`, err.message);
+        escrowResult = { error: err.message };
       }
     }
   }
@@ -312,7 +316,7 @@ const resolveDispute = asyncHandler(async (req, res) => {
     req,
   });
 
-  return new ApiResponse(200, dispute, 'Dispute resolved').send(res);
+  return new ApiResponse(200, { dispute, escrow: escrowResult }, 'Dispute resolved').send(res);
 });
 
 // Flagged content queue — placeholder aggregation; wire to a Report
