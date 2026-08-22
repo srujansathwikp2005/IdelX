@@ -105,6 +105,15 @@
       changed_when: false
       failed_when: false
 
+    - name: Remove the release's own uploads directory
+      # The checkout creates uploads/ containing the repo's tracked files, and
+      # `state: link` refuses to replace a non-empty directory even with
+      # force. The seeding task above has already copied those files into
+      # shared, so nothing is lost by removing it here.
+      ansible.builtin.file:
+        path: "{{ release_dir }}/uploads"
+        state: absent
+
     - name: Point the release's uploads directory at shared storage
       # UPLOAD_DIR resolves to <release>/uploads. Without this link every
       # deploy hands the app an empty directory while the database still
