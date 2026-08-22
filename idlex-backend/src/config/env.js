@@ -44,7 +44,12 @@ const env = {
   cashfree: {
     appId: process.env.CASHFREE_APP_ID,
     secretKey: process.env.CASHFREE_SECRET_KEY,
-    webhookSecret: process.env.CASHFREE_WEBHOOK_SECRET,
+    // Cashfree PG signs webhooks with the secret key itself — there is no
+    // separate webhook secret in the dashboard, unlike Razorpay. The
+    // override exists only for a future setup that does issue one.
+    get webhookSecret() {
+      return process.env.CASHFREE_WEBHOOK_SECRET || this.secretKey;
+    },
     // 'sandbox' or 'production'. The two use different hostnames, so this is
     // what decides whether test keys reach the test environment.
     mode: (process.env.CASHFREE_MODE || 'sandbox').toLowerCase(),
