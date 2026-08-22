@@ -29,10 +29,14 @@ function BookingRow({ booking, onApprove, onConfirmReturn, busy }: {
       <div className="flex items-center gap-2">
         <Badge variant={booking.status === "completed" ? "success" : booking.status === "cancelled" ? "danger" : booking.status === "return_requested" ? "warning" : "default"}>{booking.status}</Badge>
         {onApprove && booking.status === "requested" && (
-          <Button size="sm" onClick={() => onApprove(booking)}>Approve</Button>
+          <Button size="sm" loading={busy} disabled={busy} onClick={() => onApprove(booking)}>
+            Approve
+          </Button>
         )}
         {onConfirmReturn && booking.status === "return_requested" && (
-          <Button size="sm" loading={busy} onClick={() => onConfirmReturn(booking)}>Confirm Return</Button>
+          <Button size="sm" loading={busy} disabled={busy} onClick={() => onConfirmReturn(booking)}>
+            Confirm Return
+          </Button>
         )}
       </div>
     </div>
@@ -51,16 +55,25 @@ function DashboardInner() {
   const [busyId, setBusyId] = React.useState<string | null>(null);
 
   const approve = async (booking: Booking) => {
+    // Guard against a second click while the first request is in flight.
+    // Without it, rapid clicks fire concurrent confirms: the first succeeds
+    // and the rest come back "Cannot confirm a booking in 'confirmed'
+    // state", so the owner sees an error for an action that worked.
+    if (busyId) return;
     setApprovalError(null);
+    setBusyId(booking._id);
     try {
       await api.post<Booking>(`/api/bookings/${booking._id}/confirm`, {});
       refetchOwner();
     } catch (err) {
       setApprovalError(errorMessage(err));
+    } finally {
+      setBusyId(null);
     }
   };
 
   const confirmReturn = async (booking: Booking) => {
+    if (busyId) return;
     setApprovalError(null);
     setBusyId(booking._id);
     try {

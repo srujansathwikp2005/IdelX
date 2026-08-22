@@ -92,4 +92,20 @@ const sendMessage = asyncHandler(async (req, res) => {
   return new ApiResponse(201, message, 'Message sent').send(res);
 });
 
-module.exports = { listConversations, getMessages, startConversation, sendMessage };
+
+// A single conversation. The thread page fetches this for the header — who
+// the other party is and which listing it concerns — and without it the
+// page renders "Conversation" with no context at all.
+const getConversation = asyncHandler(async (req, res) => {
+  const conversation = await Conversation.findById(req.params.id)
+    .populate('participants', 'name avatarUrl')
+    .populate('listing', 'title photos');
+  if (!conversation) throw ApiError.notFound('Conversation not found');
+  if (!conversation.participants.some((p) => p._id.toString() === req.user._id.toString())) {
+    throw ApiError.forbidden('Not a participant in this conversation');
+  }
+  return new ApiResponse(200, conversation, 'Conversation').send(res);
+});
+
+module.exports = {
+  getConversation, listConversations, getMessages, startConversation, sendMessage };
