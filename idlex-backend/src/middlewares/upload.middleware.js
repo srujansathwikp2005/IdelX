@@ -20,7 +20,18 @@ const storage = multer.diskStorage({
 
 const fileFilter = (req, file, cb) => {
   // Images for listing photos/selfies and PDF for the KYC document.
-  const allowed = ['image/jpeg', 'image/png', 'image/webp', 'application/pdf'];
+  // HEIC/HEIF are accepted here and converted to JPEG by normalizeImages
+  // below. Every photo an iPhone takes is HEIC, and desktop Chrome and
+  // Firefox cannot decode it in-browser, so rejecting it at the edge would
+  // block those users entirely regardless of what the client tries first.
+  const allowed = [
+    'image/jpeg',
+    'image/png',
+    'image/webp',
+    'image/heic',
+    'image/heif',
+    'application/pdf',
+  ];
   if (allowed.includes(file.mimetype)) return cb(null, true);
   // ApiError, not a bare Error: a plain Error falls through the error
   // middleware's known cases and surfaces as a 500, telling the user the
@@ -41,4 +52,55 @@ const upload = multer({
   limits: { fileSize: 10 * 1024 * 1024 }, // 10MB — plenty for a KYC PDF
 });
 
-module.exports = upload;
+// Converts any uploaded HEIC/HEIF to JPEG on disk, in place, so nothing
+// downstream has to know which format the phone produced. Runs after multer
+// has written the file and before the controller reads req.files.
+//
+// This is what makes the feature browser-independent. The client converts
+// when it can — Safari decodes HEIC natively — but desktop Chrome and
+// Firefox cannot, and every photo an iPhone takes is HEIC. Doing it here
+// covers every browser regardless.
+async function normalizeImages(req, res, next) {
+  const files = req.file
+    ? [req.file]
+    : Array.isArray(req.files)
+      ? req.files
+      : Object.values(req.files || {}).flat();
+
+  for (const file of files) {
+    if (!/^image\/(heic|heif)$/i.test(file.mimetype || '')) continue;
+    if (!file.path) continue; // nothing local to convert
+
+    try {
+      const sharp = require('sharp');
+      const jpegPath = `${file.path.replace(/\.[^.]+$/, '')}.jpg`;
+      // .rotate() applies the EXIF orientation; without it portrait photos
+      // from a phone arrive sideways.
+      await sharp(file.path).rotate().jpeg({ quality: 88 }).toFile(jpegPath);
+      await fs.promises.unlink(file.path).catch(() => {});
+
+      file.path = jpegPath;
+      file.filename = path.basename(jpegPath);
+      file.mimetype = 'image/jpeg';
+    } catch (err) {
+      // Report rather than storing a file browsers cannot display. A silent
+      // failure here would show as a broken image long after upload.
+      return next(ApiError.badRequest(`Could not process ${file.originalname}: ${err.message}`));
+    }
+  }
+  return next();
+}
+
+// Wrap multer's factories so every caller gets conversion for free and no
+// route has to remember to add it. Express flattens middleware arrays, so
+// `upload.array('photos', 10)` keeps working unchanged.
+const wrap = (method) => (...args) => [upload[method](...args), normalizeImages];
+
+module.exports = {
+  single: wrap('single'),
+  array: wrap('array'),
+  fields: wrap('fields'),
+  none: wrap('none'),
+  any: wrap('any'),
+  normalizeImages,
+};
