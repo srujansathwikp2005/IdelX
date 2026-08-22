@@ -148,8 +148,14 @@
       # fails here rather than crashing every visitor's page. That exact bug
       # shipped twice while the server kept returning 200 — nothing but a
       # real browser revealed it, which is far too late.
+      # Gated on rules-of-hooks alone, via a dedicated config. The main
+      # eslint setup reports pre-existing findings across this codebase;
+      # gating on all of them would block releases for style issues and
+      # invite the gate being switched off. This rule earns a hard gate by
+      # itself: violating it takes down every page rendering the component,
+      # while the server keeps answering 200.
       ansible.builtin.command:
-        cmd: npx eslint src --max-warnings=-1
+        cmd: npx eslint --config eslint.hooks.config.mjs src
         chdir: "{{ release_dir }}/client"
       changed_when: false
 
