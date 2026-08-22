@@ -64,24 +64,6 @@ export default function CheckoutPage({ params }: { params: Promise<{ productId: 
   const [pendingOrder, setPendingOrder] = React.useState<CheckoutOrder | null>(null);
   const [paying, setPaying] = React.useState(false);
 
-  if (isLoading || !listing) {
-    return <PublicShell><div className="grid min-h-[50vh] place-items-center text-sm text-muted-foreground">Loading…</div></PublicShell>;
-  }
-
-  const days = startDate && endDate ? daysBetween(startDate, endDate) : 0;
-  const rent = listing.pricePerDay * days;
-  const fee = Math.round(rent * 0.1);
-  const total = rent + fee + listing.securityDeposit;
-
-  const ownerId = typeof listing.owner === "object" && listing.owner !== null ? listing.owner._id : listing.owner;
-  const isOwn = !!user && ownerId === user._id;
-
-  // Verification is server-side only: we hand Cashfree's order id to our own
-  // backend, which asks the gateway what happened. Nothing the browser
-  // reports about the payment is trusted.
-  const verifyPayment = (order: CheckoutOrder) =>
-    api.post<Booking>("/api/payments/verify", { orderId: order.orderId });
-
   // Cashfree's return_url sends the renter back here as
   // /checkout/<listing>?order_id=... after a redirect-style payment — which
   // is what UPI and QR do, since those leave the page rather than resolving
@@ -112,6 +94,24 @@ export default function CheckoutPage({ params }: { params: Promise<{ productId: 
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  if (isLoading || !listing) {
+    return <PublicShell><div className="grid min-h-[50vh] place-items-center text-sm text-muted-foreground">Loading…</div></PublicShell>;
+  }
+
+  const days = startDate && endDate ? daysBetween(startDate, endDate) : 0;
+  const rent = listing.pricePerDay * days;
+  const fee = Math.round(rent * 0.1);
+  const total = rent + fee + listing.securityDeposit;
+
+  const ownerId = typeof listing.owner === "object" && listing.owner !== null ? listing.owner._id : listing.owner;
+  const isOwn = !!user && ownerId === user._id;
+
+  // Verification is server-side only: we hand Cashfree's order id to our own
+  // backend, which asks the gateway what happened. Nothing the browser
+  // reports about the payment is trusted.
+  const verifyPayment = (order: CheckoutOrder) =>
+    api.post<Booking>("/api/payments/verify", { orderId: order.orderId });
 
   const openCashfreeCheckout = async (order: CheckoutOrder): Promise<boolean> => {
     const factory = (window as unknown as { Cashfree?: CashfreeFactory }).Cashfree;
