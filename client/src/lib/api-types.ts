@@ -140,13 +140,16 @@ export type Payment = {
 // Response of POST /api/payments/checkout — the client uses this to open
 // the Razorpay Checkout popup. `configured: false` means no Razorpay keys
 // are set (dev mode): the UI simulates the payment via /verify.
-export type RazorpayCheckoutOrder = {
+export type CheckoutOrder = {
   paymentId: string;
   orderId: string;
   amount: number;
   currency: string;
   gateway: string;
-  keyId: string | null;
+  /** Consumed by the Cashfree browser SDK; null when the gateway is unconfigured. */
+  paymentSessionId: string | null;
+  /** Must match the mode the order was created in. */
+  mode: "sandbox" | "production";
   configured: boolean;
 };
 

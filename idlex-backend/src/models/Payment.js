@@ -20,7 +20,9 @@ const paymentSchema = new mongoose.Schema(
     startDate: { type: Date, default: null },
     endDate: { type: Date, default: null },
 
-    gateway: { type: String, enum: ['razorpay', 'stripe'], default: 'razorpay' },
+    // 'razorpay' stays in the enum so historical rows remain readable;
+    // new payments are always cashfree.
+    gateway: { type: String, enum: ['cashfree', 'razorpay', 'stripe'], default: 'cashfree' },
     gatewayOrderId: { type: String, required: true },
     gatewayPaymentId: { type: String, default: null },
     signature: { type: String, default: null },

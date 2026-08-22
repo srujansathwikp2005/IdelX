@@ -92,10 +92,10 @@ jobs:
           IDLEX_SMTP_USER:               ${{ secrets.SMTP_USER }}
           IDLEX_SMTP_PASS:               ${{ secrets.SMTP_PASS }}
           IDLEX_SMTP_FROM:               ${{ secrets.SMTP_FROM }}
-          IDLEX_RAZORPAY_KEY_ID:         ${{ secrets.RAZORPAY_KEY_ID }}
-          IDLEX_RAZORPAY_KEY_SECRET:     ${{ secrets.RAZORPAY_KEY_SECRET }}
-          IDLEX_RAZORPAY_WEBHOOK_SECRET: ${{ secrets.RAZORPAY_WEBHOOK_SECRET }}
-          IDLEX_RAZORPAY_ACCOUNT_NUMBER: ${{ secrets.RAZORPAY_ACCOUNT_NUMBER }}
+          IDLEX_CASHFREE_APP_ID:         ${{ secrets.CASHFREE_APP_ID }}
+          IDLEX_CASHFREE_SECRET_KEY:     ${{ secrets.CASHFREE_SECRET_KEY }}
+          IDLEX_CASHFREE_WEBHOOK_SECRET: ${{ secrets.CASHFREE_WEBHOOK_SECRET }}
+          IDLEX_CASHFREE_MODE:           ${{ vars.CASHFREE_MODE || 'sandbox' }}
           IDLEX_CLIENT_URL:              ${{ vars.CLIENT_URL }}
 
           ANSIBLE_FORCE_COLOR: '1'

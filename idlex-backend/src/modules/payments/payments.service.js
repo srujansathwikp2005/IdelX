@@ -1,5 +1,4 @@
 const crypto = require('crypto');
-const Razorpay = require('razorpay');
 const env = require('../../config/env');
 const Payment = require('../../models/Payment');
 const Booking = require('../../models/Booking');
@@ -7,80 +6,79 @@ const { Payout, PayoutSettings } = require('../../models/Payout');
 const ApiError = require('../../utils/ApiError');
 const bookingsService = require('../bookings/bookings.service');
 
-// Accepted in dev only (RAZORPAY_KEY_ID/SECRET unset) so the full
-// pay → verify → booking flow can be tested before real keys exist.
+// Accepted in dev only (Cashfree credentials unset) so the full
+// pay -> verify -> booking flow can be exercised before real keys exist.
 const DEV_SIGNATURE = 'dev-signature';
 
-const RAZORPAY_API_BASE = 'https://api.razorpay.com';
-
-function getRazorpayClient() {
-  if (!env.razorpay.keyId || !env.razorpay.keySecret) return null;
-  return new Razorpay({ key_id: env.razorpay.keyId, key_secret: env.razorpay.keySecret });
+function isGatewayConfigured() {
+  return Boolean(env.cashfree.appId && env.cashfree.secretKey);
 }
 
-// Raw REST call to the Razorpay API (Payouts endpoints are not exposed by
-// the installed SDK). Basic auth with the key pair; works from localhost
-// and serverless hosts (Vercel) alike — no IP whitelisting needed.
-async function razorpayRequest(method, path, data) {
-  const auth = Buffer.from(`${env.razorpay.keyId}:${env.razorpay.keySecret}`).toString('base64');
-  const res = await fetch(`${RAZORPAY_API_BASE}${path}`, {
+// Raw REST call to the Cashfree API. Cashfree authenticates with two headers
+// rather than basic auth, and requires an explicit API version — an
+// unversioned request is rejected outright.
+async function cashfreeRequest(method, path, data) {
+  const res = await fetch(`${env.cashfree.apiBase}${path}`, {
     method,
     headers: {
-      Authorization: `Basic ${auth}`,
+      'x-client-id': env.cashfree.appId,
+      'x-client-secret': env.cashfree.secretKey,
+      'x-api-version': env.cashfree.apiVersion,
       'Content-Type': 'application/json',
     },
     body: data ? JSON.stringify(data) : undefined,
   });
   const json = await res.json().catch(() => ({}));
   if (!res.ok) {
-    const err = new Error(json.error?.description || `Razorpay API error (${res.status})`);
+    const err = new Error(json.message || `Cashfree API error (${res.status})`);
     err.status = res.status;
-    err.details = json.error || json;
+    err.details = json;
     throw err;
   }
   return json;
 }
 
 // Idempotent contact + fund-account resolution for a payout beneficiary.
-// Reuses an existing contact by email and an existing fund account by
-// bank identifiers so repeated payouts to the same owner don't duplicate.
-async function findOrCreatePayoutContact(user) {
-  const list = await razorpayRequest('GET', `/v1/contacts?email=${encodeURIComponent(user.email)}`);
-  const existing = (list.items || []).find((c) => c.email === user.email);
-  if (existing) return existing;
-  return razorpayRequest('POST', '/v1/contacts', {
-    name: user.name || 'IdleX user',
-    email: user.email,
-    contact: user.phone || undefined,
-    type: 'customer',
-  });
+// Cashfree Payouts models a beneficiary directly rather than Razorpay's
+// contact + fund-account pair, so one idempotent lookup replaces two.
+// The beneficiary id is derived from the owner's id, which makes repeat
+// payouts to the same owner reuse the same record without a search.
+function beneficiaryIdFor(user) {
+  return `idlex_owner_${user._id}`;
 }
 
-async function findOrCreateFundAccount(contactId, settings) {
-  const list = await razorpayRequest('GET', `/v1/fund_accounts?contact_id=${contactId}`);
-  const existing = (list.items || []).find(
-    (fa) =>
-      fa.bank_account?.ifsc === settings.ifscOrRoutingNumber &&
-      fa.bank_account?.account_number === settings.accountNumber
-  );
-  if (existing) return existing;
-  return razorpayRequest('POST', '/v1/fund_accounts', {
-    contact_id: contactId,
-    account_type: 'bank_account',
-    bank_account: {
-      name: settings.accountHolderName,
-      ifsc: settings.ifscOrRoutingNumber,
-      account_number: settings.accountNumber,
+async function findOrCreateBeneficiary(user, settings) {
+  const beneId = beneficiaryIdFor(user);
+  try {
+    const existing = await cashfreeRequest('GET', `/payout/beneficiary?beneficiary_id=${beneId}`);
+    if (existing?.beneficiary_id) return existing;
+  } catch (err) {
+    // 404 means "not created yet", which is the normal first-payout path.
+    // Anything else is a real failure and must not be swallowed.
+    if (err.status !== 404) throw err;
+  }
+
+  return cashfreeRequest('POST', '/payout/beneficiary', {
+    beneficiary_id: beneId,
+    beneficiary_name: settings.accountHolderName,
+    beneficiary_instrument_details: {
+      bank_account_number: settings.accountNumber,
+      bank_ifsc: settings.ifscOrRoutingNumber,
+      ...(settings.upiId ? { vpa: settings.upiId } : {}),
+    },
+    beneficiary_contact_details: {
+      beneficiary_email: user.email,
+      beneficiary_phone: (user.phone || '').replace(/\D/g, '').slice(-10) || undefined,
     },
   });
 }
 
 // Owner payout for a captured payment. The owner receives the rental
 // subtotal; the platform keeps the service fee and the deposit stays
-// refundable to the renter. If Razorpay keys or the settlement account or
-// the owner's payout settings are missing, the payout is recorded as
-// 'pending' and the API is skipped (dev/test mode) — the booking flow
-// itself never fails because of a payout problem.
+// refundable to the renter. If Cashfree credentials or the owner's payout
+// settings are missing, the payout is recorded as 'pending' and the API is
+// skipped (dev/test mode) — the booking flow itself never fails because of
+// a payout problem.
 async function settleOwnerPayout(payment, booking) {
   const listing = await require('../../models/Listing').findById(payment.listing).select('owner title');
   if (!listing) return null;
@@ -94,31 +92,29 @@ async function settleOwnerPayout(payment, booking) {
     status: 'pending',
   });
 
-  const client = getRazorpayClient();
-  if (!client || !env.razorpay.payoutAccountNumber) return payout;
+  if (!isGatewayConfigured()) return payout;
 
   try {
     const User = require('../../models/User');
     const owner = await User.findById(listing.owner).select('name email phone');
     if (!owner) return payout;
 
-    const contact = await findOrCreatePayoutContact(owner);
-    const fundAccount = await findOrCreateFundAccount(contact.id, settings);
-    const referenceId = `idlex_${booking._id}`;
+    const beneficiary = await findOrCreateBeneficiary(owner, settings);
+    // Derived from the booking, so a retried payout is recognised by
+    // Cashfree as the same transfer rather than paying the owner twice.
+    const transferId = `idlex_${booking._id}`;
 
-    const result = await razorpayRequest('POST', '/v1/payouts', {
-      account_number: env.razorpay.payoutAccountNumber,
-      fund_account_id: fundAccount.id,
-      amount: Math.round(booking.subtotal * 100), // paise
-      currency: 'INR',
-      mode: 'IMPS',
-      purpose: 'payout',
-      reference_id: referenceId,
-      narration: `Rental payout for booking ${booking._id}`,
-      queue_if_low_balance: true,
+    const result = await cashfreeRequest('POST', '/payout/transfers', {
+      transfer_id: transferId,
+      // Rupees, not paise — Cashfree differs from Razorpay here, and
+      // getting it wrong pays out 100x the intended amount.
+      transfer_amount: booking.subtotal,
+      transfer_mode: 'banktransfer',
+      beneficiary_details: { beneficiary_id: beneficiary.beneficiary_id },
+      transfer_remarks: `Rental payout for booking ${booking._id}`,
     });
 
-    payout.gatewayPayoutId = result.id;
+    payout.gatewayPayoutId = result.cf_transfer_id || transferId;
     payout.status = 'paid';
     await payout.save();
     return payout;
@@ -142,22 +138,12 @@ async function createCheckoutOrder(payerId, { listingId, startDate, endDate }) {
   }
 
   const cost = bookingsService.computeCost(listing, startDate, endDate);
-  const client = getRazorpayClient();
 
-  let gatewayOrderId;
-  if (client) {
-    const order = await client.orders.create({
-      amount: Math.round(cost.totalAmount * 100), // paise
-      currency: 'INR',
-      receipt: `rental_${Date.now()}`,
-      notes: { listing: listing._id.toString(), startDate, endDate },
-    });
-    gatewayOrderId = order.id;
-  } else {
-    // Dev fallback — same shape as a real order id, so nothing downstream
-    // has to know whether the gateway was actually called.
-    gatewayOrderId = `order_${crypto.randomBytes(8).toString('hex')}`;
-  }
+  // Our own order id. Cashfree accepts a merchant-supplied id, which means
+  // the Payment row and the gateway order share a key from the start rather
+  // than the record depending on whatever the gateway returns.
+  const gatewayOrderId = `idlex_${Date.now()}_${crypto.randomBytes(4).toString('hex')}`;
+  const configured = isGatewayConfigured();
 
   const payment = await Payment.create({
     payer: payerId,
@@ -170,32 +156,71 @@ async function createCheckoutOrder(payerId, { listingId, startDate, endDate }) {
     status: 'created',
   });
 
-  return { payment, configured: !! client };  
+  let paymentSessionId = null;
+  if (configured) {
+    const User = require('../../models/User');
+    const payer = await User.findById(payerId).select('name email phone');
+    const order = await cashfreeRequest('POST', '/pg/orders', {
+      order_id: gatewayOrderId,
+      // Rupees, not paise. Razorpay used paise; sending paise here would
+      // charge the renter 100x.
+      order_amount: cost.totalAmount,
+      order_currency: 'INR',
+      customer_details: {
+        customer_id: String(payerId),
+        customer_name: payer?.name || 'IdleX user',
+        customer_email: payer?.email,
+        // Cashfree requires a 10-digit Indian number and rejects the order
+        // outright without one.
+        customer_phone: (payer?.phone || '').replace(/\D/g, '').slice(-10) || '9999999999',
+      },
+      order_meta: {
+        return_url: `${env.clientUrl}/checkout/${listing._id}?order_id={order_id}`,
+        notify_url: `${env.clientUrl}/api/webhooks/payments`,
+      },
+      order_note: `Rental of ${listing.title}`,
+    });
+    // The session id is what the browser SDK consumes; it is not a secret
+    // in the way the API key is, but it is single-use per order.
+    paymentSessionId = order.payment_session_id;
+  }
+
+  return { payment, configured, paymentSessionId };
 }
 
-// Client-side payment verification: Razorpay signs `${orderId}|${paymentId}`
-// with the key secret; the signature returned by the checkout popup must
-// match. In dev (no keys) the fixed dev signature is accepted.
-function verifyPaymentSignature({ orderId, paymentId, signature }) {
-  const client = getRazorpayClient();
-  if (!client) return signature === DEV_SIGNATURE;
+// Cashfree does not hand the browser a signature to verify. The supported
+// check is to ask the API what actually happened to the order — which is
+// stronger: the answer comes from the gateway rather than from the client,
+// so a forged callback cannot fabricate a successful payment.
+async function verifyPaymentByOrder(orderId) {
+  if (!isGatewayConfigured()) {
+    // Dev mode: no gateway to ask, so accept and synthesise a payment id.
+    return { paid: true, gatewayPaymentId: `dev_${crypto.randomBytes(6).toString('hex')}` };
+  }
 
-  const expected = crypto
-    .createHmac('sha256', env.razorpay.keySecret)
-    .update(`${orderId}|${paymentId}`)
-    .digest('hex');
-  return expected === signature;
+  const payments = await cashfreeRequest('GET', `/pg/orders/${encodeURIComponent(orderId)}/payments`);
+  const list = Array.isArray(payments) ? payments : [];
+  const success = list.find((p) => p.payment_status === 'SUCCESS');
+  if (!success) {
+    const attempted = list.map((p) => p.payment_status).join(', ') || 'no attempts';
+    return { paid: false, reason: `Payment not successful (${attempted})` };
+  }
+  return { paid: true, gatewayPaymentId: String(success.cf_payment_id) };
 }
 
-// Gateway webhook signature: HMAC-SHA256 of the raw request body, signed
-// with the webhook secret set in the Razorpay dashboard.
-function verifyWebhookSignature(rawBody, signature) {
-  if (!env.razorpay.webhookSecret || !signature) return false;
+// Webhook signature: Cashfree signs `timestamp + rawBody` with the webhook
+// secret and base64-encodes it — not hex, and not the body alone. Both
+// differences silently fail a Razorpay-shaped implementation.
+function verifyWebhookSignature(rawBody, signature, timestamp) {
+  if (!env.cashfree.webhookSecret || !signature || !timestamp) return false;
   const expected = crypto
-    .createHmac('sha256', env.razorpay.webhookSecret)
-    .update(rawBody)
-    .digest('hex');
-  return expected === signature;
+    .createHmac('sha256', env.cashfree.webhookSecret)
+    .update(`${timestamp}${rawBody}`)
+    .digest('base64');
+  // timingSafeEqual needs equal lengths, so compare only when they match.
+  const a = Buffer.from(expected);
+  const b = Buffer.from(String(signature));
+  return a.length === b.length && crypto.timingSafeEqual(a, b);
 }
 
 // Shared capture path for the client-side verification endpoint and the
@@ -227,11 +252,12 @@ async function markPaymentCaptured({ gatewayOrderId, gatewayPaymentId, signature
   payment.booking = booking._id;
   await payment.save();
 
-  // Owner payout for the rental subtotal. Never blocks or fails the
-  // capture — failures leave the payout as 'pending'/'failed' to retry.
-  await settleOwnerPayout(payment, booking).catch((err) => {
-    console.error(`[payout] skipped for booking ${booking._id}:`, err.message);
-  });
+  // ESCROW: the owner is NOT paid here. At capture the money is held —
+  // rent until the rental starts, deposit until the item comes back. Paying
+  // at capture would mean the owner has the rent before the renter has the
+  // item, which is exactly what escrow exists to prevent.
+  // Release happens in releaseRentToOwner (rental start) and
+  // refundDepositToRenter (return confirmed).
 
   await notifyAdminsOfCapture(payment, booking);
 
@@ -271,9 +297,75 @@ async function notifyAdminsOfCapture(payment, booking) {
   }
 }
 
+
+// --- Escrow release ---------------------------------------------------------
+
+// Rent -> owner, once the rental has actually started. Idempotent: a second
+// call is a no-op, so a retried request cannot pay the owner twice.
+async function releaseRentToOwner(booking) {
+  if (booking.escrow?.rentStatus === 'released') return { alreadyReleased: true };
+
+  const payment = await Payment.findOne({ booking: booking._id, status: 'captured' });
+  if (!payment) throw ApiError.badRequest('No captured payment for this booking');
+
+  const payout = await settleOwnerPayout(payment, booking);
+
+  booking.escrow.rentStatus = 'released';
+  booking.escrow.rentReleasedAt = new Date();
+  await booking.save();
+
+  return { payout, amount: booking.subtotal };
+}
+
+// Deposit -> renter, after the owner confirms the return. `deduction` is the
+// amount withheld for damage, which only an admin resolving a dispute may
+// set — an owner cannot deduct unilaterally.
+async function refundDepositToRenter(booking, { deduction = 0, reason = null } = {}) {
+  if (['refunded', 'partially_deducted', 'forfeited'].includes(booking.escrow?.depositStatus)) {
+    return { alreadyProcessed: true };
+  }
+
+  const deposit = booking.securityDeposit || 0;
+  if (deposit <= 0) {
+    booking.escrow.depositStatus = 'refunded';
+    booking.escrow.depositRefundedAt = new Date();
+    await booking.save();
+    return { refunded: 0 };
+  }
+
+  const withheld = Math.min(Math.max(deduction, 0), deposit);
+  const refundAmount = deposit - withheld;
+
+  const payment = await Payment.findOne({ booking: booking._id, status: 'captured' });
+  let gatewayRefundId = null;
+
+  if (refundAmount > 0 && payment?.gatewayPaymentId && isGatewayConfigured()) {
+    // Back to the original payment instrument, as the spec requires — the
+    // renter should not have to supply bank details to get their own money.
+    const refund = await cashfreeRequest('POST', `/pg/orders/${payment.gatewayOrderId}/refunds`, {
+      refund_amount: refundAmount,
+      refund_id: `dep_${booking._id}`,
+      refund_note: reason || 'Security deposit refund',
+      refund_speed: 'STANDARD',
+    });
+    gatewayRefundId = refund.cf_refund_id || refund.refund_id || null;
+  }
+
+  booking.escrow.depositStatus =
+    withheld === 0 ? 'refunded' : withheld >= deposit ? 'forfeited' : 'partially_deducted';
+  booking.escrow.depositRefundedAt = new Date();
+  booking.escrow.depositDeducted = withheld;
+  booking.escrow.depositDeductionReason = reason;
+  await booking.save();
+
+  return { refunded: refundAmount, withheld, gatewayRefundId };
+}
+
 module.exports = {
+  releaseRentToOwner,
+  refundDepositToRenter,
   createCheckoutOrder,
-  verifyPaymentSignature,
+  verifyPaymentByOrder,
   verifyWebhookSignature,
   markPaymentCaptured,
   settleOwnerPayout,

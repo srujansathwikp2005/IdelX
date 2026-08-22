@@ -77,10 +77,10 @@ EXTRA_VARS=$(cat <<JSON
   "smtp_user": "${IDLEX_SMTP_USER:-}",
   "smtp_pass": "${IDLEX_SMTP_PASS:-}",
   "smtp_from": "${IDLEX_SMTP_FROM:-}",
-  "razorpay_key_id": "${IDLEX_RAZORPAY_KEY_ID:-}",
-  "razorpay_key_secret": "${IDLEX_RAZORPAY_KEY_SECRET:-}",
-  "razorpay_webhook_secret": "${IDLEX_RAZORPAY_WEBHOOK_SECRET:-}",
-  "razorpay_account_number": "${IDLEX_RAZORPAY_ACCOUNT_NUMBER:-}",
+  "cashfree_app_id": "${IDLEX_CASHFREE_APP_ID:-}",
+  "cashfree_secret_key": "${IDLEX_CASHFREE_SECRET_KEY:-}",
+  "cashfree_webhook_secret": "${IDLEX_CASHFREE_WEBHOOK_SECRET:-}",
+  "cashfree_mode": "${IDLEX_CASHFREE_MODE:-sandbox}",
   "client_url": "${IDLEX_CLIENT_URL:-}"
 }
 JSON

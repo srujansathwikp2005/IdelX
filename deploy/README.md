@@ -304,7 +304,7 @@ Configure under **Settings → Environments → production**.
 |---|---|
 | `RENFLAIR_API_KEY` | SMS OTPs are written to the journal instead of sent |
 | `SMTP_HOST`, `SMTP_USER`, `SMTP_PASS`, `SMTP_FROM` | Email OTPs are logged instead of sent |
-| `RAZORPAY_KEY_ID`, `RAZORPAY_KEY_SECRET`, `RAZORPAY_WEBHOOK_SECRET`, `RAZORPAY_ACCOUNT_NUMBER` | Checkout fails at payment |
+| `CASHFREE_APP_ID`, `CASHFREE_SECRET_KEY` | Checkout falls back to dev mode and takes no real money |
 
 #### Variables (not secrets)
 
@@ -324,6 +324,11 @@ Configure under **Settings → Environments → production**.
 > that account's password to match, and demotes and deactivates any other
 > account holding the admin role. Changing the secret and redeploying is
 > therefore the supported way to rotate the administrator credential.
+
+> Cashfree PG signs webhooks with the **secret key itself** — there is no
+> separate webhook secret in its dashboard, unlike Razorpay.
+> `CASHFREE_WEBHOOK_SECRET` therefore defaults to `CASHFREE_SECRET_KEY` and
+> only needs setting if Cashfree ever issues a distinct one.
 
 > `MONGO_URI` must name a database. Atlas copies a connection string ending
 > `/?appName=…`, and Mongoose silently writes to `test` if the path is empty.
