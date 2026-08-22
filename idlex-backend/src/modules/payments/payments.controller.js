@@ -1,6 +1,8 @@
 const asyncHandler = require('../../utils/asyncHandler');
 const ApiResponse = require('../../utils/ApiResponse');
 const ApiError = require('../../utils/ApiError');
+const { sendPaymentIssueEmail } = require('../../utils/email');
+const Payment = require('../../models/Payment');
 const env = require('../../config/env');
 const paymentsService = require('./payments.service');
 const { Payout, PayoutSettings } = require('../../models/Payout');
@@ -64,7 +66,38 @@ const verify = asyncHandler(async (req, res) => {
   // browser hands us, ask Cashfree what happened to this order — a forged
   // callback cannot make an unpaid order report SUCCESS.
   const result = await paymentsService.verifyPaymentByOrder(orderId);
-  if (!result.paid) throw ApiError.badRequest(result.reason || 'Payment was not completed');
+  if (!result.paid) {
+    // Email the reference rather than relying on the renter to copy it off
+    // the screen — the moment a payment looks failed is exactly when someone
+    // closes the tab, and then neither they nor support has anything to
+    // search on. The order id is our own, so it exists even when the gateway
+    // returned nothing useful.
+    const payment = await Payment.findOne({ gatewayOrderId: orderId })
+      .populate('payer', 'name email')
+      .populate('listing', 'title');
+    if (payment?.payer?.email) {
+      sendPaymentIssueEmail({
+        to: payment.payer.email,
+        trackingId: orderId,
+        amount: payment.amount,
+        itemTitle: typeof payment.listing === 'object' ? payment.listing?.title : 'your rental',
+        reason: result.reason,
+      }).catch((err) => console.error('[payment] issue email failed:', err.message));
+    }
+
+    logAudit({
+      action: 'payment.verify_failed',
+      category: 'payment',
+      resourceType: 'payment',
+      resourceId: orderId,
+      summary: 'Payment could not be confirmed',
+      details: { trackingId: orderId, reason: result.reason },
+      req,
+    });
+
+    // The tracking id travels in details so the client can display it.
+    throw new ApiError(400, result.reason || 'Payment was not completed', { trackingId: orderId });
+  }
 
   const { booking, created } = await paymentsService.markPaymentCaptured({
     gatewayOrderId: orderId,

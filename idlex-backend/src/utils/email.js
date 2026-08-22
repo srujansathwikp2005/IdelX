@@ -78,4 +78,34 @@ async function sendPasswordResetEmail({ to, resetUrl }) {
   await sendEmail({ to, subject, text, html });
 }
 
-module.exports = { sendEmail, sendOtpEmail, sendPasswordResetEmail };
+// Sent when a payment could not be confirmed. The point is the reference:
+// without one, a renter chasing a missing payment has nothing to quote and
+// support has nothing to search on.
+async function sendPaymentIssueEmail({ to, trackingId, amount, itemTitle, reason }) {
+  const subject = `IdleX payment reference ${trackingId}`;
+  const text =
+    `We could not confirm your payment for "${itemTitle}".\n\n` +
+    `Tracking ID: ${trackingId}\n` +
+    `Amount: Rs ${amount}\n\n` +
+    `If money left your account it will be returned automatically, usually within ` +
+    `5-7 working days. Nothing further is needed from you.\n\n` +
+    `Before paying again, check My Rentals — if the booking is listed there the ` +
+    `payment did go through.\n\n` +
+    `Quote the tracking ID above if you contact support.`;
+  const html = `
+    <div style="font-family: Arial, sans-serif; max-width: 520px; margin: 0 auto; padding: 24px; border: 1px solid #e5e7eb; border-radius: 12px;">
+      <div style="font-size: 20px; font-weight: 700; margin-bottom: 16px;">Idle<span style="color:#2563EB;">X</span></div>
+      <p style="color: #374151; line-height: 1.6;">We could not confirm your payment for <strong>${itemTitle}</strong>.</p>
+      <div style="background:#f9fafb;border:1px solid #e5e7eb;border-radius:8px;padding:16px;margin:20px 0;">
+        <p style="margin:0 0 6px;color:#6b7280;font-size:12px;text-transform:uppercase;letter-spacing:.05em;">Tracking ID</p>
+        <p style="margin:0;font-family:monospace;font-size:15px;font-weight:700;color:#111827;word-break:break-all;">${trackingId}</p>
+        <p style="margin:12px 0 0;color:#6b7280;font-size:13px;">Amount: Rs ${amount}</p>
+      </div>
+      <p style="color: #374151; line-height: 1.6;">If money left your account it will be returned automatically, usually within 5-7 working days. Nothing further is needed from you.</p>
+      <p style="color: #374151; line-height: 1.6;"><strong>Before paying again</strong>, check My Rentals — if the booking is listed there, the payment did go through.</p>
+      <p style="color: #6b7280; font-size: 13px;">Quote the tracking ID if you contact support.${reason ? ` Reference: ${reason}` : ''}</p>
+    </div>`;
+  await sendEmail({ to, subject, text, html });
+}
+
+module.exports = { sendEmail, sendOtpEmail, sendPasswordResetEmail, sendPaymentIssueEmail };
