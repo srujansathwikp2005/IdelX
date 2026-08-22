@@ -3,6 +3,8 @@ const User = require('../../models/User');
 const ApiError = require('../../utils/ApiError');
 const { signAccessToken, signRefreshToken, signPhoneVerificationToken, verifyPhoneVerificationToken } = require('../../utils/tokens');
 const { generateOtp, sendOtpSms, normalizePhone, issuePhoneOtp, verifyPhoneOtpRecord, issueEmailOtp, verifyEmailOtpRecord } = require('../../utils/otp');
+const { sendPasswordResetEmail } = require('../../utils/email');
+const env = require('../../config/env');
 
 // Business logic lives here, controllers stay thin (parse req -> call
 // service -> shape response) — mirrors keeping Django views thin and
@@ -153,8 +155,23 @@ async function requestPasswordReset(email) {
   user.passwordResetExpires = new Date(Date.now() + 30 * 60 * 1000);
   await user.save();
 
-  // In production: send `token` via an email provider (SendGrid/SES).
-  console.log(`[auth] Password reset token for ${email}: ${token}`);
+  const resetUrl = `${env.clientUrl}/reset-password?token=${token}`;
+
+  try {
+    await sendPasswordResetEmail({ to: user.email, resetUrl });
+  } catch (err) {
+    // Never fail the request because delivery failed: the response is
+    // deliberately identical whether or not the address exists, and a 500
+    // here would leak that it does. Log loudly so a broken mailer is
+    // visible in the journal rather than silently swallowing resets.
+    console.error(`[auth] Failed to send password reset email to ${email}:`, err.message);
+  }
+
+  // Without SMTP configured the mailer logs instead of sending, so surface
+  // the link too — otherwise a local dev run has no way to complete a reset.
+  if (!env.smtp.host) {
+    console.log(`[auth] Password reset link for ${email}: ${resetUrl}`);
+  }
 }
 
 async function confirmPasswordReset(token, newPassword) {
