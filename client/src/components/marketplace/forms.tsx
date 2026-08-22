@@ -366,6 +366,9 @@ export function ListingStepperForm({ edit = false, listingId }: { edit?: boolean
   const [selectedPhotos, setSelectedPhotos] = React.useState<Array<{ id: number; file: File; url: string }>>([]);
   const MAX_PHOTOS = 10;
   const [photoError, setPhotoError] = React.useState<string | null>(null);
+  // Conversion is synchronous-feeling but can take a moment on large HEIC
+  // files; without feedback the picker looks like it did nothing.
+  const [convertingPhotos, setConvertingPhotos] = React.useState(false);
   const nextPhotoId = React.useRef(0);
   const [existingPhotos, setExistingPhotos] = React.useState<Listing["photos"]>([]);
   const [error, setError] = React.useState<string | null>(null);
@@ -438,37 +441,82 @@ export function ListingStepperForm({ edit = false, listingId }: { edit?: boolean
   const ACCEPTED_TYPES = ["image/jpeg", "image/png", "image/webp"];
   const MAX_FILE_BYTES = 10 * 1024 * 1024;
 
-  const addPhotos = (files: FileList) => {
-    const rejected: string[] = [];
+  // Anything the server will not take is re-encoded to JPEG in the browser.
+  // This exists mainly for HEIC: every photo an iPhone takes is HEIC, and
+  // rejecting them would block most owners from listing at all.
+  //
+  // Safari decodes HEIC natively, so a canvas round-trip works there. Other
+  // browsers cannot, and the draw produces a blank image — detected by
+  // checking the decoded dimensions, in which case the file is rejected with
+  // a message that says what to do instead.
+  const toUploadableImage = (file: File): Promise<File> =>
+    new Promise((resolve, reject) => {
+      if (ACCEPTED_TYPES.includes(file.type)) return resolve(file);
 
-    setSelectedPhotos((prev) => {
-      const room = MAX_PHOTOS - prev.length - existingPhotos.length;
-      if (room <= 0) {
-        rejected.push(`You can upload at most ${MAX_PHOTOS} photos.`);
-        return prev;
-      }
-
-      const usable: typeof prev = [];
-      for (const file of Array.from(files)) {
-        if (usable.length >= room) {
-          rejected.push(`Only ${room} more photo${room === 1 ? "" : "s"} could be added.`);
-          break;
+      const url = URL.createObjectURL(file);
+      const img = new Image();
+      img.onload = () => {
+        URL.revokeObjectURL(url);
+        if (!img.naturalWidth || !img.naturalHeight) {
+          return reject(new Error(`${file.name} could not be read by this browser.`));
         }
-        if (!ACCEPTED_TYPES.includes(file.type)) {
-          // The server rejects anything else, so accepting it here would only
-          // fail later with a less useful message.
-          rejected.push(`${file.name} is not a JPG, PNG or WebP image.`);
-          continue;
-        }
-        if (file.size > MAX_FILE_BYTES) {
-          rejected.push(`${file.name} is larger than 10MB.`);
-          continue;
-        }
-        usable.push({ id: nextPhotoId.current++, file, url: URL.createObjectURL(file) });
-      }
-      return [...prev, ...usable];
+        const canvas = document.createElement("canvas");
+        canvas.width = img.naturalWidth;
+        canvas.height = img.naturalHeight;
+        canvas.getContext("2d")?.drawImage(img, 0, 0);
+        canvas.toBlob(
+          (blob) => {
+            if (!blob) return reject(new Error(`${file.name} could not be converted.`));
+            resolve(
+              new File([blob], file.name.replace(/\.[^.]+$/, "") + ".jpg", { type: "image/jpeg" })
+            );
+          },
+          "image/jpeg",
+          0.9
+        );
+      };
+      img.onerror = () => {
+        URL.revokeObjectURL(url);
+        reject(new Error(`${file.name} is not an image this browser can open.`));
+      };
+      img.src = url;
     });
 
+  const addPhotos = async (files: FileList) => {
+    const rejected: string[] = [];
+    // Computed before any await: reading state inside an async loop would use
+    // a stale snapshot if the owner picks again while conversion is running.
+    const room = MAX_PHOTOS - selectedPhotos.length - existingPhotos.length;
+
+    if (room <= 0) {
+      setPhotoError(`You can upload at most ${MAX_PHOTOS} photos.`);
+      return;
+    }
+
+    setConvertingPhotos(true);
+    const usable: Array<{ id: number; file: File; url: string }> = [];
+
+    for (const original of Array.from(files)) {
+      if (usable.length >= room) {
+        rejected.push(`Only ${room} more photo${room === 1 ? "" : "s"} could be added.`);
+        break;
+      }
+      if (original.size > MAX_FILE_BYTES) {
+        rejected.push(`${original.name} is larger than 10MB.`);
+        continue;
+      }
+      try {
+        // HEIC and friends become JPEG here; formats the server already
+        // accepts pass through untouched.
+        const file = await toUploadableImage(original);
+        usable.push({ id: nextPhotoId.current++, file, url: URL.createObjectURL(file) });
+      } catch (err) {
+        rejected.push(err instanceof Error ? err.message : `${original.name} could not be added.`);
+      }
+    }
+
+    if (usable.length) setSelectedPhotos((prev) => [...prev, ...usable]);
+    setConvertingPhotos(false);
     setPhotoError(rejected.length ? rejected.join(" ") : null);
   };
 
@@ -625,18 +673,25 @@ export function ListingStepperForm({ edit = false, listingId }: { edit?: boolean
               <span>Upload</span>
               <input
                 type="file"
-                // Matches ACCEPTED_TYPES: image/* would let the picker offer
-                // HEIC and GIF, which the server then rejects.
-                accept="image/jpeg,image/png,image/webp"
+                // image/* on purpose. A narrow accept list greys out HEIC in
+                // the iOS and macOS photo pickers — which is what every
+                // iPhone photo is — so most of the library becomes
+                // unselectable and it looks like multi-select is broken.
+                // Better to let them be picked and convert on selection.
+                accept="image/*"
                 multiple
                 className="hidden"
                 onChange={(e) => {
-                  if (e.target.files?.length) addPhotos(e.target.files);
+                  if (e.target.files?.length) void addPhotos(e.target.files);
                   // Reset so picking the same file twice still fires onChange.
                   e.target.value = "";
                 }}
               />
             </label>
+
+            {convertingPhotos && (
+              <p className="w-full text-sm text-muted-foreground">Preparing photos…</p>
+            )}
 
             {photoError && (
               <p className="w-full text-sm text-danger" role="alert">
