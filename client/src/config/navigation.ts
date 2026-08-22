@@ -11,7 +11,10 @@ export const RENTER_SIDEBAR: Array<{ label: string; href: string; icon: string; 
   { label: "Messages", href: ROUTES.MESSAGES, icon: "MessageCircle" },
   { label: "Reviews", href: ROUTES.REVIEWS, icon: "Star" },
   { label: "My Profile", href: ROUTES.PROFILE, icon: "User" },
-  { label: "KYC Verification", href: ROUTES.KYC_VERIFICATION, icon: "ShieldCheck", badge: "Verified" },
+  // No badge here: the real KYC status is injected by the sidebar at render
+  // time. A literal string would report "Verified" to every user regardless
+  // of their actual state.
+  { label: "KYC Verification", href: ROUTES.KYC_VERIFICATION, icon: "ShieldCheck" },
   { label: "Settings", href: ROUTES.SETTINGS, icon: "Settings" },
   { label: "Help & Support", href: ROUTES.HELP, icon: "HelpCircle" },
 ];
@@ -25,7 +28,10 @@ export const OWNER_SIDEBAR: Array<{ label: string; href: string; icon: string; b
   { label: "Messages", href: ROUTES.MESSAGES, icon: "MessageCircle" },
   { label: "Reviews", href: ROUTES.REVIEWS, icon: "Star" },
   { label: "Payouts", href: ROUTES.PAYMENTS, icon: "Banknote" },
-  { label: "KYC Verification", href: ROUTES.KYC_VERIFICATION, icon: "ShieldCheck", badge: "Verified" },
+  // No badge here: the real KYC status is injected by the sidebar at render
+  // time. A literal string would report "Verified" to every user regardless
+  // of their actual state.
+  { label: "KYC Verification", href: ROUTES.KYC_VERIFICATION, icon: "ShieldCheck" },
   { label: "Profile Settings", href: ROUTES.PROFILE, icon: "User" },
   { label: "Help & Support", href: ROUTES.HELP, icon: "HelpCircle" },
 ];
@@ -37,7 +43,9 @@ export const ADMIN_SIDEBAR: Array<{ label: string; href: string; icon: string; b
   { label: "Listings", href: ROUTES.ADMIN_LISTINGS, icon: "Package" },
   { label: "Bookings", href: ROUTES.ADMIN_BOOKINGS, icon: "CalendarCheck" },
   { label: "Payments & Payouts", href: ROUTES.ADMIN_PAYMENTS, icon: "Wallet" },
-  { label: "KYC Verification", href: ROUTES.ADMIN_KYC, icon: "ShieldCheck", badge: 12 },
+  // The count is injected at render time from the real pending queue; a
+  // literal here reported 12 submissions awaiting review no matter what.
+  { label: "KYC Verification", href: ROUTES.ADMIN_KYC, icon: "ShieldCheck" },
   { label: "Disputes", href: ROUTES.ADMIN_DISPUTES, icon: "AlertTriangle" },
   { label: "Reviews & Reports", href: ROUTES.ADMIN_REPORTS, icon: "Flag" },
   { label: "Extension Requests", href: ROUTES.ADMIN_EXTENSION_REQUESTS, icon: "Repeat", badge: 6 },

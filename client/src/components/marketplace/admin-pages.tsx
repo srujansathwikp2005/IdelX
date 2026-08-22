@@ -8,6 +8,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input, Select } from "@/components/ui/input";
 import { Table, Td, Th } from "@/components/ui/data-table";
+import { Modal } from "@/components/ui/modal";
 import { LineChart, BarChart, DonutChart, ProgressRows, type ChartDatum } from "@/components/marketplace/charts";
 import { api } from "@/lib/api-client";
 import { RequireAuth, useAuth, errorMessage, useIsMounted } from "@/lib/auth";
@@ -667,6 +668,7 @@ export function AdminUsersPage() {
             <tr>
               <Th>Name</Th>
               <Th>Email</Th>
+              <Th>Phone</Th>
               <Th>Role</Th>
               <Th>Status</Th>
               <Th>Action</Th>
@@ -677,6 +679,9 @@ export function AdminUsersPage() {
               <tr key={user._id}>
                 <Td>{user.name}</Td>
                 <Td>{user.email}</Td>
+                {/* phone is optional on the User model; say so rather than
+                    rendering an empty cell that looks like a loading state. */}
+                <Td>{user.phone || <span className="text-muted-foreground">Not provided</span>}</Td>
                 <Td>{user.role}</Td>
                 <Td><Badge variant={user.isActive ? "success" : "danger"}>{user.isActive ? "Active" : "Suspended"}</Badge></Td>
                 <Td><Button size="sm" variant={user.isActive ? "danger" : "outline"} onClick={() => suspend(user._id, user.isActive)}>{user.isActive ? "Suspend" : "Restore"}</Button></Td>
@@ -786,6 +791,9 @@ export function AdminDisputesPage() {
 
 export function AdminKycPage() {
   const { data, isLoading, error, refetch } = useFetchData<Kyc[]>("/api/admin/kyc", []);
+  // Which submission's bank details are open, or null for none. Holding the
+  // record itself keeps the dialog in step with the row that opened it.
+  const [bankDetailsFor, setBankDetailsFor] = React.useState<Kyc | null>(null);
 
   const review = async (id: string, status: "approved" | "rejected") => {
     await api.patch<Kyc>(`/api/admin/kyc/${id}`, { status, rejectionReason: status === "rejected" ? "Documents unclear" : undefined });
@@ -842,11 +850,19 @@ export function AdminKycPage() {
                 </Td>
                 <Td>
                   {kyc.bankDetails?.accountNumber ? (
-                    <div className="text-xs">
-                      <p className="font-semibold">{kyc.bankDetails.accountHolderName}</p>
-                      <p className="text-muted-foreground">{kyc.bankDetails.bankName} • {kyc.bankDetails.ifsc}</p>
-                      <p className="text-muted-foreground">••••{kyc.bankDetails.accountNumber.slice(-4)}{kyc.bankDetails.upiId ? ` • ${kyc.bankDetails.upiId}` : ""}</p>
-                    </div>
+                    // Summary in the table, full details on demand. The
+                    // account number stays masked in the list so a shoulder
+                    // glance at the queue does not expose every payout
+                    // account; opening the dialog is a deliberate act.
+                    <button
+                      type="button"
+                      onClick={() => setBankDetailsFor(kyc)}
+                      className="text-left text-xs hover:underline"
+                    >
+                      <p className="font-semibold text-primary">{kyc.bankDetails.accountHolderName}</p>
+                      <p className="text-muted-foreground">{kyc.bankDetails.bankName} • ••••{kyc.bankDetails.accountNumber.slice(-4)}</p>
+                      <p className="text-primary">View details</p>
+                    </button>
                   ) : (
                     "—"
                   )}
@@ -866,6 +882,41 @@ export function AdminKycPage() {
           </tbody>
         </Table>
       </section>
+
+      {/* Full bank details, shown only when an admin opts in. Values come
+          straight from the user's KYC record — nothing is derived here. */}
+      <Modal
+        open={!!bankDetailsFor}
+        onClose={() => setBankDetailsFor(null)}
+        title="Bank details"
+        description={
+          typeof bankDetailsFor?.user === "object"
+            ? `Payout account for ${bankDetailsFor.user.name}`
+            : "Payout account"
+        }
+      >
+        {bankDetailsFor?.bankDetails ? (
+          <dl className="grid grid-cols-1 gap-3 text-sm sm:grid-cols-2">
+            {([
+              ["Account holder", bankDetailsFor.bankDetails.accountHolderName],
+              ["Bank", bankDetailsFor.bankDetails.bankName],
+              ["Account number", bankDetailsFor.bankDetails.accountNumber],
+              ["IFSC", bankDetailsFor.bankDetails.ifsc],
+              ["UPI ID", bankDetailsFor.bankDetails.upiId],
+            ] as Array<[string, string | undefined]>).map(([label, value]) => (
+              <div key={label}>
+                <dt className="text-xs uppercase tracking-wide text-muted-foreground">{label}</dt>
+                <dd className="mt-0.5 font-medium break-all">
+                  {value || <span className="font-normal text-muted-foreground">Not provided</span>}
+                </dd>
+              </div>
+            ))}
+          </dl>
+        ) : (
+          <p className="text-sm text-muted-foreground">No bank details were submitted.</p>
+        )}
+      </Modal>
+
     </AdminShell>
   );
 }

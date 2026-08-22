@@ -11,6 +11,7 @@ import { Input } from "@/components/ui/input";
 import { RequireAuth, useAuth, errorMessage } from "@/lib/auth";
 import { api } from "@/lib/api-client";
 import type { Kyc, User } from "@/lib/api-types";
+import { kycDisplay } from "@/lib/kyc-status";
 import { ROUTES } from "@/lib/constants";
 
 function ProfileInner() {
@@ -134,9 +135,9 @@ function ProfileInner() {
               <Badge variant={user?.role === "admin" ? "success" : "default"}>{user?.role}</Badge>
               <Badge variant={user?.isOwner ? "warning" : "secondary"}>{user?.isOwner ? "Owner" : "Renter"}</Badge>
               <Badge
-                variant={kyc?.status === "approved" ? "success" : kyc?.status === "pending" ? "warning" : "secondary"}
+                variant={kycDisplay(kyc).variant}
               >
-                KYC {kyc?.status === "approved" ? "Approved" : kyc?.status === "pending" ? "Pending Review" : kyc?.status === "rejected" ? "Rejected" : "Not Verified"}
+                KYC {kycDisplay(kyc).label}
               </Badge>
               {kyc && kyc.status !== "approved" && (
                 <Link href={ROUTES.KYC} className="text-sm font-semibold text-primary hover:underline">

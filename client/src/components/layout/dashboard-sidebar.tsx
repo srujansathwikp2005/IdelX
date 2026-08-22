@@ -7,6 +7,9 @@ import { cn } from "@/lib/utils";
 import { Avatar } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { useFetchData } from "@/lib/use-fetch-data";
+import { kycDisplay } from "@/lib/kyc-status";
+import type { Kyc } from "@/lib/api-types";
 import { LogOut, X } from "@/components/ui/icons";
 import { ICONS } from "@/components/ui/icons";
 import { ADMIN_SIDEBAR, RENTER_SIDEBAR, OWNER_SIDEBAR } from "@/config/navigation";
@@ -24,7 +27,28 @@ export function DashboardSidebar({
   const isAdmin = user?.role === "admin";
   const isOwner = user?.isOwner || user?.role === "owner" || user?.role === "admin";
   // Admins only see admin routes — user routes are not displayed.
-  const items = isAdmin ? ADMIN_SIDEBAR : isOwner ? OWNER_SIDEBAR : RENTER_SIDEBAR;
+  const baseItems = isAdmin ? ADMIN_SIDEBAR : isOwner ? OWNER_SIDEBAR : RENTER_SIDEBAR;
+
+  // Real KYC state, not a literal. Non-admins see their own status; admins
+  // see how many submissions are actually awaiting review.
+  const { data: kyc } = useFetchData<Kyc>(user && !isAdmin ? "/api/kyc" : null, [user?._id, isAdmin]);
+  const { data: pendingKyc } = useFetchData<Kyc[]>(isAdmin ? "/api/admin/kyc?status=pending" : null, [isAdmin]);
+
+  const items = React.useMemo(
+    () =>
+      baseItems.map((item) => {
+        if (item.href === ROUTES.KYC_VERIFICATION) {
+          return { ...item, badge: kycDisplay(kyc).label };
+        }
+        if (item.href === ROUTES.ADMIN_KYC) {
+          const count = pendingKyc?.length ?? 0;
+          // Omit the badge entirely at zero rather than showing "0".
+          return count > 0 ? { ...item, badge: count } : item;
+        }
+        return item;
+      }),
+    [baseItems, kyc, pendingKyc]
+  );
   const homeHref = isAdmin ? ROUTES.ADMIN : ROUTES.DASHBOARD;
 
   return (
@@ -82,7 +106,10 @@ export function DashboardSidebar({
               <span className="flex-1">{item.label}</span>
               {item.badge && (
                 typeof item.badge === "string" ? (
-                  <Badge variant={item.badge === "Verified" ? "success" : "danger"} className="text-[10px]">
+                  <Badge
+                    variant={item.href === ROUTES.KYC_VERIFICATION ? kycDisplay(kyc).variant : "danger"}
+                    className="text-[10px]"
+                  >
                     {item.badge}
                   </Badge>
                 ) : (
