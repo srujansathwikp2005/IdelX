@@ -2,6 +2,7 @@ const asyncHandler = require('../../utils/asyncHandler');
 const ApiResponse = require('../../utils/ApiResponse');
 const ApiError = require('../../utils/ApiError');
 const Booking = require('../../models/Booking');
+const paymentsService = require('../payments/payments.service');
 const Listing = require('../../models/Listing');
 const bookingsService = require('./bookings.service');
 const { notify } = require('../notifications/notifications.service');
@@ -52,6 +53,46 @@ const getBooking = asyncHandler(async (req, res) => {
   if (!isParty && req.user.role !== 'admin') throw ApiError.forbidden('Not a party to this booking');
 
   return new ApiResponse(200, booking, 'Booking detail — StatusTimeline data').send(res);
+});
+
+
+// ESCROW step 7: the renter confirms they have the item. This is what
+// releases the rent to the owner — not payment, and not the owner's own
+// say-so. The renter attesting to receipt is the event the money waits for.
+const startRental = asyncHandler(async (req, res) => {
+  const booking = await Booking.findById(req.params.id);
+  if (!booking) throw ApiError.notFound('Booking not found');
+  if (booking.renter.toString() !== req.user._id.toString()) {
+    throw ApiError.forbidden('Only the renter can confirm they received the item');
+  }
+  if (booking.status !== 'confirmed') {
+    throw ApiError.badRequest(`Cannot start a rental in '${booking.status}' state`);
+  }
+
+  booking.status = 'active';
+  await booking.save();
+
+  // The payout must never block the state change: an owner with no payout
+  // details configured should not stop the renter using the item.
+  let released = null;
+  try {
+    released = await paymentsService.releaseRentToOwner(booking);
+  } catch (err) {
+    console.error(`[escrow] rent release failed for booking ${booking._id}:`, err.message);
+  }
+
+  logAudit({
+    actor: req.user._id,
+    action: 'booking.started',
+    category: 'booking',
+    resourceType: 'booking',
+    resourceId: booking._id.toString(),
+    summary: 'Renter confirmed receipt; rental started',
+    details: { rentReleased: booking.escrow?.rentStatus, amount: released?.amount },
+    req,
+  });
+
+  return new ApiResponse(200, booking, 'Rental started').send(res);
 });
 
 const confirmBooking = asyncHandler(async (req, res) => {
@@ -219,6 +260,17 @@ const confirmReturn = asyncHandler(async (req, res) => {
 
   booking.status = 'completed';
   await booking.save();
+
+  // ESCROW step 11A: no issue reported, so the deposit goes back to the
+  // renter's original payment method. A deduction only happens through the
+  // dispute path, where an admin decides — never here, on the owner's word.
+  let refund = null;
+  try {
+    refund = await paymentsService.refundDepositToRenter(booking);
+  } catch (err) {
+    console.error(`[escrow] deposit refund failed for booking ${booking._id}:`, err.message);
+  }
+
   logAudit({
     actor: req.user._id,
     action: 'booking.completed',
@@ -226,6 +278,7 @@ const confirmReturn = asyncHandler(async (req, res) => {
     resourceType: 'booking',
     resourceId: booking._id.toString(),
     summary: 'Completed a booking',
+    details: { depositStatus: booking.escrow?.depositStatus, refunded: refund?.refunded },
     req,
   });
 
@@ -242,6 +295,7 @@ const confirmReturn = asyncHandler(async (req, res) => {
 });
 
 module.exports = {
+  startRental,
   createBooking,
   myBookings,
   ownerBookings,

@@ -38,14 +38,24 @@ const env = {
 
   uploadDir: process.env.UPLOAD_DIR || 'uploads',
 
-  razorpay: {
-    keyId: process.env.RAZORPAY_KEY_ID,
-    keySecret: process.env.RAZORPAY_KEY_SECRET,
-    webhookSecret: process.env.RAZORPAY_WEBHOOK_SECRET,
-    // Settlement/merchant bank account number used as the source account
-    // for owner payouts (shown in Razorpay dashboard → Payouts). Unset in
-    // dev/test mode — payouts then stay in 'pending' without calling the API.
-    payoutAccountNumber: process.env.RAZORPAY_ACCOUNT_NUMBER,
+  // Payment gateway. Cashfree replaced Razorpay after Razorpay declined the
+  // account: they classified the marketplace as vehicle rental, a category
+  // they do not support.
+  cashfree: {
+    appId: process.env.CASHFREE_APP_ID,
+    secretKey: process.env.CASHFREE_SECRET_KEY,
+    webhookSecret: process.env.CASHFREE_WEBHOOK_SECRET,
+    // 'sandbox' or 'production'. The two use different hostnames, so this is
+    // what decides whether test keys reach the test environment.
+    mode: (process.env.CASHFREE_MODE || 'sandbox').toLowerCase(),
+    get apiBase() {
+      return this.mode === 'production'
+        ? 'https://api.cashfree.com'
+        : 'https://sandbox.cashfree.com';
+    },
+    // Pinned: Cashfree routes breaking changes through this header, so an
+    // unpinned integration can break without a deploy.
+    apiVersion: process.env.CASHFREE_API_VERSION || '2023-08-01',
   },
 
   admin: {

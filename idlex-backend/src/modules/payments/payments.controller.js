@@ -6,16 +6,16 @@ const paymentsService = require('./payments.service');
 const { Payout, PayoutSettings } = require('../../models/Payout');
 const { logAudit } = require('../../utils/audit');
 
-// Step 1 of the pay-first flow: create a Razorpay order for the listing +
-// dates. The client opens the Razorpay Checkout popup with the returned
-// order id, then calls /verify once the payment completes.
+// Step 1 of the pay-first flow: create a Cashfree order for the listing +
+// dates. The client opens Cashfree Checkout with the returned
+// payment_session_id, then calls /verify once the payment completes.
 const checkout = asyncHandler(async (req, res) => {
   const { listingId, startDate, endDate } = req.body;
   if (!listingId || !startDate || !endDate) {
     throw ApiError.badRequest('listingId, startDate and endDate are required');
   }
 
-  const { payment, configured } = await paymentsService.createCheckoutOrder(req.user._id, {
+  const { payment, configured, paymentSessionId } = await paymentsService.createCheckoutOrder(req.user._id, {
     listingId,
     startDate,
     endDate,
@@ -40,30 +40,36 @@ const checkout = asyncHandler(async (req, res) => {
       amount: payment.amount,
       currency: payment.currency,
       gateway: payment.gateway,
-      keyId: configured ? env.razorpay.keyId : null,
+      // What the browser SDK needs to open checkout. Replaces Razorpay's
+      // keyId + order_id pair — Cashfree scopes the session to one order.
+      paymentSessionId,
+      // 'sandbox' or 'production': the SDK must be initialised with the same
+      // mode the order was created in, or the session is rejected.
+      mode: env.cashfree.mode,
       configured,
     },
     'Payment order created'
   ).send(res);
 });
 
-// Step 2 of the pay-first flow: verify the signature Razorpay returned to
+// Step 2 of the pay-first flow: confirm with Cashfree that the order was
 // the checkout popup, then materialise the booking (status 'requested')
 // and notify the owner. Idempotent — safe to call again after a network
 // blip, the same order returns the already-created booking.
 const verify = asyncHandler(async (req, res) => {
-  const { orderId, paymentId, signature } = req.body;
-  if (!orderId || !paymentId || !signature) {
-    throw ApiError.badRequest('orderId, paymentId and signature are required');
-  }
+  const { orderId } = req.body;
+  if (!orderId) throw ApiError.badRequest('orderId is required');
 
-  const valid = paymentsService.verifyPaymentSignature({ orderId, paymentId, signature });
-  if (!valid) throw ApiError.badRequest('Payment signature verification failed');
+  // The gateway is the source of truth. Rather than trusting a signature the
+  // browser hands us, ask Cashfree what happened to this order — a forged
+  // callback cannot make an unpaid order report SUCCESS.
+  const result = await paymentsService.verifyPaymentByOrder(orderId);
+  if (!result.paid) throw ApiError.badRequest(result.reason || 'Payment was not completed');
 
   const { booking, created } = await paymentsService.markPaymentCaptured({
     gatewayOrderId: orderId,
-    gatewayPaymentId: paymentId,
-    signature,
+    gatewayPaymentId: result.gatewayPaymentId,
+    signature: 'verified-by-gateway',
   });
 
   logAudit({
@@ -108,20 +114,22 @@ const updatePayoutSettings = asyncHandler(async (req, res) => {
 // if the client never reaches /verify, the captured event still creates
 // the booking.
 const handleWebhook = asyncHandler(async (req, res) => {
-  const signature =
-    req.headers['x-razorpay-signature'] || req.headers['x-webhook-signature'];
-  const valid = paymentsService.verifyWebhookSignature(req.rawBody, signature);
+  const signature = req.headers['x-webhook-signature'];
+  const timestamp = req.headers['x-webhook-timestamp'];
+  const valid = paymentsService.verifyWebhookSignature(req.rawBody, signature, timestamp);
   if (!valid) throw ApiError.badRequest('Invalid webhook signature');
 
-  const { event, payload } = req.body;
-  if (event === 'payment.captured') {
-    const gatewayPayment = payload?.payment?.entity || payload?.payment || {};
-    const gatewayOrder = payload?.order?.entity || payload?.order || {};
+  // Cashfree names the success event PAYMENT_SUCCESS_WEBHOOK and nests the
+  // entities one level deeper than Razorpay did.
+  const { type, data } = req.body;
+  if (type === 'PAYMENT_SUCCESS_WEBHOOK') {
+    const gatewayPayment = data?.payment || {};
+    const gatewayOrder = data?.order || {};
 
     const result = await paymentsService.markPaymentCaptured({
-      gatewayOrderId: gatewayOrder.id,
-      gatewayPaymentId: gatewayPayment.id,
-      signature: gatewayPayment.signature || signature,
+      gatewayOrderId: gatewayOrder.order_id,
+      gatewayPaymentId: String(gatewayPayment.cf_payment_id || ''),
+      signature: 'verified-by-webhook',
     });
 
     // No session user here — the webhook is gateway-authenticated, so the
@@ -130,9 +138,9 @@ const handleWebhook = asyncHandler(async (req, res) => {
       action: 'payment.captured',
       category: 'payment',
       resourceType: 'payment',
-      resourceId: gatewayOrder.id || null,
+      resourceId: gatewayOrder.order_id || null,
       summary: 'Payment captured via gateway webhook',
-      details: { orderId: gatewayOrder.id, paymentId: gatewayPayment.id, booking: result.booking?._id },
+      details: { orderId: gatewayOrder.order_id, paymentId: gatewayPayment.cf_payment_id, booking: result.booking?._id },
       req,
     });
   }

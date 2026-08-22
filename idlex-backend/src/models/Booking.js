@@ -38,6 +38,33 @@ const bookingSchema = new mongoose.Schema(
     securityDeposit: { type: Number, default: 0 },
     totalAmount: { type: Number, required: true },
 
+    // Escrow ledger. The renter pays subtotal + serviceFee + securityDeposit
+    // up front, but only the platform fee is ours on day one. The other two
+    // are held and released on separate events, so each needs its own state
+    // rather than being inferred from booking.status.
+    escrow: {
+      // Rent: held from capture until the rental actually starts.
+      rentStatus: {
+        type: String,
+        enum: ['held', 'released', 'refunded'],
+        default: 'held',
+      },
+      rentReleasedAt: Date,
+
+      // Deposit: held for the whole rental, returned after the owner
+      // confirms the item came back in good order.
+      depositStatus: {
+        type: String,
+        enum: ['held', 'refunded', 'partially_deducted', 'forfeited'],
+        default: 'held',
+      },
+      depositRefundedAt: Date,
+      // How much of the deposit was withheld after a dispute. Zero means the
+      // renter got all of it back.
+      depositDeducted: { type: Number, default: 0 },
+      depositDeductionReason: { type: String, default: null },
+    },
+
     cancelledBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User', default: null },
     cancellationReason: { type: String, default: null },
 

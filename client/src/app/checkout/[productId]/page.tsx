@@ -13,32 +13,33 @@ import { api } from "@/lib/api-client";
 import { useFetchData } from "@/lib/use-fetch-data";
 import { useAuth, errorMessage, RequireKyc } from "@/lib/auth";
 import { listingImage } from "@/lib/api-types";
-import type { Booking, Listing, RazorpayCheckoutOrder, User } from "@/lib/api-types";
+import type { Booking, Listing, CheckoutOrder, User } from "@/lib/api-types";
 import { ROUTES } from "@/lib/constants";
 import { daysBetween } from "@/lib/formatters";
 
-const RAZORPAY_CHECKOUT_URL = "https://checkout.razorpay.com/v1/checkout.js";
+const CASHFREE_SDK_URL = "https://sdk.cashfree.com/js/v3/cashfree.js";
 
-type RazorpayResponse = {
-  razorpay_payment_id: string;
-  razorpay_order_id: string;
-  razorpay_signature: string;
+type CashfreeInstance = {
+  checkout: (options: {
+    paymentSessionId: string;
+    redirectTarget?: "_self" | "_blank" | "_modal";
+  }) => Promise<{ error?: { message?: string }; paymentDetails?: unknown }>;
 };
 
-type RazorpayConstructor = new (options: Record<string, unknown>) => { open: () => void };
+type CashfreeFactory = (options: { mode: "sandbox" | "production" }) => CashfreeInstance;
 
-function loadRazorpayScript(): Promise<boolean> {
+function loadCashfreeSdk(): Promise<boolean> {
   return new Promise((resolve) => {
     if (typeof window === "undefined") {
       resolve(false);
       return;
     }
-    if ((window as unknown as { Razorpay?: unknown }).Razorpay) {
+    if ((window as unknown as { Cashfree?: unknown }).Cashfree) {
       resolve(true);
       return;
     }
     const script = document.createElement("script");
-    script.src = RAZORPAY_CHECKOUT_URL;
+    script.src = CASHFREE_SDK_URL;
     script.onload = () => resolve(true);
     script.onerror = () => resolve(false);
     document.body.appendChild(script);
@@ -56,10 +57,10 @@ export default function CheckoutPage({ params }: { params: Promise<{ productId: 
   const [error, setError] = React.useState<string | null>(null);
   const [loading, setLoading] = React.useState(false);
   const [done, setDone] = React.useState<Booking | null>(null);
-  // Dev-mode simulated gateway step: when Razorpay keys are not configured,
+  // Dev-mode simulated gateway step: when Cashfree keys are not configured,
   // the user still goes through a payment dialog so the booking + owner
   // notification only happen after an explicit payment.
-  const [pendingOrder, setPendingOrder] = React.useState<RazorpayCheckoutOrder | null>(null);
+  const [pendingOrder, setPendingOrder] = React.useState<CheckoutOrder | null>(null);
   const [paying, setPaying] = React.useState(false);
 
   if (isLoading || !listing) {
@@ -74,68 +75,51 @@ export default function CheckoutPage({ params }: { params: Promise<{ productId: 
   const ownerId = typeof listing.owner === "object" && listing.owner !== null ? listing.owner._id : listing.owner;
   const isOwn = !!user && ownerId === user._id;
 
-  const verifyPayment = (order: RazorpayCheckoutOrder, response: RazorpayResponse) =>
-    api.post<Booking>("/api/payments/verify", {
-      orderId: response.razorpay_order_id,
-      paymentId: response.razorpay_payment_id,
-      signature: response.razorpay_signature,
-    });
+  // Verification is server-side only: we hand Cashfree's order id to our own
+  // backend, which asks the gateway what happened. Nothing the browser
+  // reports about the payment is trusted.
+  const verifyPayment = (order: CheckoutOrder) =>
+    api.post<Booking>("/api/payments/verify", { orderId: order.orderId });
 
-  const openRazorpayCheckout = (order: RazorpayCheckoutOrder, currentUser: User) =>
-    new Promise<boolean>((resolve) => {
-      const RazorpayCtor = (window as unknown as { Razorpay?: RazorpayConstructor }).Razorpay;
-      if (!RazorpayCtor) {
-        setError("Razorpay Checkout failed to load. Please try again.");
-        resolve(false);
-        return;
-      }
-      const rzp = new RazorpayCtor({
-        key: order.keyId,
-        amount: Math.round(order.amount * 100),
-        currency: order.currency,
-        name: "IdleX",
-        description: "Rental booking payment",
-        order_id: order.orderId,
-        // Explicitly list the methods rather than relying on what happens to
-        // be enabled in the dashboard. EMI and Pay Later are off: both settle
-        // to us over time or via a lender, which does not fit a rental where
-        // a refundable security deposit has to be returned to the renter
-        // shortly after the booking ends.
-        method: {
-          card: true,
-          upi: true,
-          netbanking: true,
-          wallet: true,
-          emi: false,
-          paylater: false,
-        },
-        prefill: {
-          name: currentUser.name,
-          email: currentUser.email,
-          contact: currentUser.phone || "",
-        },
-        handler: (response: RazorpayResponse) => {
-          verifyPayment(order, response)
-            .then((booking) => {
-              setDone(booking);
-              resolve(true);
-            })
-            .catch((err) => {
-              setError(errorMessage(err));
-              resolve(false);
-            });
-        },
-        modal: { ondismiss: () => resolve(false) },
+  const openCashfreeCheckout = async (order: CheckoutOrder): Promise<boolean> => {
+    const factory = (window as unknown as { Cashfree?: CashfreeFactory }).Cashfree;
+    if (!factory || !order.paymentSessionId) {
+      setError("Payment checkout failed to load. Please try again.");
+      return false;
+    }
+
+    // The SDK mode must match the mode the order was created in, so it comes
+    // from the server response rather than being hardcoded here.
+    const cashfree = factory({ mode: order.mode === "production" ? "production" : "sandbox" });
+
+    try {
+      // _modal keeps the user on the page; a redirect would lose React state
+      // and force the whole booking context to be rebuilt on return.
+      const result = await cashfree.checkout({
+        paymentSessionId: order.paymentSessionId,
+        redirectTarget: "_modal",
       });
-      rzp.open();
-    });
 
-  const verifyDevPayment = async (order: RazorpayCheckoutOrder) => {
-    const booking = await api.post<Booking>("/api/payments/verify", {
-      orderId: order.orderId,
-      paymentId: "dev_payment",
-      signature: "dev-signature",
-    });
+      if (result?.error) {
+        setError(result.error.message || "Payment was cancelled or failed.");
+        return false;
+      }
+
+      // The modal closing does not mean the payment succeeded — only the
+      // backend's check against Cashfree decides that.
+      const booking = await verifyPayment(order);
+      setDone(booking);
+      return true;
+    } catch (err) {
+      setError(errorMessage(err));
+      return false;
+    }
+  };
+
+  const verifyDevPayment = async (order: CheckoutOrder) => {
+    // Dev mode only: with no gateway configured the backend accepts the
+    // order without asking Cashfree anything.
+    const booking = await api.post<Booking>("/api/payments/verify", { orderId: order.orderId });
     setDone(booking);
     router.push(ROUTES.MY_RENTALS);
   };
@@ -172,30 +156,30 @@ export default function CheckoutPage({ params }: { params: Promise<{ productId: 
     }
     setLoading(true);
     try {
-      // Step 1 — create a Razorpay order for the listing + dates.
-      const order = await api.post<RazorpayCheckoutOrder>("/api/payments/checkout", {
+      // Step 1 — create a Cashfree order for the listing + dates.
+      const order = await api.post<CheckoutOrder>("/api/payments/checkout", {
         listingId: listing._id,
         startDate,
         endDate,
       });
 
-      if (order.configured && order.keyId) {
-        // Step 2 — real gateway: open the Razorpay Checkout popup, then
-        // verify the returned signature server-side inside the handler.
-        const loaded = await loadRazorpayScript();
+      if (order.configured && order.paymentSessionId) {
+        // Step 2 — real gateway: open Cashfree Checkout, then confirm the
+        // outcome with our backend, which asks the gateway directly.
+        const loaded = await loadCashfreeSdk();
         if (!loaded) {
           setError("Could not load the payment gateway. Please try again.");
           setLoading(false);
           return;
         }
-        const paid = await openRazorpayCheckout(order, user);
+        const paid = await openCashfreeCheckout(order);
         if (!paid) {
           setLoading(false);
           return;
         }
         router.push(ROUTES.MY_RENTALS);
       } else {
-        // Step 2 — dev mode: no Razorpay keys configured yet, so show the
+        // Step 2 — dev mode: no Cashfree keys configured yet, so show the
         // simulated gateway dialog. The booking is only created and the
         // owner only notified after the user completes this payment step.
         setPendingOrder(order);
@@ -222,7 +206,7 @@ export default function CheckoutPage({ params }: { params: Promise<{ productId: 
             </CardContent>
           </Card>
           <p className="rounded-lg bg-muted/50 p-4 text-sm text-muted-foreground">
-            Payment is handled securely by <strong>Razorpay</strong> — you&apos;ll be taken to a
+            Payment is handled securely by <strong>Cashfree</strong> — you&apos;ll be taken to a
             payment popup after confirming. Your booking is created only after the payment succeeds,
             and the owner is notified right away.
           </p>
@@ -278,7 +262,7 @@ export default function CheckoutPage({ params }: { params: Promise<{ productId: 
           </div>
           <p className="rounded-md bg-warning-50 p-3 text-xs text-warning-700">
             Test mode — the payment gateway is not configured yet, so this dialog simulates the
-            payment step. Configure RAZORPAY keys to charge real money.
+            payment step. Configure CASHFREE keys to charge real money.
           </p>
         </div>
       </Modal>

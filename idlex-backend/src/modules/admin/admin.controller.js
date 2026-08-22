@@ -5,6 +5,7 @@ const User = require('../../models/User');
 const Conversation = require('../../models/Conversation');
 const Listing = require('../../models/Listing');
 const Booking = require('../../models/Booking');
+const paymentsService = require('../payments/payments.service');
 const Payment = require('../../models/Payment');
 const Dispute = require('../../models/Dispute');
 const Kyc = require('../../models/Kyc');
@@ -279,6 +280,26 @@ const resolveDispute = asyncHandler(async (req, res) => {
   dispute.resolutionNote = req.body.resolutionNote;
   dispute.resolvedBy = req.user._id;
   await dispute.save();
+
+  // ESCROW step 12B: the admin's decision is what settles the deposit.
+  // depositDeduction is the amount withheld for damage; the remainder goes
+  // back to the renter. Only this path may deduct — an owner reporting an
+  // issue holds the deposit but cannot take from it.
+  let escrowResult = null;
+  if (dispute.booking) {
+    const booking = await Booking.findById(dispute.booking);
+    if (booking) {
+      const deduction = Number(req.body.depositDeduction || 0);
+      try {
+        escrowResult = await paymentsService.refundDepositToRenter(booking, {
+          deduction,
+          reason: req.body.resolutionNote || 'Dispute resolution',
+        });
+      } catch (err) {
+        console.error(`[escrow] deposit settlement failed for booking ${booking._id}:`, err.message);
+      }
+    }
+  }
 
   logAudit({
     actor: req.user._id,
