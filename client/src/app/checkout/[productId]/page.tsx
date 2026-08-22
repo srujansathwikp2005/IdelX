@@ -96,6 +96,19 @@ export default function CheckoutPage({ params }: { params: Promise<{ productId: 
         name: "IdleX",
         description: "Rental booking payment",
         order_id: order.orderId,
+        // Explicitly list the methods rather than relying on what happens to
+        // be enabled in the dashboard. EMI and Pay Later are off: both settle
+        // to us over time or via a lender, which does not fit a rental where
+        // a refundable security deposit has to be returned to the renter
+        // shortly after the booking ends.
+        method: {
+          card: true,
+          upi: true,
+          netbanking: true,
+          wallet: true,
+          emi: false,
+          paylater: false,
+        },
         prefill: {
           name: currentUser.name,
           email: currentUser.email,
