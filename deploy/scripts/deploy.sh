@@ -81,6 +81,8 @@ EXTRA_VARS=$(cat <<JSON
   "cashfree_secret_key": "${IDLEX_CASHFREE_SECRET_KEY:-}",
   "cashfree_webhook_secret": "${IDLEX_CASHFREE_WEBHOOK_SECRET:-}",
   "cashfree_mode": "${IDLEX_CASHFREE_MODE:-sandbox}",
+  "cashfree_payout_app_id": "${IDLEX_CASHFREE_PAYOUT_APP_ID:-}",
+  "cashfree_payout_secret_key": "${IDLEX_CASHFREE_PAYOUT_SECRET_KEY:-}",
   "client_url": "${IDLEX_CLIENT_URL:-}"
 }
 JSON

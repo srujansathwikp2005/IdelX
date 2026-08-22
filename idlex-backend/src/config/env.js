@@ -61,6 +61,18 @@ const env = {
     // Pinned: Cashfree routes breaking changes through this header, so an
     // unpinned integration can break without a deploy.
     apiVersion: process.env.CASHFREE_API_VERSION || '2023-08-01',
+
+    // Payouts is a separate Cashfree product with its own API version and,
+    // on most accounts, its own credential pair issued from the Payouts
+    // section of the dashboard. Both fall back to the Payments values, so
+    // an account that shares one set keeps working untouched.
+    payoutApiVersion: process.env.CASHFREE_PAYOUT_API_VERSION || '2024-01-01',
+    get payoutAppId() {
+      return process.env.CASHFREE_PAYOUT_APP_ID || this.appId;
+    },
+    get payoutSecretKey() {
+      return process.env.CASHFREE_PAYOUT_SECRET_KEY || this.secretKey;
+    },
   },
 
   admin: {
