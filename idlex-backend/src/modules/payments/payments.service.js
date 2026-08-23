@@ -396,16 +396,31 @@ async function releaseRentToOwner(booking) {
 
   const payout = await settleOwnerPayout(payment, booking);
 
-  booking.escrow.rentStatus = 'released';
-  booking.escrow.rentReleasedAt = new Date();
-  await booking.save();
+  // Only claim the rent is released if the transfer actually succeeded.
+  //
+  // Marking it 'released' on a failed payout makes the ledger assert money
+  // moved when it did not, and — worse — the guard at the top of this
+  // function then refuses to try again, so the owner is never paid and
+  // nothing in the system says otherwise. With Cashfree Payouts not yet
+  // activated every payout fails, so this would have silently written off
+  // every owner's rent.
+  // 'pending' and 'processing' are in flight at the gateway and will land,
+  // so they count as released. Only an outright 'failed' does not.
+  const settled = Boolean(payout) && payout.status !== 'failed';
+  if (settled) {
+    booking.escrow.rentStatus = 'released';
+    booking.escrow.rentReleasedAt = new Date();
+    await booking.save();
+  }
 
   logAudit({
     action: 'escrow.rent_released',
     category: 'payment',
     resourceType: 'booking',
     resourceId: booking._id.toString(),
-    summary: 'Rental amount released to the owner',
+    summary: settled
+      ? 'Rental amount released to the owner'
+      : 'Rent release attempted but the payout did not go through',
     details: {
       amount: booking.subtotal,
       payout: payout?._id,
@@ -414,7 +429,7 @@ async function releaseRentToOwner(booking) {
     },
   });
 
-  return { payout, amount: booking.subtotal };
+  return { payout, amount: booking.subtotal, settled };
 }
 
 // Deposit -> renter, after the owner confirms the return. `deduction` is the
