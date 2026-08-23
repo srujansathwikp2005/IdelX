@@ -23,6 +23,10 @@ const paymentSchema = new mongoose.Schema(
     // 'razorpay' stays in the enum so historical rows remain readable;
     // new payments are always cashfree.
     gateway: { type: String, enum: ['cashfree', 'razorpay', 'stripe'], default: 'cashfree' },
+    // Why a payment ended up 'failed' — a gateway decline, or simply
+    // superseded when the renter reopened the payment page.
+    failureReason: { type: String, default: null },
+
     gatewayOrderId: { type: String, required: true },
     gatewayPaymentId: { type: String, default: null },
     signature: { type: String, default: null },

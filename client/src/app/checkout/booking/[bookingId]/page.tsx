@@ -64,7 +64,9 @@ export default function PayForBookingPage({ params }: { params: Promise<{ bookin
         const confirmed = await api.post<Booking>("/api/payments/verify", { orderId: returned });
         if (!cancelled) setDone(confirmed);
       } catch {
-        if (!cancelled) {
+        // The modal-close verify may already have confirmed this booking.
+        const settled = await confirmedByBookingState();
+        if (!cancelled && !settled) {
           setError("We could not confirm that payment. If money left your account, check My Rentals before paying again.");
           setTrackingId(returned);
         }
@@ -77,6 +79,20 @@ export default function PayForBookingPage({ params }: { params: Promise<{ bookin
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  // Re-reads the booking and treats anything at or past 'confirmed' as paid.
+  // Used whenever a verify call fails, so a lost race is never reported to
+  // the renter as a failed payment.
+  const confirmedByBookingState = React.useCallback(async () => {
+    try {
+      const fresh = await api.get<Booking>(`/api/bookings/${bookingId}`);
+      const paid = ["confirmed", "active", "return_requested", "completed"].includes(fresh.status);
+      if (paid) setDone(fresh);
+      return paid;
+    } catch {
+      return false;
+    }
+  }, [bookingId]);
 
   const pay = async () => {
     setError(null);
@@ -111,6 +127,15 @@ export default function PayForBookingPage({ params }: { params: Promise<{ bookin
         setDone(confirmed);
         refetch();
       } catch (verifyErr) {
+        // Before reporting anything, ask what state the booking is actually
+        // in. Two verifies run for a redirect payment — one when the modal
+        // closes, one when Cashfree returns — and the loser of that race
+        // gets an error for a payment that went through perfectly. The
+        // booking is the truth: if it is confirmed, the money arrived,
+        // whatever this particular request was told.
+        const settled = await confirmedByBookingState();
+        if (settled) return;
+
         // Raw JavaScript errors from inside the SDK are not payment outcomes
         // and mean nothing to a renter, so they are replaced.
         const looksInternal =
