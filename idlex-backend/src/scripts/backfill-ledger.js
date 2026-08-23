@@ -53,6 +53,9 @@ const mongoose = require('mongoose');
       await ledger.record({
         booking, component: 'rental', action: 'release', amount: booking.subtotal,
         from: 'platform', to: 'owner', counterparty: booking.owner,
+        // Deliberately left pending: the escrow flag says the rent is no
+        // longer the renter's, not that it reached the owner. No payout
+        // provider has ever run, so this money is genuinely still owed.
         note: 'Backfilled — owed to the owner, no transfer has run',
       });
     }
@@ -71,7 +74,18 @@ const mongoose = require('mongoose');
       await ledger.record({
         booking, component: 'security_deposit', action: 'refund', amount: refunded,
         from: 'platform', to: 'renter', counterparty: booking.renter,
-        note: 'Backfilled from booking record',
+        // Already settled, and marking it so matters more than it looks.
+        // These refunds went back through the payment gateway before the
+        // ledger existed — depositRefundedAt is when. Left pending they
+        // would appear on the settlement screen as money still owed, and an
+        // admin working that list would send it a second time.
+        settlement: 'settled',
+        provider: 'cashfree_pg',
+        note: `Backfilled — refunded via the gateway on ${
+          booking.escrow.depositRefundedAt
+            ? new Date(booking.escrow.depositRefundedAt).toISOString().slice(0, 10)
+            : 'an earlier date'
+        }`,
       });
     }
 
