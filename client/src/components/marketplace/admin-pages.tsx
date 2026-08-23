@@ -505,6 +505,44 @@ export function AdminBookingsPage() {
   if (status) params.set("status", status);
   const { data, isLoading, error } = useFetchData<AdminBookingsResult>(`/api/admin/bookings?${params.toString()}`, [page, status]);
 
+  // The address an admin needs during a dispute is the whole thing, but a
+  // table row cannot carry it. So the cell shows what identifies a place at a
+  // glance and keeps the rest reachable: the full text on hover, and a map
+  // link when the renter dropped a pin.
+  const addressCell = (b: Booking) => {
+    const a = b.deliveryAddress;
+    if (!a?.line1 && !a?.city) return <span className="text-muted-foreground">—</span>;
+
+    const full = [a.line1, a.line2, a.city, a.state, a.pincode].filter(Boolean).join(", ");
+    return (
+      <div className="max-w-52 text-xs" title={a.instructions ? `${full}\n\nNote: ${a.instructions}` : full}>
+        <p className="truncate">{a.line1 || "—"}</p>
+        <p className="truncate text-muted-foreground">
+          {[a.city, a.pincode].filter(Boolean).join(" · ")}
+        </p>
+        {/* Coordinates only exist if the renter chose "Use my location" —
+            typing an address is the normal path, so most rows will not have
+            them. Shown as text as well as a link because an admin comparing
+            two addresses in a dispute wants the numbers, not a new tab. */}
+        {a.lat !== undefined && a.lng !== undefined && (
+          <>
+            <p className="select-all font-mono text-[11px] text-muted-foreground">
+              {a.lat.toFixed(5)}, {a.lng.toFixed(5)}
+            </p>
+            <a
+              href={`https://www.google.com/maps/search/?api=1&query=${a.lat},${a.lng}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-primary hover:underline"
+            >
+              View on map
+            </a>
+          </>
+        )}
+      </div>
+    );
+  };
+
   const person = (ref: unknown): string => {
     if (ref && typeof ref === "object" && "name" in ref) {
       const name = (ref as { name?: unknown }).name;
@@ -540,6 +578,7 @@ export function AdminBookingsPage() {
               <Th>Renter</Th>
               <Th>Owner</Th>
               <Th>Dates</Th>
+              <Th>Address</Th>
               <Th>Total</Th>
               <Th>Status</Th>
             </tr>
@@ -555,6 +594,7 @@ export function AdminBookingsPage() {
                 <Td className="whitespace-nowrap text-xs text-muted-foreground">
                   {formatDate(b.startDate)} → {formatDate(b.endDate)}
                 </Td>
+                <Td>{addressCell(b)}</Td>
                 <Td className="font-semibold">{formatCurrency(b.totalAmount)}</Td>
                 <Td><Badge variant={bookingStatusVariant(b.status)}>{b.status.replaceAll("_", " ")}</Badge></Td>
               </tr>
