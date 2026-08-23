@@ -41,6 +41,13 @@ const env = {
   // Payment gateway. Cashfree replaced Razorpay after Razorpay declined the
   // account: they classified the marketplace as vehicle rental, a category
   // they do not support.
+  // How owner settlements and refunds actually move. 'manual' records the
+  // obligation and leaves the transfer to a person, which is correct while
+  // no automated provider is approved. See modules/settlement.
+  settlement: {
+    provider: (process.env.SETTLEMENT_PROVIDER || 'manual').toLowerCase(),
+  },
+
   cashfree: {
     appId: process.env.CASHFREE_APP_ID,
     secretKey: process.env.CASHFREE_SECRET_KEY,

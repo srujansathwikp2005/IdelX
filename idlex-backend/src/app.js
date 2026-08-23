@@ -70,6 +70,7 @@ app.use('/api/listings', listingsRoutes);
 app.get('/api/listings/:id/reviews', reviewsController.listListingReviews); // nested under listings, per the doc
 app.use('/api/bookings', bookingsRoutes);
 app.use('/api/payments', paymentsRoutes);
+app.use('/api/ledger', require('./modules/ledger/ledger.routes'));
 app.use('/api/chat', chatRoutes);
 app.use('/api/reviews', reviewsRoutes);
 app.use('/api/admin', adminRoutes);

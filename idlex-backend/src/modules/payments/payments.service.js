@@ -358,6 +358,28 @@ async function markPaymentCaptured({ gatewayOrderId, gatewayPaymentId, signature
     if (booking.status === 'awaiting_payment') {
       booking.status = 'confirmed';
       await booking.save();
+
+      // Split the single charge into what it is actually made of. The
+      // renter paid one amount; the ledger has to know which part is the
+      // owner's rental, which is our fee, and which is a deposit that must
+      // stay refundable — because those three are settled differently and
+      // at different times.
+      const ledger = require('../ledger/ledger.service');
+      await ledger.record({
+        booking, component: 'rental', action: 'hold', amount: booking.subtotal,
+        from: 'renter', to: 'platform', counterparty: booking.owner,
+        note: 'Rental collected, held until the renter confirms receipt',
+      });
+      await ledger.record({
+        booking, component: 'platform_fee', action: 'charge', amount: booking.serviceFee,
+        from: 'renter', to: 'platform', settlement: 'not_required',
+        note: 'IdleX platform fee',
+      });
+      await ledger.record({
+        booking, component: 'security_deposit', action: 'hold', amount: booking.securityDeposit,
+        from: 'renter', to: 'platform', counterparty: booking.renter,
+        note: 'Refundable deposit, held until the rental completes',
+      });
     } else if (booking.status !== 'confirmed') {
       // Anything else means the booking moved on (cancelled, or already in
       // progress). Capturing must not drag it backwards.
@@ -449,7 +471,30 @@ async function releaseRentToOwner(booking) {
   const payment = await Payment.findOne({ booking: booking._id, status: 'captured' });
   if (!payment) throw ApiError.badRequest('No captured payment for this booking');
 
-  const payout = await settleOwnerPayout(payment, booking);
+  // Routed through the settlement provider rather than calling a gateway
+  // directly, so which provider runs is configuration, not code. With none
+  // configured this records the obligation and leaves the money visible as
+  // owed — which is the truthful state, not a failure.
+  const { activeProvider } = require('../settlement/settlement.provider');
+  const provider = activeProvider();
+  const result = await provider.settle({ payment, booking });
+
+  const ledger = require('../ledger/ledger.service');
+  await ledger.record({
+    booking,
+    component: 'rental',
+    action: 'release',
+    amount: booking.subtotal,
+    from: 'platform',
+    to: 'owner',
+    counterparty: booking.owner,
+    settlement: result.settlement,
+    provider: provider.name,
+    providerReference: result.reference,
+    note: result.note || 'Rental released to the owner after the renter confirmed receipt',
+  });
+
+  const payout = result.settled ? { status: 'paid', gatewayPayoutId: result.reference } : null;
 
   // Only claim the rent is released if the transfer actually succeeded.
   //
@@ -459,9 +504,12 @@ async function releaseRentToOwner(booking) {
   // nothing in the system says otherwise. With Cashfree Payouts not yet
   // activated every payout fails, so this would have silently written off
   // every owner's rent.
-  // 'pending' and 'processing' are in flight at the gateway and will land,
-  // so they count as released. Only an outright 'failed' does not.
-  const settled = Boolean(payout) && payout.status !== 'failed';
+  // The rental counts as released once the obligation is recorded and not
+  // outright rejected. Under manual settlement that is the correct reading:
+  // the owner is owed the money and the ledger says so, with the actual
+  // transfer tracked separately as an unsettled entry. Only a provider
+  // failing outright leaves it held and retryable.
+  const settled = result.settlement !== 'failed';
   if (settled) {
     booking.escrow.rentStatus = 'released';
     booking.escrow.rentReleasedAt = new Date();
@@ -503,8 +551,35 @@ async function refundDepositToRenter(booking, { deduction = 0, reason = null } =
     return { refunded: 0 };
   }
 
-  const withheld = Math.min(Math.max(deduction, 0), deposit);
+  const ledger = require('../ledger/ledger.service');
+
+  // An approved extension the renter never paid for comes out of the
+  // deposit before anything is returned — the client's point 8. Read from
+  // the ledger rather than the booking, because that is where the charge
+  // was recorded and it may have been reversed since.
+  const summary = await ledger.summarize(booking._id);
+  const unpaidExtension = Math.min(summary.extensionFees, deposit);
+
+  const withheld = Math.min(Math.max(deduction, 0) + unpaidExtension, deposit);
   const refundAmount = deposit - withheld;
+
+  // The deduction is its own entry, separate from the refund. The client's
+  // example is a Rs 5,000 deposit splitting into Rs 3,500 to the owner for
+  // damage and Rs 1,500 back to the renter — two movements, to two different
+  // people, for two different reasons. One net number would lose that, and
+  // it is exactly what someone contesting the charge needs to see.
+  if (withheld > 0) {
+    await ledger.record({
+      booking,
+      component: 'damage_deduction',
+      action: 'deduct',
+      amount: withheld,
+      from: 'renter',
+      to: 'owner',
+      counterparty: booking.owner,
+      note: reason || 'Approved damage deduction from the security deposit',
+    });
+  }
 
   const payment = await Payment.findOne({ booking: booking._id, status: 'captured' });
   let gatewayRefundId = null;
@@ -543,6 +618,27 @@ async function refundDepositToRenter(booking, { deduction = 0, reason = null } =
       });
       throw ApiError.badRequest(`Deposit refund failed at the gateway: ${refundError}`);
     }
+  }
+
+  if (refundAmount > 0) {
+    await ledger.record({
+      booking,
+      component: 'security_deposit',
+      action: 'refund',
+      amount: refundAmount,
+      from: 'platform',
+      to: 'renter',
+      counterparty: booking.renter,
+      // A gateway refund is genuinely on its way; without one the money is
+      // owed and the entry stays pending so it shows on the admin screen
+      // rather than being quietly considered done.
+      settlement: gatewayRefundId ? 'settled' : 'pending',
+      provider: gatewayRefundId ? 'cashfree_pg' : null,
+      providerReference: gatewayRefundId,
+      note: withheld > 0
+        ? `Deposit balance returned after a Rs ${withheld} deduction`
+        : 'Full deposit returned — no damage reported',
+    });
   }
 
   booking.escrow.depositStatus =
