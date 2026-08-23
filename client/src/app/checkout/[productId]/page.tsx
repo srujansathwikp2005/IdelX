@@ -57,9 +57,11 @@ export default function RequestBookingPage({ params }: { params: Promise<{ produ
   const ownerId = typeof listing.owner === "object" && listing.owner !== null ? listing.owner._id : listing.owner;
   const isOwn = !!user && ownerId === user._id;
 
-  // An address is only required for delivery. Someone collecting the item
-  // themselves has no reason to type one.
-  const needsAddress = pickup === "delivery";
+  // Always asked, the way a food delivery app asks before an order rather
+  // than after. For doorstep delivery it is where the item goes; for pickup
+  // it is where the renter is, which the owner needs in order to arrange a
+  // handover and which gives a dispute somewhere to start.
+  const isDelivery = pickup === "delivery";
 
   const submit = async () => {
     setError(null);
@@ -67,8 +69,12 @@ export default function RequestBookingPage({ params }: { params: Promise<{ produ
     if (!user) return setError("Please sign in to request this booking.");
     if (!startDate || !endDate) return setError("Choose start and end dates");
     if (days < 1) return setError("End date must be after start date");
-    if (needsAddress && !isAddressComplete(address)) {
-      return setError("Add a delivery address — flat/house, city and PIN code are needed.");
+    if (!isAddressComplete(address)) {
+      return setError(
+        isDelivery
+          ? "Add a delivery address — flat/house, city and PIN code are needed."
+          : "Add your address — flat/house, city and PIN code are needed so the owner can arrange the handover."
+      );
     }
 
     setSubmitting(true);
@@ -77,7 +83,7 @@ export default function RequestBookingPage({ params }: { params: Promise<{ produ
         listingId: listing._id,
         startDate,
         endDate,
-        deliveryAddress: needsAddress ? address : undefined,
+        deliveryAddress: address,
       });
       router.push(`${ROUTES.MY_RENTALS}?requested=${booking._id}`);
     } catch (err) {
@@ -111,13 +117,21 @@ export default function RequestBookingPage({ params }: { params: Promise<{ produ
               </CardContent>
             </Card>
 
-            {needsAddress && (
-              <Card>
-                <CardContent className="pt-6">
-                  <DeliveryAddressFields value={address} onChange={setAddress} disabled={submitting} />
-                </CardContent>
-              </Card>
-            )}
+            <Card>
+              <CardContent className="pt-6">
+                <DeliveryAddressFields
+                  value={address}
+                  onChange={setAddress}
+                  disabled={submitting}
+                  heading={isDelivery ? "Delivery address" : "Your address"}
+                  hint={
+                    isDelivery
+                      ? "Where the owner should deliver the item."
+                      : "Where you are collecting from — the owner uses this to arrange the handover."
+                  }
+                />
+              </CardContent>
+            </Card>
 
             <p className="rounded-lg bg-muted/50 p-4 text-sm text-muted-foreground">
               <strong>You will not be charged yet.</strong> The owner reviews your request first —

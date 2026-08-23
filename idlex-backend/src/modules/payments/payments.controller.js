@@ -26,7 +26,7 @@ const checkout = asyncHandler(async (req, res) => {
     resourceType: 'payment',
     resourceId: payment._id?.toString(),
     summary: 'Initiated a payment',
-    details: { listing: listingId, amount: payment.amount, status: payment.status, configured },
+    details: { booking: bookingId, listing: payment.listing, amount: payment.amount, status: payment.status, configured },
     req,
   });
 
