@@ -23,6 +23,8 @@ import type {
   AuditLog,
   AuditLogResult,
   Booking,
+  OutstandingResult,
+  SettlementObligation,
   Dispute,
   Kyc,
   Listing,
@@ -1347,5 +1349,281 @@ export function AdminSupportTicketsPage() {
         )}
       </Modal>
     </AdminShell>
+  );
+}
+
+// Settlements — what the platform still owes, and the only place a payout is
+// recorded as sent.
+//
+// This screen exists because settlement is manual: Cashfree declined
+// standalone Payouts, so an admin moves the money by UPI or bank transfer and
+// then tells the ledger it happened. Without it the obligations are recorded
+// correctly and no one can act on them.
+export function AdminSettlementsPage() {
+  const { data, isLoading, error, refetch } = useFetchData<OutstandingResult>(
+    "/api/ledger/outstanding",
+    []
+  );
+
+  const [paying, setPaying] = React.useState<SettlementObligation | null>(null);
+  const [reference, setReference] = React.useState("");
+  const [busy, setBusy] = React.useState(false);
+  const [actionError, setActionError] = React.useState<string | null>(null);
+  const [justPaid, setJustPaid] = React.useState<string | null>(null);
+
+  const recipientName = (o: SettlementObligation) => o.recipient?.name || "Unknown";
+
+  // What to copy, in the order someone paying actually wants it: a UPI id if
+  // there is one, since that is a single paste, otherwise the account and
+  // IFSC pair.
+  const payTarget = (o: SettlementObligation): string | null => {
+    const d = o.payoutDetails;
+    if (!d) return null;
+    if (d.upiId) return d.upiId;
+    if (d.accountNumber) return `${d.accountNumber} / ${d.ifsc ?? "IFSC missing"}`;
+    return null;
+  };
+
+  const copy = async (text: string) => {
+    try {
+      await navigator.clipboard.writeText(text);
+    } catch {
+      // Clipboard access can be refused; the value is on screen to read
+      // either way, so this is not worth interrupting anyone over.
+    }
+  };
+
+  const confirmPaid = async () => {
+    if (!paying) return;
+    if (!reference.trim()) {
+      setActionError("Enter the UPI or bank reference for this transfer.");
+      return;
+    }
+    setBusy(true);
+    setActionError(null);
+    try {
+      await api.post(`/api/ledger/entries/${paying.id}/settle`, {
+        reference: reference.trim(),
+        provider: "manual",
+      });
+      setJustPaid(recipientName(paying));
+      setPaying(null);
+      setReference("");
+      refetch();
+    } catch (err) {
+      setActionError(errorMessage(err));
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const items = data?.items ?? [];
+  const owners = items.filter((o) => o.payTo === "owner");
+  const renters = items.filter((o) => o.payTo === "renter");
+
+  return (
+    <AdminShell>
+      <div className="mb-5 flex flex-wrap items-end justify-between gap-3">
+        <div>
+          <h1 className="text-2xl font-bold">Settlements</h1>
+          <p className="mt-1 text-sm text-muted-foreground">
+            Money the platform has collected and still owes. Send it, then record the
+            reference here so it is not paid twice.
+          </p>
+        </div>
+        {data && (
+          <div className="text-right">
+            <p className="text-xs uppercase tracking-wide text-muted-foreground">Outstanding</p>
+            <p className="text-2xl font-bold">{formatCurrency(data.total)}</p>
+          </div>
+        )}
+      </div>
+
+      <AdminError error={error} />
+      {actionError && !paying && (
+        <p className="mb-4 rounded-md bg-danger-50 p-3 text-sm text-danger">{actionError}</p>
+      )}
+      {justPaid && (
+        <p className="mb-4 rounded-md bg-secondary-50 p-3 text-sm text-secondary-700">
+          Recorded as paid to {justPaid}.
+        </p>
+      )}
+      {isLoading && <p className="text-sm text-muted-foreground">Loading…</p>}
+
+      {data && data.provider === "manual" && (
+        <div className="mb-5 rounded-lg border border-accent-200 bg-accent-50 p-4 text-sm text-accent-700">
+          <strong>Transfers are manual.</strong> Nothing here is sent automatically — send
+          the money from the platform account by UPI or bank transfer, then mark it paid.
+          Deposit refunds to renters go back to the original card through the gateway and
+          normally settle themselves; anything listed here needs a person.
+        </div>
+      )}
+
+      {!isLoading && items.length === 0 && (
+        <div className="rounded-lg border border-border bg-card p-8 text-center">
+          <p className="font-medium">Nothing outstanding</p>
+          <p className="mt-1 text-sm text-muted-foreground">
+            Every obligation has been settled. New ones appear when a renter confirms they
+            received an item, or when a deposit becomes refundable.
+          </p>
+        </div>
+      )}
+
+      {owners.length > 0 && (
+        <SettlementGroup
+          title="Owners awaiting payment"
+          caption="Rent released after the renter confirmed receipt, and approved damage deductions."
+          items={owners}
+          recipientName={recipientName}
+          payTarget={payTarget}
+          onCopy={copy}
+          onPay={(o) => {
+            setPaying(o);
+            setReference("");
+            setActionError(null);
+          }}
+        />
+      )}
+
+      {renters.length > 0 && (
+        <SettlementGroup
+          title="Renters awaiting refund"
+          caption="Deposits the gateway did not refund automatically — usually because the original payment could not be traced. These need a manual transfer."
+          items={renters}
+          recipientName={recipientName}
+          payTarget={payTarget}
+          onCopy={copy}
+          onPay={(o) => {
+            setPaying(o);
+            setReference("");
+            setActionError(null);
+          }}
+        />
+      )}
+
+      <Modal
+        open={!!paying}
+        onClose={() => setPaying(null)}
+        title="Record this payment"
+        description={
+          paying
+            ? `Confirm you have sent ${formatCurrency(paying.amount)} to ${recipientName(paying)}.`
+            : undefined
+        }
+      >
+        {paying && (
+          <div className="space-y-4">
+            <div className="rounded-md bg-muted/50 p-3 text-sm">
+              <p className="flex justify-between">
+                <span className="text-muted-foreground">Amount</span>
+                <strong>{formatCurrency(paying.amount)}</strong>
+              </p>
+              <p className="mt-1 flex justify-between">
+                <span className="text-muted-foreground">Send to</span>
+                <span className="font-mono text-xs">{payTarget(paying) ?? "No details on file"}</span>
+              </p>
+            </div>
+
+            <Input
+              label="UPI or bank reference"
+              placeholder="e.g. 441782940113"
+              value={reference}
+              onChange={(e) => setReference(e.target.value)}
+            />
+            <p className="text-xs text-muted-foreground">
+              This is only a record that you sent the money — it does not move anything. The
+              reference is what lets you prove the transfer later.
+            </p>
+
+            {actionError && <p className="text-sm text-danger">{actionError}</p>}
+
+            <div className="flex justify-end gap-2">
+              <Button variant="outline" onClick={() => setPaying(null)} disabled={busy}>
+                Cancel
+              </Button>
+              <Button loading={busy} onClick={confirmPaid}>
+                Mark as paid
+              </Button>
+            </div>
+          </div>
+        )}
+      </Modal>
+    </AdminShell>
+  );
+}
+
+function SettlementGroup({
+  title,
+  caption,
+  items,
+  recipientName,
+  payTarget,
+  onCopy,
+  onPay,
+}: {
+  title: string;
+  caption: string;
+  items: SettlementObligation[];
+  recipientName: (o: SettlementObligation) => string;
+  payTarget: (o: SettlementObligation) => string | null;
+  onCopy: (text: string) => void;
+  onPay: (o: SettlementObligation) => void;
+}) {
+  const groupTotal = items.reduce((sum, o) => sum + o.amount, 0);
+
+  return (
+    <section className="mt-6 rounded-lg border border-border bg-card p-5">
+      <div className="mb-4 flex flex-wrap items-baseline justify-between gap-2">
+        <div>
+          <h2 className="text-lg font-semibold">{title}</h2>
+          <p className="mt-0.5 text-sm text-muted-foreground">{caption}</p>
+        </div>
+        <p className="text-sm font-semibold">{formatCurrency(groupTotal)}</p>
+      </div>
+
+      <div className="space-y-3">
+        {items.map((o) => {
+          const target = payTarget(o);
+          return (
+            <div
+              key={o.id}
+              className="flex flex-wrap items-center justify-between gap-4 rounded-lg border border-border p-4"
+            >
+              <div className="min-w-0">
+                <p className="font-medium">{recipientName(o)}</p>
+                <p className="mt-0.5 text-xs text-muted-foreground">
+                  {o.component.replaceAll("_", " ")}
+                  {o.recipient?.email ? ` · ${o.recipient.email}` : ""}
+                </p>
+                {target ? (
+                  <button
+                    type="button"
+                    onClick={() => onCopy(target)}
+                    className="mt-2 select-all rounded bg-muted/60 px-2 py-1 font-mono text-xs hover:bg-muted"
+                    title="Click to copy"
+                  >
+                    {target}
+                  </button>
+                ) : (
+                  // Said plainly rather than shown as an empty field: an admin
+                  // needs to know why they cannot pay this one, and that the
+                  // fix is asking the owner for details.
+                  <p className="mt-2 text-xs text-danger">
+                    No payout details on file — ask them to complete KYC bank details.
+                  </p>
+                )}
+              </div>
+
+              <div className="flex items-center gap-4">
+                <p className="text-lg font-semibold tabular-nums">{formatCurrency(o.amount)}</p>
+                <Button size="sm" disabled={!target} onClick={() => onPay(o)}>
+                  Mark as paid
+                </Button>
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    </section>
   );
 }

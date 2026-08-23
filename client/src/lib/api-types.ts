@@ -430,3 +430,31 @@ export type AdminExtensionRequest = {
   renter?: { _id: string; name: string; email: string } | string;
   listing?: { _id: string; title: string } | string;
 };
+
+// What the platform still owes someone, with the details needed to pay it.
+// Returned by GET /api/ledger/outstanding.
+export type PayoutDetails = {
+  accountHolderName?: string | null;
+  accountNumber?: string | null;
+  ifsc?: string | null;
+  bankName?: string | null;
+  upiId?: string | null;
+};
+
+export type SettlementObligation = {
+  id: string;
+  booking: { _id: string; startDate?: string; endDate?: string; totalAmount?: number; status?: string } | string | null;
+  component: string;
+  amount: number;
+  payTo: "owner" | "renter" | "platform" | "gateway";
+  recipient: { _id: string; name?: string; email?: string; phone?: string } | null;
+  createdAt: string;
+  note?: string | null;
+  payoutDetails: PayoutDetails | null;
+};
+
+export type OutstandingResult = {
+  items: SettlementObligation[];
+  total: number;
+  provider: string;
+};

@@ -43,6 +43,9 @@ export const ADMIN_SIDEBAR: Array<{ label: string; href: string; icon: string; b
   { label: "Listings", href: ROUTES.ADMIN_LISTINGS, icon: "Package" },
   { label: "Bookings", href: ROUTES.ADMIN_BOOKINGS, icon: "CalendarCheck" },
   { label: "Payments & Payouts", href: ROUTES.ADMIN_PAYMENTS, icon: "Wallet" },
+  // Separate from Payments: that screen shows money coming in, this one shows
+  // what still has to go out and is the only place a payout gets recorded.
+  { label: "Settlements", href: ROUTES.ADMIN_SETTLEMENTS, icon: "Banknote" },
   // The count is injected at render time from the real pending queue; a
   // literal here reported 12 submissions awaiting review no matter what.
   { label: "KYC Verification", href: ROUTES.ADMIN_KYC, icon: "ShieldCheck" },
