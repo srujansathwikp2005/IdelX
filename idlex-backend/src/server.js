@@ -4,12 +4,17 @@ const { Server } = require('socket.io');
 const app = require('./app');
 const env = require('./config/env');
 const connectDB = require('./config/db');
+const { startExpiryJob } = require('./jobs/expire-requests');
 const registerChatSocket = require('./sockets/chat.socket');
 const ensureDefaultAdmin = require('./utils/ensureDefaultAdmin');
 
 async function start() {
   await connectDB();
   await ensureDefaultAdmin().catch((err) => console.error('[admin] failed to seed default admin:', err.message));
+
+  // Requests hold their dates, so an unanswered one has to be released or an
+  // owner's calendar silently fills with bookings that will never happen.
+  startExpiryJob();
 
   const server = http.createServer(app);
 

@@ -1,6 +1,7 @@
 "use client";
 
 import * as React from "react";
+import Link from "next/link";
 import { DashboardShell } from "@/components/marketplace/dashboard-shell";
 import { RentalExtensionPanel } from "@/components/marketplace/rental-extension-panel";
 import { ReviewModal } from "@/components/marketplace/review-modal";
@@ -120,6 +121,11 @@ function RentalDetailInner({ rentalId }: { rentalId: string }) {
             <div className="flex flex-wrap items-center justify-end gap-3">
               {isOwner && booking.status === "requested" && (
                 <Button size="sm" loading={busy} onClick={confirm}>Confirm Booking</Button>
+              )}
+              {isRenter && booking.status === "awaiting_payment" && (
+                <Link href={`/checkout/booking/${booking._id}`}>
+                  <Button size="sm">Pay now</Button>
+                </Link>
               )}
               {canConfirmReceipt && (
                 <Button size="sm" loading={busy} onClick={confirmReceipt}>

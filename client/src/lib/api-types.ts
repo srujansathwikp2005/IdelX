@@ -82,6 +82,7 @@ export type ListingQueryResult = {
 
 export type BookingStatus =
   | "requested"
+  | "awaiting_payment"
   | "confirmed"
   | "active"
   | "return_requested"
@@ -111,6 +112,17 @@ export type Booking = {
   subtotal: number;
   serviceFee: number;
   securityDeposit: number;
+  deliveryAddress?: {
+    label?: string;
+    line1?: string;
+    line2?: string;
+    city?: string;
+    state?: string;
+    pincode?: string;
+    lat?: number;
+    lng?: number;
+    instructions?: string;
+  };
   totalAmount: number;
   cancelledBy: string | null;
   cancellationReason: string | null;

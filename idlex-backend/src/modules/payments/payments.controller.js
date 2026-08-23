@@ -12,15 +12,11 @@ const { logAudit } = require('../../utils/audit');
 // dates. The client opens Cashfree Checkout with the returned
 // payment_session_id, then calls /verify once the payment completes.
 const checkout = asyncHandler(async (req, res) => {
-  const { listingId, startDate, endDate } = req.body;
-  if (!listingId || !startDate || !endDate) {
-    throw ApiError.badRequest('listingId, startDate and endDate are required');
-  }
+  const { bookingId } = req.body;
+  if (!bookingId) throw ApiError.badRequest('bookingId is required');
 
   const { payment, configured, paymentSessionId } = await paymentsService.createCheckoutOrder(req.user._id, {
-    listingId,
-    startDate,
-    endDate,
+    bookingId,
   });
 
   logAudit({

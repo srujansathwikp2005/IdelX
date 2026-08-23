@@ -32,6 +32,33 @@ function computeCost(listing, startDate, endDate) {
 // Preventing double-booking on overlapping dates: checked against both
 // the listing's blocked availability and existing active bookings —
 // same overlap-check pattern used for listing availability itself.
+// Addresses arrive from a form, so every field is trimmed and length-capped
+// and coordinates are range-checked. A bad coordinate is dropped rather than
+// stored, so a map pin never silently records a point in the sea.
+function sanitizeAddress(input) {
+  if (!input || typeof input !== 'object') return undefined;
+  const text = (v, max) => (typeof v === 'string' && v.trim() ? v.trim().slice(0, max) : undefined);
+
+  const lat = Number(input.lat);
+  const lng = Number(input.lng);
+  const hasCoords = Number.isFinite(lat) && Number.isFinite(lng) && Math.abs(lat) <= 90 && Math.abs(lng) <= 180;
+
+  const address = {
+    label: text(input.label, 40),
+    line1: text(input.line1, 200),
+    line2: text(input.line2, 200),
+    city: text(input.city, 80),
+    state: text(input.state, 80),
+    pincode: text(input.pincode, 12),
+    instructions: text(input.instructions, 300),
+    lat: hasCoords ? lat : undefined,
+    lng: hasCoords ? lng : undefined,
+  };
+
+  // An object of nothing but undefined is not an address.
+  return Object.values(address).some((v) => v !== undefined) ? address : undefined;
+}
+
 async function assertDatesAvailable(listingId, startDate, endDate, excludeBookingId = null) {
   const listing = await Listing.findById(listingId);
   if (!listing) throw ApiError.notFound('Listing not found');
@@ -44,7 +71,7 @@ async function assertDatesAvailable(listingId, startDate, endDate, excludeBookin
 
   const bookingQuery = {
     listing: listingId,
-    status: { $in: ['requested', 'confirmed', 'active'] },
+    status: { $in: ['requested', 'awaiting_payment', 'confirmed', 'active'] },
     startDate: { $lte: endDate },
     endDate: { $gte: startDate },
   };
@@ -56,7 +83,7 @@ async function assertDatesAvailable(listingId, startDate, endDate, excludeBookin
   return listing;
 }
 
-async function createBooking(renterId, { listingId, startDate, endDate }) {
+async function createBooking(renterId, { listingId, startDate, endDate, deliveryAddress }) {
   const listing = await assertDatesAvailable(listingId, startDate, endDate);
 
   // Owners cannot rent out their own items to themselves — a booking must
@@ -79,6 +106,7 @@ async function createBooking(renterId, { listingId, startDate, endDate }) {
     serviceFee: cost.serviceFee,
     securityDeposit: cost.securityDeposit,
     totalAmount: cost.totalAmount,
+    deliveryAddress: sanitizeAddress(deliveryAddress),
   });
 
   // The owner who posted the item gets notified that a renter wants it.
