@@ -42,6 +42,22 @@ function MyRentalsInner() {
     void refetchReviews();
   };
 
+  // Releases the rent from escrow to the owner. This is the only path that
+  // does so, and until now nothing in the UI called it — every booking in
+  // production sat at rentStatus 'held' and no owner was ever paid.
+  const confirmReceipt = async (bookingId: string) => {
+    setActionError(null);
+    setBusyId(bookingId);
+    try {
+      await api.post<Booking>(`/api/bookings/${bookingId}/start`, {});
+      refetch();
+    } catch (err) {
+      setActionError(errorMessage(err));
+    } finally {
+      setBusyId(null);
+    }
+  };
+
   const requestReturn = async (bookingId: string) => {
     setActionError(null);
     setBusyId(bookingId);
@@ -81,9 +97,17 @@ function MyRentalsInner() {
                 <p className="text-sm text-muted-foreground">
                   {formatDate(booking.startDate)} - {formatDate(booking.endDate)}
                   {booking.status === "requested" && " · Awaiting owner confirmation"}
+                  {booking.status === "confirmed" && " · Confirm receipt once you have the item — this pays the owner"}
+                  {booking.status === "active" && " · In progress · rent paid to owner, deposit still held"}
                   {booking.status === "return_requested" && " · Return requested, awaiting owner confirmation"}
+                  {booking.status === "completed" && " · Completed · deposit refunded"}
                 </p>
                 <div className="flex items-center gap-2">
+                  {booking.status === "confirmed" && (
+                    <Button size="sm" variant="primary" loading={busyId === booking._id} onClick={() => confirmReceipt(booking._id)}>
+                      I&apos;ve received the item
+                    </Button>
+                  )}
                   {canRequestReturn && (
                     <Button size="sm" variant="outline" loading={busyId === booking._id} onClick={() => requestReturn(booking._id)}>
                       Request Return

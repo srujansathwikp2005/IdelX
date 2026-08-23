@@ -57,6 +57,23 @@ function RentalDetailInner({ rentalId }: { rentalId: string }) {
   const canReview = isRenter && ["completed", "return_requested"].includes(booking.status) && !reviewed;
   const canRequestReturn = isRenter && ["confirmed", "active"].includes(booking.status);
   const canConfirmReturn = isOwner && booking.status === "return_requested";
+  // Only while 'confirmed': once the rental is active the rent has already
+  // been released and confirming again would be meaningless.
+  const canConfirmReceipt = isRenter && booking.status === "confirmed";
+
+  // Releases the rent from escrow to the owner — the only path that does so.
+  const confirmReceipt = async () => {
+    setBusy(true);
+    setMessage(null);
+    try {
+      await api.post<Booking>(`/api/bookings/${rentalId}/start`, {});
+      refetch();
+    } catch (err) {
+      setMessage(errorMessage(err));
+    } finally {
+      setBusy(false);
+    }
+  };
 
   const requestReturn = async () => {
     setBusy(true);
@@ -103,6 +120,11 @@ function RentalDetailInner({ rentalId }: { rentalId: string }) {
             <div className="flex flex-wrap items-center justify-end gap-3">
               {isOwner && booking.status === "requested" && (
                 <Button size="sm" loading={busy} onClick={confirm}>Confirm Booking</Button>
+              )}
+              {canConfirmReceipt && (
+                <Button size="sm" loading={busy} onClick={confirmReceipt}>
+                  I&apos;ve received the item
+                </Button>
               )}
               {canRequestReturn && (
                 <Button size="sm" variant="outline" loading={busy} onClick={requestReturn}>
