@@ -194,6 +194,16 @@ async function createCheckoutOrder(payerId, { bookingId }) {
   // Our own order id. Cashfree accepts a merchant-supplied id, which means
   // the Payment row and the gateway order share a key from the start rather
   // than the record depending on whatever the gateway returns.
+  // Every visit to the payment page used to leave another 'created' payment
+  // behind — one booking had collected seven. They are harmless at the
+  // gateway, where unpaid orders simply expire, but they make the ledger
+  // unreadable when working out what a renter actually did. Supersede the
+  // old ones rather than accumulating them.
+  await Payment.updateMany(
+    { booking: booking._id, status: 'created' },
+    { $set: { status: 'failed', failureReason: 'Superseded by a newer checkout attempt' } }
+  );
+
   const gatewayOrderId = `idlex_${Date.now()}_${crypto.randomBytes(4).toString('hex')}`;
   const configured = isGatewayConfigured();
 
