@@ -27,10 +27,14 @@ export function DeliveryAddressFields({
   value,
   onChange,
   disabled,
+  heading = "Delivery address",
+  hint,
 }: {
   value: DeliveryAddress;
   onChange: (next: DeliveryAddress) => void;
   disabled?: boolean;
+  heading?: string;
+  hint?: string;
 }) {
   const [locating, setLocating] = React.useState(false);
   const [locateError, setLocateError] = React.useState<string | null>(null);
@@ -84,10 +88,13 @@ export function DeliveryAddressFields({
   return (
     <div className="space-y-4">
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <p className="flex items-center gap-2 text-sm font-medium">
-          <MapPin size={16} className="text-muted-foreground" />
-          Delivery address
-        </p>
+        <div>
+          <p className="flex items-center gap-2 text-sm font-medium">
+            <MapPin size={16} className="text-muted-foreground" />
+            {heading}
+          </p>
+          {hint && <p className="mt-1 text-xs text-muted-foreground">{hint}</p>}
+        </div>
         <Button
           type="button"
           size="sm"
