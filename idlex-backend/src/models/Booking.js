@@ -26,7 +26,20 @@ const bookingSchema = new mongoose.Schema(
 
     status: {
       type: String,
-      enum: ['requested', 'confirmed', 'active', 'return_requested', 'completed', 'cancelled', 'disputed'],
+      // 'awaiting_payment' sits between the owner approving and the renter
+      // paying. Money is only taken once the owner has agreed to hand the
+      // item over, so a renter is never charged for a request that is then
+      // declined.
+      enum: [
+        'requested',
+        'awaiting_payment',
+        'confirmed',
+        'active',
+        'return_requested',
+        'completed',
+        'cancelled',
+        'disputed',
+      ],
       default: 'requested',
       index: true,
     },
@@ -42,6 +55,27 @@ const bookingSchema = new mongoose.Schema(
     // up front, but only the platform fee is ours on day one. The other two
     // are held and released on separate events, so each needs its own state
     // rather than being inferred from booking.status.
+    // Where the renter wants the item. Entered at request time the way a food
+    // delivery address is: typed, or dropped on a map. Coordinates are
+    // optional because a typed address is a valid answer on its own.
+    deliveryAddress: {
+      label: String,
+      line1: String,
+      line2: String,
+      city: String,
+      state: String,
+      pincode: String,
+      lat: Number,
+      lng: Number,
+      // Free text for "ring the second bell", which is the part couriers
+      // actually rely on.
+      instructions: String,
+    },
+
+    // Set when the owner approves. An unapproved request should not hold
+    // someone's dates forever, so a sweep cancels stale ones.
+    approvedAt: Date,
+
     escrow: {
       // Rent: held from capture until the rental actually starts.
       rentStatus: {

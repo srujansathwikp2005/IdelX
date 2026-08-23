@@ -2,6 +2,7 @@ const crypto = require('crypto');
 const env = require('../../config/env');
 const Payment = require('../../models/Payment');
 const Booking = require('../../models/Booking');
+const Listing = require('../../models/Listing');
 const { Payout, PayoutSettings } = require('../../models/Payout');
 const ApiError = require('../../utils/ApiError');
 const bookingsService = require('../bookings/bookings.service');
@@ -156,13 +157,39 @@ async function settleOwnerPayout(payment, booking) {
 // the booking only materialises once the payment is captured (see
 // markPaymentCaptured). Only the gateway's order id is stored, never card
 // data — the same rule as the original Django doc.
-async function createCheckoutOrder(payerId, { listingId, startDate, endDate }) {
-  const listing = await bookingsService.assertDatesAvailable(listingId, startDate, endDate);
-  if (listing.owner.toString() === payerId.toString()) {
-    throw ApiError.forbidden('You cannot book your own listing');
+// Creates a gateway order for a booking the owner has already approved.
+//
+// The booking exists first and payment attaches to it, rather than payment
+// creating the booking: an owner agrees to the rental before any money is
+// taken, so a declined request never has to be refunded.
+async function createCheckoutOrder(payerId, { bookingId }) {
+  const booking = await Booking.findById(bookingId);
+  if (!booking) throw ApiError.notFound('Booking not found');
+  if (booking.renter.toString() !== payerId.toString()) {
+    throw ApiError.forbidden('Only the renter can pay for this booking');
+  }
+  if (booking.status !== 'awaiting_payment') {
+    throw ApiError.badRequest(
+      booking.status === 'requested'
+        ? 'The owner has not approved this booking yet'
+        : `This booking cannot be paid for in '${booking.status}' state`
+    );
   }
 
-  const cost = bookingsService.computeCost(listing, startDate, endDate);
+  const listing = await Listing.findById(booking.listing);
+  if (!listing) throw ApiError.notFound('Listing not found');
+
+  // Amounts come from the booking, which was priced when it was requested.
+  // Recomputing here would let a listing price change between approval and
+  // payment alter what the renter was quoted.
+  const cost = {
+    totalAmount: booking.totalAmount,
+    subtotal: booking.subtotal,
+    serviceFee: booking.serviceFee,
+    securityDeposit: booking.securityDeposit,
+  };
+  const startDate = booking.startDate;
+  const endDate = booking.endDate;
 
   // Our own order id. Cashfree accepts a merchant-supplied id, which means
   // the Payment row and the gateway order share a key from the start rather
@@ -179,6 +206,7 @@ async function createCheckoutOrder(payerId, { listingId, startDate, endDate }) {
     amount: cost.totalAmount,
     currency: 'INR',
     status: 'created',
+    booking: booking._id,
   });
 
   let paymentSessionId = null;
@@ -281,8 +309,14 @@ async function markPaymentCaptured({ gatewayOrderId, gatewayPaymentId, signature
   //
   // findOneAndUpdate matching on the pre-claim status is a single atomic
   // operation, so exactly one caller wins.
+  //
+  // The claim keys on status alone. It used to also require `booking` to be
+  // unset, which was right when capture created the booking — but a payment
+  // is now created against an already-approved booking, so that condition
+  // could never match and every capture fell through to the loser branch,
+  // returning the booking without ever confirming it.
   const claimed = await Payment.findOneAndUpdate(
-    { _id: payment._id, status: { $ne: 'capturing' }, booking: { $in: [null, undefined] } },
+    { _id: payment._id, status: { $in: ['created', 'authorized'] } },
     { $set: { status: 'capturing' } },
     { new: true }
   );
@@ -293,7 +327,10 @@ async function markPaymentCaptured({ gatewayOrderId, gatewayPaymentId, signature
     for (let i = 0; i < 10; i += 1) {
       await new Promise((resolve) => setTimeout(resolve, 200));
       const settled = await Payment.findById(payment._id);
-      if (settled?.booking) {
+      // Wait for the winner to finish, which means the payment reaching
+      // 'captured' — not merely for a booking to exist, since it existed
+      // before either request arrived.
+      if (settled?.status === 'captured' && settled.booking) {
         const booking = await Booking.findById(settled.booking);
         if (booking) return { payment: settled, booking, created: false };
       }
@@ -303,11 +340,19 @@ async function markPaymentCaptured({ gatewayOrderId, gatewayPaymentId, signature
 
   let booking;
   try {
-    booking = await bookingsService.createBooking(payment.payer, {
-      listingId: payment.listing,
-      startDate: payment.startDate,
-      endDate: payment.endDate,
-    });
+    // The booking already exists — the owner approved it before payment was
+    // possible — so capture confirms it rather than creating anything.
+    booking = await Booking.findById(payment.booking);
+    if (!booking) throw ApiError.notFound('Booking not found for this payment');
+
+    if (booking.status === 'awaiting_payment') {
+      booking.status = 'confirmed';
+      await booking.save();
+    } else if (booking.status !== 'confirmed') {
+      // Anything else means the booking moved on (cancelled, or already in
+      // progress). Capturing must not drag it backwards.
+      throw ApiError.badRequest(`Booking is in '${booking.status}' state and cannot be confirmed`);
+    }
   } catch (err) {
     // Release the claim so a retry is possible rather than the payment being
     // stuck in 'capturing' forever.

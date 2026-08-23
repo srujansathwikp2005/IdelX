@@ -27,7 +27,7 @@ function BookingRow({ booking, onApprove, onConfirmReturn, busy }: {
         <p className="text-sm text-muted-foreground">{formatDate(booking.startDate)} - {formatDate(booking.endDate)}</p>
       </div>
       <div className="flex items-center gap-2">
-        <Badge variant={booking.status === "completed" ? "success" : booking.status === "cancelled" ? "danger" : booking.status === "return_requested" ? "warning" : "default"}>{booking.status}</Badge>
+        <Badge variant={booking.status === "completed" ? "success" : booking.status === "cancelled" ? "danger" : booking.status === "return_requested" || booking.status === "awaiting_payment" ? "warning" : "default"}>{booking.status}</Badge>
         {onApprove && booking.status === "requested" && (
           <Button size="sm" loading={busy} disabled={busy} onClick={() => onApprove(booking)}>
             Approve

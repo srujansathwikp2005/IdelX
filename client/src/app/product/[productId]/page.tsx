@@ -224,7 +224,7 @@ export default function ProductPage({ params }: { params: Promise<{ productId: s
                 This is your listing — you can&apos;t book your own items.
               </div>
             ) : (
-              <Link href={ROUTES.CHECKOUT(listing._id)}><Button fullWidth>Reserve Item</Button></Link>
+              <Link href={ROUTES.CHECKOUT(listing._id)}><Button fullWidth>Request to Book</Button></Link>
             )}
 
             {/* The messages page tells people to "message an owner from a

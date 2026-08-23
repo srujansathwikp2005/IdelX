@@ -102,15 +102,19 @@ const confirmBooking = asyncHandler(async (req, res) => {
   if (booking.owner.toString() !== req.user._id.toString()) throw ApiError.forbidden('Only the owner can confirm');
   if (booking.status !== 'requested') throw ApiError.badRequest(`Cannot confirm a booking in '${booking.status}' state`);
 
-  booking.status = 'confirmed';
+  // Approval no longer confirms the booking — it unlocks payment. The renter
+  // is charged only after the owner has agreed to hand the item over, so
+  // nobody pays for a request that is then declined.
+  booking.status = 'awaiting_payment';
+  booking.approvedAt = new Date();
   await booking.save();
   logAudit({
     actor: req.user._id,
-    action: 'booking.confirmed',
+    action: 'booking.approved',
     category: 'booking',
     resourceType: 'booking',
     resourceId: booking._id.toString(),
-    summary: 'Confirmed a booking',
+    summary: 'Approved a booking; awaiting renter payment',
     req,
   });
 
@@ -118,12 +122,12 @@ const confirmBooking = asyncHandler(async (req, res) => {
   const listing = await Listing.findById(booking.listing).select('title');
   await notify(booking.renter, {
     type: 'booking_confirmed',
-    title: 'Booking approved',
-    body: `The owner approved your booking for "${listing ? listing.title : 'your rental'}"`,
-    link: `/my-rentals/${booking._id}`,
+    title: 'Booking approved — payment needed',
+    body: `The owner approved your booking for "${listing ? listing.title : 'your rental'}". Pay now to secure it.`,
+    link: `/checkout/booking/${booking._id}`,
   });
 
-  return new ApiResponse(200, booking, 'Booking confirmed').send(res);
+  return new ApiResponse(200, booking, 'Booking approved; awaiting payment').send(res);
 });
 
 const cancelBooking = asyncHandler(async (req, res) => {

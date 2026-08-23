@@ -96,13 +96,19 @@ function MyRentalsInner() {
               <div className="mt-3 flex flex-wrap items-center justify-between gap-3">
                 <p className="text-sm text-muted-foreground">
                   {formatDate(booking.startDate)} - {formatDate(booking.endDate)}
-                  {booking.status === "requested" && " · Awaiting owner confirmation"}
+                  {booking.status === "requested" && " · Awaiting owner approval — you have not been charged"}
+                  {booking.status === "awaiting_payment" && " · Approved! Pay now to secure it"}
                   {booking.status === "confirmed" && " · Confirm receipt once you have the item — this pays the owner"}
                   {booking.status === "active" && " · In progress · rent paid to owner, deposit still held"}
                   {booking.status === "return_requested" && " · Return requested, awaiting owner confirmation"}
                   {booking.status === "completed" && " · Completed · deposit refunded"}
                 </p>
                 <div className="flex items-center gap-2">
+                  {booking.status === "awaiting_payment" && (
+                    <Link href={`/checkout/booking/${booking._id}`}>
+                      <Button size="sm" variant="primary">Pay now</Button>
+                    </Link>
+                  )}
                   {booking.status === "confirmed" && (
                     <Button size="sm" variant="primary" loading={busyId === booking._id} onClick={() => confirmReceipt(booking._id)}>
                       I&apos;ve received the item
