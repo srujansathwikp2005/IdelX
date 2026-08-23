@@ -199,9 +199,32 @@ const respondExtension = asyncHandler(async (req, res) => {
 
   extension.status = req.body.approve ? 'approved' : 'rejected';
   extension.respondedAt = new Date();
+  let extensionFee = 0;
   if (req.body.approve) {
+    const previousDays = booking.totalDays;
     booking.endDate = extension.requestedNewEndDate;
     booking.totalDays = require('./bookings.service').daysBetween(booking.startDate, booking.endDate);
+
+    // Extra days cost money, and until now approving an extension silently
+    // gave them away. The fee is recorded as owed rather than charged: the
+    // renter has already paid and there is no card on file to bill again,
+    // so it comes out of the deposit at settlement — which is what the
+    // client's instruction describes for an unpaid extension.
+    const extraDays = Math.max(0, booking.totalDays - previousDays);
+    extensionFee = extraDays * booking.pricePerDay;
+    if (extensionFee > 0) {
+      await require('../ledger/ledger.service').record({
+        booking,
+        component: 'extension_fee',
+        action: 'charge',
+        amount: extensionFee,
+        from: 'renter',
+        to: 'owner',
+        counterparty: booking.owner,
+        actor: req.user._id,
+        note: `${extraDays} extra day(s) approved — deducted from the deposit if unpaid`,
+      });
+    }
   }
 
   await booking.save();
