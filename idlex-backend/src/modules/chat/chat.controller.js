@@ -3,14 +3,46 @@ const ApiResponse = require('../../utils/ApiResponse');
 const ApiError = require('../../utils/ApiError');
 const Conversation = require('../../models/Conversation');
 const Message = require('../../models/Message');
+const { isOnline } = require('../../sockets/chat.socket');
 const User = require('../../models/User');
 
 const listConversations = asyncHandler(async (req, res) => {
   const conversations = await Conversation.find({ participants: req.user._id })
     .sort('-lastMessageAt')
-    .populate('participants', 'name avatarUrl')
-    .populate('listing', 'title photos');
-  return new ApiResponse(200, conversations, 'Conversations').send(res);
+    // lastSeenAt comes along so the client can say when the other person was
+    // last around without a second request per row.
+    .populate('participants', 'name avatarUrl lastSeenAt')
+    .populate('listing', 'title photos')
+    .lean();
+
+  // Unread counts in one aggregate rather than a query per thread — a list of
+  // twenty conversations should not be twenty round trips.
+  const ids = conversations.map((c) => c._id);
+  const counts = await Message.aggregate([
+    {
+      $match: {
+        conversation: { $in: ids },
+        sender: { $ne: req.user._id },
+        readBy: { $ne: req.user._id },
+      },
+    },
+    { $group: { _id: '$conversation', n: { $sum: 1 } } },
+  ]);
+  const unreadByThread = new Map(counts.map((c) => [String(c._id), c.n]));
+
+  const items = conversations.map((conversation) => ({
+    ...conversation,
+    unreadCount: unreadByThread.get(String(conversation._id)) || 0,
+    participants: conversation.participants.map((p) => ({
+      ...p,
+      // Presence is held in memory by the socket layer, so it is answered
+      // here rather than stored — a flag in the database would survive a
+      // crash and leave people looking online forever.
+      isOnline: isOnline(p._id),
+    })),
+  }));
+
+  return new ApiResponse(200, items, 'Conversations').send(res);
 });
 
 const getMessages = asyncHandler(async (req, res) => {

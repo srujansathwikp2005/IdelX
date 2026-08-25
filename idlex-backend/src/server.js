@@ -5,7 +5,7 @@ const app = require('./app');
 const env = require('./config/env');
 const connectDB = require('./config/db');
 const { startExpiryJob } = require('./jobs/expire-requests');
-const registerChatSocket = require('./sockets/chat.socket');
+const { registerChatSocket } = require('./sockets/chat.socket');
 const ensureDefaultAdmin = require('./utils/ensureDefaultAdmin');
 
 async function start() {
