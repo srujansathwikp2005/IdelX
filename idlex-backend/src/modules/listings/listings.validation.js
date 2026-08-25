@@ -1,11 +1,17 @@
 const { z } = require('zod');
+const { CATEGORIES } = require('../categories/categories.controller');
+
+const CATEGORY_SLUGS = CATEGORIES.map((c) => c.slug);
 
 // Shared listing fields. `otpCode` exists only on create — every listing
 // must be confirmed with an emailed OTP before it is saved.
 const listingFields = {
   title: z.string().min(3),
   description: z.string().min(10),
-  category: z.string().min(2),
+  // Constrained to the real taxonomy rather than any string. A listing saved
+  // with "Electronics" instead of "electronics" is invisible to every filter
+  // and looks fine in the database, which is exactly how it went unnoticed.
+  category: z.enum(CATEGORY_SLUGS),
   pricePerDay: z.coerce.number().positive(),
   securityDeposit: z.coerce.number().min(0).optional(),
   status: z.enum(['draft', 'published', 'paused']).optional(),
