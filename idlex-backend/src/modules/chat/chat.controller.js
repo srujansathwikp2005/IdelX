@@ -60,6 +60,23 @@ const getMessages = asyncHandler(async (req, res) => {
     .limit(limit)
     .populate('sender', 'name avatarUrl');
 
+  // Opening a thread is reading it.
+  //
+  // readBy has been on the Message model since the beginning and nothing ever
+  // wrote to it, so an unread count could only grow — a thread stayed badged
+  // no matter how many times it was opened. This was written once and lost
+  // when the branch it lived on was replaced; it is the actual fix, and the
+  // client refreshing its list faster only made the stale number arrive
+  // sooner.
+  await Message.updateMany(
+    {
+      conversation: conversation._id,
+      sender: { $ne: req.user._id },
+      readBy: { $ne: req.user._id },
+    },
+    { $addToSet: { readBy: req.user._id } }
+  );
+
   return new ApiResponse(200, messages.reverse(), 'Message history').send(res);
 });
 
