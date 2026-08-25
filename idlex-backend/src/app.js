@@ -67,6 +67,7 @@ app.get('/health', (req, res) => res.json({ status: 'ok' }));
 app.use('/api/auth', authRoutes);
 app.use('/api/kyc', kycRoutes);
 app.use('/api/listings', listingsRoutes);
+app.use('/api/categories', require('./modules/categories/categories.routes'));
 app.get('/api/listings/:id/reviews', reviewsController.listListingReviews); // nested under listings, per the doc
 app.use('/api/bookings', bookingsRoutes);
 app.use('/api/payments', paymentsRoutes);
