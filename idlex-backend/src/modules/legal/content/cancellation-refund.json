@@ -1,0 +1,171 @@
+{
+  "title": "Cancellation & Refund Policy",
+  "eyebrow": "Legal",
+  "description": "Cancellation rules and the refund you can expect for a rental booking.",
+  "effectiveDate": "20 August 2026",
+  "sections": [
+    {
+      "heading": "Purpose",
+      "paragraphs": [
+        "This Cancellation & Refund Policy explains the rules applicable to cancellation of rental bookings made through the IdelX Platform and the refunds that may be available to Renters.",
+        "IdelX operates as a peer-to-peer rental marketplace and technology intermediary. Rental transactions are entered into between the Lender and Renter. IdelX facilitates the booking, payment and communication process but does not own, manufacture, possess, inspect or manage the products listed by Users."
+      ]
+    },
+    {
+      "heading": "Renter Cancellation",
+      "paragraphs": [
+        "A Renter may cancel a confirmed rental booking through the cancellation facility provided by IdelX or by contacting IdelX support.",
+        "The refund applicable to the rental amount will depend on the time remaining before the scheduled rental start time."
+      ],
+      "table": {
+        "headers": [
+          "Cancellation timing",
+          "Refund of rental amount"
+        ],
+        "rows": [
+          [
+            "More than 48 hours before rental start",
+            "100%"
+          ],
+          [
+            "24–48 hours before rental start",
+            "75%"
+          ],
+          [
+            "Less than 24 hours before rental start",
+            "50%"
+          ],
+          [
+            "After rental period has started",
+            "0%"
+          ],
+          [
+            "No-show by Renter",
+            "0%"
+          ]
+        ]
+      }
+    },
+    {
+      "heading": "Lender Cancellation",
+      "paragraphs": [
+        "Because a Lender is responsible for making the listed product available for the confirmed rental, cancellation by a Lender may significantly affect the Renter.",
+        "Cancellation more than 48 hours before rental start: the Renter shall generally receive a 100% refund of the rental amount.",
+        "Cancellation within 48 hours of rental start: the Renter shall generally receive a 100% refund of the rental amount. IdelX may additionally review the Lender's account and may restrict, suspend or terminate the Lender's access where repeated or unreasonable cancellations occur.",
+        "Cancellation at or immediately before handover: if the Lender fails to provide the product for the confirmed booking at the agreed handover time, the Renter shall generally receive a 100% refund of the rental amount. IdelX may take appropriate action against the Lender's account depending upon the circumstances."
+      ]
+    },
+    {
+      "heading": "Security Deposit",
+      "paragraphs": [
+        "The security deposit is separate from the rental amount and is governed by IdelX's Security Deposit & Damage Policy.",
+        "The security deposit is intended to protect the Lender against eligible losses arising from damage, loss, theft or other permitted deductions relating to the rented product.",
+        "The security deposit is 100% refundable where no valid deduction is applicable.",
+        "Cancellation of a booking does not automatically permit IdelX or the Lender to retain the security deposit. Where a security deposit has already been collected and the booking is cancelled before handover, it shall generally be returned to the Renter, subject to any legally valid or otherwise permitted deduction."
+      ]
+    },
+    {
+      "heading": "Refunds Following Product Unavailability",
+      "paragraphs": [
+        "If a confirmed product becomes unavailable due to circumstances attributable to the Lender, and the rental cannot reasonably proceed, IdelX may cancel the booking and arrange a refund of the applicable rental amount.",
+        "Where appropriate, IdelX may also assist the Renter in identifying another suitable listing available through the Platform, but IdelX does not guarantee the availability of an alternative product."
+      ]
+    },
+    {
+      "heading": "No-Show",
+      "paragraphs": [
+        "If the Renter fails to appear at the agreed handover location within the applicable agreed period without cancelling the booking, the booking may be treated as a no-show.",
+        "In such circumstances, the Renter will generally not be entitled to a refund of the rental amount.",
+        "The Lender is expected to remain available for the agreed handover period as specified in the booking."
+      ]
+    },
+    {
+      "heading": "Early Return",
+      "paragraphs": [
+        "If a Renter returns a product before the end of the agreed rental period, the unused portion of the rental period will not automatically qualify for a refund.",
+        "Any refund for early return may be provided only where the Lender agrees to the refund or IdelX expressly approves the refund under the circumstances of the booking.",
+        "The security deposit shall continue to be handled separately under the Security Deposit & Damage Policy."
+      ]
+    },
+    {
+      "heading": "Damage, Loss or Theft",
+      "paragraphs": [
+        "Cancellation and refund rights do not remove the Renter's responsibility for damage, loss or theft occurring during the rental.",
+        "Where the product has been damaged, lost or stolen, the applicable amount may be deducted from the security deposit in accordance with the Security Deposit & Damage Policy.",
+        "If the applicable loss exceeds the security deposit, the Renter may remain responsible for the additional amount payable to the Lender.",
+        "IdelX may assist the parties in communicating and documenting the incident and may provide reasonable assistance in attempting to recover the product or resolve the matter.",
+        "IdelX does not provide insurance and does not guarantee recovery, reimbursement or compensation for damaged, lost or stolen products."
+      ]
+    },
+    {
+      "heading": "Refund Processing",
+      "paragraphs": [
+        "Where a refund is approved, IdelX may process the refund through the payment service provider used for the transaction, including Razorpay, where applicable.",
+        "The actual time required for the refunded amount to appear in the Renter's bank account, card, UPI account or other payment method may depend on the payment service provider, banking institution or payment network.",
+        "IdelX is not responsible for delays caused by banks, payment networks, Razorpay or other third-party payment service providers beyond IdelX's reasonable control."
+      ]
+    },
+    {
+      "heading": "Payment Processing Charges",
+      "paragraphs": [
+        "Where applicable, refunds may be subject to payment processing, transaction or other charges that are non-refundable by the applicable payment service provider, to the extent permitted by applicable law and disclosed to the User.",
+        "IdelX will not knowingly retain any amount that is required by applicable law to be refunded to the User."
+      ]
+    },
+    {
+      "heading": "Refund Method",
+      "paragraphs": [
+        "Refunds will generally be made to the original payment method used for the transaction or through another method reasonably permitted by IdelX and the applicable payment service provider.",
+        "Users may be required to provide additional information necessary to process a refund."
+      ]
+    },
+    {
+      "heading": "Cancellation Due to Policy Violations or Fraud",
+      "paragraphs": [
+        "IdelX may cancel or restrict a booking where there is a reasonable basis to believe that false or misleading information has been provided; fraudulent payment activity has occurred; the account has been compromised; the transaction involves prohibited activity or prohibited items; the User has violated the Terms & Conditions or other IdelX policies; or the transaction presents a significant safety, security or legal risk.",
+        "The availability of a refund in such circumstances will depend on the circumstances, applicable law and the reason for cancellation."
+      ]
+    },
+    {
+      "heading": "Disputes Regarding Refunds",
+      "paragraphs": [
+        "If a User believes that an incorrect refund has been issued or that a refund is due, the User may contact IdelX support.",
+        "The User should provide relevant information such as Booking ID, cancellation date and time, payment details, reason for cancellation and any supporting evidence.",
+        "IdelX may review the booking records, communications and relevant information available to it before determining whether any additional action is appropriate."
+      ]
+    },
+    {
+      "heading": "IdelX's Role",
+      "paragraphs": [
+        "IdelX is a technology intermediary facilitating connections between Lenders and Renters.",
+        "IdelX does not own, manufacture, possess, inspect or manage the products listed by Users.",
+        "Accordingly, except where IdelX is directly responsible under applicable law or for a service it has expressly undertaken to provide, disputes concerning the condition, quality, ownership, performance or availability of a product are primarily matters between the Lender and Renter.",
+        "IdelX may provide reasonable assistance in communication, documentation, payment coordination and dispute facilitation, but such assistance does not make IdelX a party to the underlying rental contract."
+      ]
+    },
+    {
+      "heading": "Exceptions",
+      "paragraphs": [
+        "IdelX may consider exceptional circumstances on a case-by-case basis, including serious technical failures of the Platform, duplicate or erroneous payments, confirmed payment failures, serious safety concerns, circumstances preventing the agreed handover from taking place, or other circumstances that IdelX reasonably determines warrant review.",
+        "Any exception shall not create an automatic entitlement to the same treatment in future cases."
+      ]
+    },
+    {
+      "heading": "Changes to this Policy",
+      "paragraphs": [
+        "IdelX may update this Cancellation & Refund Policy from time to time to reflect changes in its services, payment systems, business practices or applicable laws.",
+        "The updated policy will be published on the IdelX Platform with the revised effective date.",
+        "Continued use of the Platform after an updated policy becomes effective constitutes acceptance of the updated policy, subject to applicable law."
+      ]
+    },
+    {
+      "heading": "Contact and Grievance Support",
+      "paragraphs": [
+        "For cancellation, refund or payment-related concerns, Users may contact:",
+        "IdelX Owner: Pujari Srujan Sathwik Email: idelxsupport@gmail.com Phone: +91 97044 26431 Support Hours: 8 hours per day Jurisdiction: Tanuku, Andhra Pradesh, India.",
+        "For matters involving the security deposit, damage, loss or theft of a product, this policy should be read together with the IdelX Security Deposit & Damage Policy and the IdelX Terms & Conditions."
+      ]
+    }
+  ],
+  "footnote": "This policy governs cancellation and refunds. Security deposits are governed separately by the Security Deposit & Damage Policy."
+}
