@@ -25,6 +25,11 @@ const userSchema = new mongoose.Schema(
     isEmailVerified: { type: Boolean, default: false },
     isActive: { type: Boolean, default: true }, // false = suspended by admin
 
+    // When this account was last seen doing anything. Written on socket
+    // connect and disconnect, and by the API on authenticated requests, so it
+    // stays roughly true whether or not the app holds a socket open.
+    lastSeenAt: { type: Date, default: null },
+
     avatarUrl: { type: String, default: null },
 
     // Listings a user has saved to come back to later.
