@@ -17,7 +17,7 @@ router.use(protect);
 router.get('/', controller.myBookings); // renter view
 // Creating a booking requires an admin-approved KYC — same restriction as
 // adding listings. Until approved the account is view-only.
-router.post('/', requireApprovedKyc, validate(createBookingSchema), controller.createBooking);
+router.post('/', requireApprovedKyc('request a rental'), validate(createBookingSchema), controller.createBooking);
 router.get('/owner', controller.ownerBookings);
 router.get('/:id', controller.getBooking);
 router.post('/:id/confirm', controller.confirmBooking);

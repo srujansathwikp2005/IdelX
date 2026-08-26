@@ -11,6 +11,7 @@ const Dispute = require('../../models/Dispute');
 const Kyc = require('../../models/Kyc');
 const AuditLog = require('../../models/AuditLog');
 const { logAudit } = require('../../utils/audit');
+const { sendKycApprovedEmail, sendKycRejectedEmail } = require('../../utils/email');
 
 // Dashboard numbers — Django's aggregation API equivalent via Mongo's
 // countDocuments / aggregate.
@@ -369,6 +370,22 @@ const reviewKyc = asyncHandler(async (req, res) => {
       },
       { upsert: true, new: true }
     );
+  }
+
+  // Tell the user the review finished. Mail failure must not roll back an
+  // approval, so this is awaited but its own errors are swallowed inside
+  // the email helpers.
+  const reviewed = await User.findById(kyc.user).select('name email');
+  if (reviewed?.email) {
+    if (status === 'approved') {
+      await sendKycApprovedEmail({ to: reviewed.email, name: reviewed.name });
+    } else if (status === 'rejected') {
+      await sendKycRejectedEmail({
+        to: reviewed.email,
+        name: reviewed.name,
+        reason: kyc.rejectionReason,
+      });
+    }
   }
 
   logAudit({

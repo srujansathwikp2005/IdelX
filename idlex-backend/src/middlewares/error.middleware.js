@@ -28,6 +28,7 @@ function errorMiddleware(err, req, res, next) {
   res.status(error.statusCode).json({
     success: false,
     message: error.message,
+    code: error.code || undefined,
     details: error.details || undefined,
   });
 }

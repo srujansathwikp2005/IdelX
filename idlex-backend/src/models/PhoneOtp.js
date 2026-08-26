@@ -9,7 +9,7 @@ const phoneOtpSchema = new mongoose.Schema(
     phone: { type: String, required: true, trim: true },
     code: { type: String, required: true },
     expiresAt: { type: Date, required: true },
-    purpose: { type: String, enum: ['signup', 'profile'], required: true },
+    purpose: { type: String, enum: ['signup', 'profile', 'login'], required: true },
     attempts: { type: Number, default: 0 },
   },
   { timestamps: true }

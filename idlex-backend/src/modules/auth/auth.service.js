@@ -38,6 +38,17 @@ async function register({ name, email, phone, password, phoneVerificationToken }
     user.isPhoneVerified = true;
     await user.save();
   }
+
+  // Send the verification code as part of registering. It used to wait for
+  // the client to make a second call, so anyone whose app dropped between
+  // the two ended up with an account that could never be verified — and a
+  // failure here must not undo an account that already exists.
+  try {
+    await issueEmailOtp(user._id, user.email, 'email_verify');
+  } catch (err) {
+    console.error(`[auth] Could not send verification email to ${user.email}:`, err.message);
+  }
+
   return issueTokens(user);
 }
 
@@ -97,6 +108,44 @@ async function verifyPhoneOtp(phone, code, purpose) {
   return { verified: true, token: signPhoneVerificationToken(result.phone, purpose) };
 }
 
+// Passwordless sign-in. The request step is deliberately quiet about
+// whether the number has an account: replying "no account" would turn this
+// endpoint into a way to test which phone numbers are registered.
+async function requestLoginOtp(phone) {
+  const normalized = normalizePhone(phone);
+  if (!normalized) throw ApiError.badRequest('Enter a valid 10-digit phone number');
+
+  const user = await User.findOne({ phone: normalized });
+  if (!user) return { phone: normalized };
+
+  await issuePhoneOtp(normalized, 'login');
+  return { phone: normalized };
+}
+
+async function loginWithPhoneOtp(phone, code) {
+  const normalized = normalizePhone(phone);
+  if (!normalized) throw ApiError.unauthorized('Invalid code');
+
+  const result = await verifyPhoneOtpRecord(normalized, code, 'login');
+  if (!result.ok) {
+    if (result.reason === 'attempts') {
+      throw ApiError.badRequest('Too many incorrect attempts. Request a new code');
+    }
+    // 'not_found' is folded in with a wrong code on purpose — see above.
+    throw ApiError.badRequest('The code is invalid or has expired');
+  }
+
+  const user = await User.findOne({ phone: normalized });
+  if (!user) throw ApiError.unauthorized('Invalid code');
+
+  // Signing in with a code proves the number, so record that.
+  if (!user.isPhoneVerified) {
+    user.isPhoneVerified = true;
+    await user.save();
+  }
+  return issueTokens(user);
+}
+
 async function requestOtp(phone) {
   const code = generateOtp();
   const expiresAt = new Date(Date.now() + 50 * 60 * 1000); // 50 min
@@ -143,7 +192,10 @@ async function verifyEmailOtp(email, code) {
 
   user.isEmailVerified = true;
   await user.save();
-  return user.toSafeJSON();
+  // Tokens, not just the user: proving the address is a sign-in, and the
+  // clients read `accessToken`/`user` off this response. Returning the bare
+  // user left them with nothing to store and nothing to show.
+  return issueTokens(user);
 }
 
 async function requestPasswordReset(email) {
@@ -239,6 +291,8 @@ module.exports = {
   verifyPhoneOtp,
   requestEmailOtp,
   verifyEmailOtp,
+  requestLoginOtp,
+  loginWithPhoneOtp,
   requestPasswordReset,
   confirmPasswordReset,
   updateMe,

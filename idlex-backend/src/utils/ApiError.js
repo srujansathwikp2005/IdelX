@@ -2,10 +2,14 @@
 // Controllers throw this (or call next(new ApiError(...))) and the
 // central error middleware turns it into a consistent JSON response.
 class ApiError extends Error {
-  constructor(statusCode, message, details = null) {
+  // `code` is for the client to branch on. Apps were matching on the
+  // English message to decide whether to offer a "Go to KYC" button, which
+  // breaks the moment the copy is reworded.
+  constructor(statusCode, message, details = null, code = null) {
     super(message);
     this.statusCode = statusCode;
     this.details = details;
+    this.code = code;
     this.isOperational = true;
     Error.captureStackTrace(this, this.constructor);
   }
@@ -16,8 +20,8 @@ class ApiError extends Error {
   static unauthorized(message = 'Not authenticated') {
     return new ApiError(401, message);
   }
-  static forbidden(message = 'Not allowed to perform this action') {
-    return new ApiError(403, message);
+  static forbidden(message = 'Not allowed to perform this action', details, code) {
+    return new ApiError(403, message, details, code);
   }
   static notFound(message = 'Resource not found') {
     return new ApiError(404, message);

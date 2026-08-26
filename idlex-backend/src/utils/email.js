@@ -25,7 +25,17 @@ async function sendEmail({ to, subject, text, html }) {
     console.log(`[email] (dev) Body: ${text}`);
     return;
   }
-  await getTransporter().sendMail({ from: env.smtp.from, to, subject, text, html });
+  const info = await getTransporter().sendMail({ from: env.smtp.from, to, subject, text, html });
+  // Log every accepted send. Delivery still depends on the receiving side,
+  // but this separates "we never sent it" from "they never received it".
+  console.log(
+    `[email] sent to ${to} (${subject}) messageId=${info.messageId} ` +
+    `accepted=${(info.accepted || []).length} rejected=${(info.rejected || []).length}`
+  );
+  if ((info.rejected || []).length) {
+    console.error(`[email] REJECTED recipients for ${subject}: ${info.rejected.join(', ')}`);
+  }
+  return info;
 }
 
 async function sendOtpEmail({ to, otp, purpose = 'email_verify' }) {
@@ -108,4 +118,64 @@ async function sendPaymentIssueEmail({ to, trackingId, amount, itemTitle, reason
   await sendEmail({ to, subject, text, html });
 }
 
-module.exports = { sendEmail, sendOtpEmail, sendPasswordResetEmail, sendPaymentIssueEmail };
+// Sent the moment an admin approves a verification. Without it the owner
+// has no idea the review finished — they were told to wait and never told
+// to stop, so they either give up or ask support.
+async function sendKycApprovedEmail({ to, name }) {
+  const subject = 'Your IdleX verification is approved';
+  const text =
+    `${name ? name + ',' : 'Hello,'}\n\n` +
+    `Your IdleX verification has been approved. You can now list items, ` +
+    `request rentals and receive payouts.\n\n` +
+    `Open the app to get started.`;
+  const html = `
+    <div style="font-family: Arial, sans-serif; max-width: 480px; margin: 0 auto; padding: 24px; border: 1px solid #e5e7eb; border-radius: 12px;">
+      <div style="font-size: 20px; font-weight: 700; margin-bottom: 16px;">Idle<span style="color:#6C4EF5;">X</span></div>
+      <p style="color: #374151; line-height: 1.6;">${name ? name + ',' : 'Hello,'}</p>
+      <p style="color: #374151; line-height: 1.6;">Your verification has been <strong style="color:#15803d;">approved</strong>. You can now list items, request rentals and receive payouts.</p>
+      <p style="color: #6b7280; font-size: 13px;">Open the IdleX app to get started.</p>
+    </div>`;
+  try {
+    await sendEmail({ to, subject, text, html });
+    return true;
+  } catch (err) {
+    // An approval must not fail because the mail did. Log and move on.
+    console.error(`[email] Failed to send KYC approval to ${to}:`, err.message);
+    return false;
+  }
+}
+
+// Sent when a verification is turned down, because "rejected" with no
+// reason is not something a user can act on.
+async function sendKycRejectedEmail({ to, name, reason }) {
+  const subject = 'Your IdleX verification needs another look';
+  const text =
+    `${name ? name + ',' : 'Hello,'}\n\n` +
+    `Your IdleX verification was not approved.\n\n` +
+    `Reason: ${reason || 'Not specified'}\n\n` +
+    `You can submit it again from the app.`;
+  const html = `
+    <div style="font-family: Arial, sans-serif; max-width: 480px; margin: 0 auto; padding: 24px; border: 1px solid #e5e7eb; border-radius: 12px;">
+      <div style="font-size: 20px; font-weight: 700; margin-bottom: 16px;">Idle<span style="color:#6C4EF5;">X</span></div>
+      <p style="color: #374151; line-height: 1.6;">${name ? name + ',' : 'Hello,'}</p>
+      <p style="color: #374151; line-height: 1.6;">Your verification was not approved.</p>
+      <div style="background:#fef2f2;border:1px solid #fecaca;border-radius:8px;padding:14px;margin:16px 0;color:#991b1b;">${reason || 'Not specified'}</div>
+      <p style="color: #6b7280; font-size: 13px;">You can submit it again from the app.</p>
+    </div>`;
+  try {
+    await sendEmail({ to, subject, text, html });
+    return true;
+  } catch (err) {
+    console.error(`[email] Failed to send KYC rejection to ${to}:`, err.message);
+    return false;
+  }
+}
+
+module.exports = {
+  sendEmail,
+  sendOtpEmail,
+  sendPasswordResetEmail,
+  sendPaymentIssueEmail,
+  sendKycApprovedEmail,
+  sendKycRejectedEmail,
+};
