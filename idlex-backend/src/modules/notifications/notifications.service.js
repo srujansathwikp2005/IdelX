@@ -11,7 +11,7 @@ async function notify(recipientId, { type = 'info', title, body = '', link = nul
   // Pushed after the record is written, and never allowed to fail the
   // caller: a booking must not roll back because a phone was unreachable.
   // The notification is already in the app either way.
-  pushToUser(recipientId, { title, body, link }).catch((err) =>
+  pushToUser(recipientId, { title, body, link, type }).catch((err) =>
     console.error('[push] notify failed:', err.message)
   );
 

@@ -36,10 +36,32 @@ function getMessaging() {
   return messaging;
 }
 
+// Which Android channel a notification is delivered on. Channels are how a
+// user mutes one kind of notification without muting the rest, so a single
+// catch-all would force them to choose between chat and booking alerts.
+//
+// The app registers these ids at startup; an id with no channel behind it
+// falls back to whatever the manifest names, so an unmapped type is quiet
+// rather than broken.
+const CHANNELS = {
+  message: 'messages',
+  booking_request: 'bookings',
+  booking_confirmed: 'bookings',
+  booking_cancelled: 'bookings',
+  extension_requested: 'bookings',
+  return_requested: 'bookings',
+  return_confirmed: 'bookings',
+  payment_captured: 'payments',
+};
+
+function channelFor(type) {
+  return CHANNELS[type] || 'general';
+}
+
 // Sends to every device the user has signed in on. Tokens FCM reports as
 // dead are deleted: a token that has been uninstalled stays invalid
 // forever, and keeping it means every future send carries a known failure.
-async function pushToUser(userId, { title, body, link }) {
+async function pushToUser(userId, { title, body, link, type }) {
   const fcm = getMessaging();
   if (!fcm || !userId) return { sent: 0, skipped: true };
 
@@ -55,7 +77,10 @@ async function pushToUser(userId, { title, body, link }) {
       // Data rides alongside so a tap can open the thing the notification is
       // about rather than just the app.
       data: link ? { link: String(link) } : {},
-      android: { priority: 'high', notification: { channelId: 'idlex_default' } },
+      android: {
+        priority: 'high',
+        notification: { channelId: channelFor(type) },
+      },
     });
   } catch (err) {
     console.error('[push] send failed:', err.message);
