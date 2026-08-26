@@ -6,19 +6,40 @@ const { verifyRefreshToken, signAccessToken } = require('../../utils/tokens');
 const User = require('../../models/User');
 const { logAudit } = require('../../utils/audit');
 
+// Starts a signup. No account exists yet, so the 202 says "accepted, not
+// finished" rather than 201 Created, which would be a lie the client would
+// reasonably act on.
 const register = asyncHandler(async (req, res) => {
   const result = await authService.register(req.body);
+  logAudit({
+    action: 'user.registration_started',
+    category: 'auth',
+    summary: 'Signup started, awaiting email verification',
+    details: { email: result.email },
+    req,
+  });
+  return new ApiResponse(202, result, 'Check your email for the six-digit code').send(res);
+});
+
+const resendRegistrationCode = asyncHandler(async (req, res) => {
+  const result = await authService.resendRegistrationCode(req.body.email);
+  return new ApiResponse(200, result, 'A new code is on its way').send(res);
+});
+
+// Where the account is actually created.
+const verifyRegistration = asyncHandler(async (req, res) => {
+  const result = await authService.verifyRegistration(req.body.email, req.body.code);
   logAudit({
     actor: result.user?._id,
     action: 'user.registered',
     category: 'auth',
     resourceType: 'user',
     resourceId: result.user?._id?.toString(),
-    summary: `New account registered`,
+    summary: 'New account created after email verification',
     details: { email: result.user?.email },
     req,
   });
-  return new ApiResponse(201, result, 'Registered successfully').send(res);
+  return new ApiResponse(201, result, 'Account created').send(res);
 });
 
 const login = asyncHandler(async (req, res) => {
@@ -150,6 +171,8 @@ const updateMe = asyncHandler(async (req, res) => {
 
 module.exports = {
   register,
+  resendRegistrationCode,
+  verifyRegistration,
   login,
   refreshToken,
   requestOtp,

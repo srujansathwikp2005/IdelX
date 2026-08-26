@@ -56,6 +56,11 @@ const userSchema = new mongoose.Schema(
 
 userSchema.pre('save', async function hashPassword(next) {
   if (!this.isModified('password')) return next();
+  // Signup completion carries a password already hashed to the same cost,
+  // because it was hashed when the pending registration was written rather
+  // than kept in plaintext for ten minutes. Hashing it again would produce a
+  // digest of a digest, and the password would never match.
+  if (this.$locals.passwordAlreadyHashed) return next();
   this.password = await bcrypt.hash(this.password, 10);
   next();
 });
