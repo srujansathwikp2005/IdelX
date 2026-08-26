@@ -18,6 +18,10 @@ const path = require('path');
 const mongoose = require('mongoose');
 const env = require('../src/config/env');
 const Kyc = require('../src/models/Kyc');
+// Required for its side effect: populate('user') resolves the ref through
+// mongoose's model registry, and a standalone script never loads the app
+// that would otherwise have registered it.
+require('../src/models/User');
 
 const dryRun = process.argv.includes('--dry-run');
 
