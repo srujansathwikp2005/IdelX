@@ -12,6 +12,7 @@ const Kyc = require('../../models/Kyc');
 const AuditLog = require('../../models/AuditLog');
 const { logAudit } = require('../../utils/audit');
 const { sendKycApprovedEmail, sendKycRejectedEmail } = require('../../utils/email');
+const { withSignedFiles } = require('../kyc/kyc.controller');
 
 // Dashboard numbers — Django's aggregation API equivalent via Mongo's
 // countDocuments / aggregate.
@@ -335,7 +336,9 @@ const listKyc = asyncHandler(async (req, res) => {
   const kycs = await Kyc.find(filter)
     .sort('-createdAt')
     .populate('user', 'name email phone isOwner role');
-  return new ApiResponse(200, kycs, 'KYC submissions').send(res);
+  // Signed on the way out, like the user's own view. The documents are no
+  // longer public, so a stored path would render as a broken image here.
+  return new ApiResponse(200, kycs.map(withSignedFiles), 'KYC submissions').send(res);
 });
 
 const reviewKyc = asyncHandler(async (req, res) => {

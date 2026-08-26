@@ -44,6 +44,10 @@ const env = {
   },
 
   uploadDir: process.env.UPLOAD_DIR || 'uploads',
+  // Identity documents and selfies. Deliberately a sibling of uploadDir
+  // rather than a folder inside it: express.static serves everything under
+  // the public root, so a subdirectory would still be world-readable.
+  kycDir: process.env.KYC_DIR || 'kyc-private',
 
   // Payment gateway. Cashfree replaced Razorpay after Razorpay declined the
   // account: they classified the marketplace as vehicle rental, a category
