@@ -5,7 +5,7 @@ const { requireApprovedKyc } = require('../../middlewares/kyc.middleware');
 
 const router = express.Router();
 
-router.post('/checkout', protect, requireApprovedKyc, controller.checkout);
+router.post('/checkout', protect, requireApprovedKyc('pay for a rental'), controller.checkout);
 router.post('/verify', protect, controller.verify);
 router.get('/payouts', protect, controller.listPayoutHistory);
 router.get('/payout-settings', protect, controller.getPayoutSettings);

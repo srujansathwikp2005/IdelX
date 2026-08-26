@@ -25,18 +25,18 @@ router.get('/mine/all', controller.myListings); // -> maps to my-listings page
 // Sends the per-listing OTP. Authenticated users only (a renter creating
 // their first listing gets upgraded to owner right after this step).
 router.post('/otp/request', controller.requestListingOtp);
-router.post('/', authorize('owner', 'admin'), requireApprovedKyc, validate(createListingSchema), controller.createListing);
-router.put('/:id', authorize('owner', 'admin'), requireApprovedKyc, validate(updateListingSchema), controller.updateListing);
-router.patch('/:id', authorize('owner', 'admin'), requireApprovedKyc, validate(updateListingSchema), controller.updateListing);
+router.post('/', authorize('owner', 'admin'), requireApprovedKyc('add listings'), validate(createListingSchema), controller.createListing);
+router.put('/:id', authorize('owner', 'admin'), requireApprovedKyc('add listings'), validate(updateListingSchema), controller.updateListing);
+router.patch('/:id', authorize('owner', 'admin'), requireApprovedKyc('add listings'), validate(updateListingSchema), controller.updateListing);
 router.delete('/:id', authorize('owner', 'admin'), controller.deleteListing);
 
-router.post('/:id/photos', authorize('owner', 'admin'), requireApprovedKyc, upload.array('photos', 10), controller.addPhotos);
+router.post('/:id/photos', authorize('owner', 'admin'), requireApprovedKyc('add listings'), upload.array('photos', 10), controller.addPhotos);
 router.delete('/:id/photos/:photoId', authorize('owner', 'admin'), controller.deletePhoto);
 
 router.post(
   '/:id/availability',
   authorize('owner', 'admin'),
-  requireApprovedKyc,
+  requireApprovedKyc('add listings'),
   validate(availabilitySchema),
   controller.addAvailabilityBlock
 );

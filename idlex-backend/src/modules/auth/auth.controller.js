@@ -87,6 +87,38 @@ const verifyPhoneOtp = asyncHandler(async (req, res) => {
   return new ApiResponse(200, result, 'Phone verified').send(res);
 });
 
+const requestLoginOtp = asyncHandler(async (req, res) => {
+  const result = await authService.requestLoginOtp(req.body.phone);
+  return new ApiResponse(200, result, 'If that number has an account, a code has been sent').send(res);
+});
+
+const loginWithPhoneOtp = asyncHandler(async (req, res) => {
+  let result;
+  try {
+    result = await authService.loginWithPhoneOtp(req.body.phone, req.body.code);
+  } catch (err) {
+    logAudit({
+      action: 'user.login_failed',
+      category: 'auth',
+      summary: 'Failed phone sign-in',
+      details: { phone: req.body.phone, method: 'otp' },
+      req,
+    });
+    throw err;
+  }
+  logAudit({
+    actor: result.user?._id,
+    action: 'user.logged_in',
+    category: 'auth',
+    resourceType: 'user',
+    resourceId: result.user?._id?.toString(),
+    summary: 'Signed in with a phone code',
+    details: { method: 'otp' },
+    req,
+  });
+  return new ApiResponse(200, result, 'Signed in').send(res);
+});
+
 const requestEmailOtp = asyncHandler(async (req, res) => {
   await authService.requestEmailOtp(req.body.email);
   return new ApiResponse(200, null, 'If that email exists, a verification code has been sent').send(res);
@@ -124,6 +156,8 @@ module.exports = {
   verifyOtp,
   requestPhoneOtp,
   verifyPhoneOtp,
+  requestLoginOtp,
+  loginWithPhoneOtp,
   requestEmailOtp,
   verifyEmailOtp,
   requestPasswordReset,
