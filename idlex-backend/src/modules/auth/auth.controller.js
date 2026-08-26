@@ -110,7 +110,7 @@ const verifyPhoneOtp = asyncHandler(async (req, res) => {
 
 const requestLoginOtp = asyncHandler(async (req, res) => {
   const result = await authService.requestLoginOtp(req.body.phone);
-  return new ApiResponse(200, result, 'If that number has an account, a code has been sent').send(res);
+  return new ApiResponse(200, result, 'A sign-in code is on its way').send(res);
 });
 
 const loginWithPhoneOtp = asyncHandler(async (req, res) => {
@@ -142,7 +142,7 @@ const loginWithPhoneOtp = asyncHandler(async (req, res) => {
 
 const requestEmailOtp = asyncHandler(async (req, res) => {
   await authService.requestEmailOtp(req.body.email);
-  return new ApiResponse(200, null, 'If that email exists, a verification code has been sent').send(res);
+  return new ApiResponse(200, null, 'A sign-in code is on its way').send(res);
 });
 
 const verifyEmailOtp = asyncHandler(async (req, res) => {

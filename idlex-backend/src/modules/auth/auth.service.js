@@ -221,15 +221,15 @@ async function verifyPhoneOtp(phone, code, purpose) {
   return { verified: true, token: signPhoneVerificationToken(result.phone, purpose) };
 }
 
-// Passwordless sign-in. The request step is deliberately quiet about
-// whether the number has an account: replying "no account" would turn this
-// endpoint into a way to test which phone numbers are registered.
+// Passwordless sign-in. Like the email route above, this reports a number
+// with no account rather than accepting it silently: a user staring at a
+// code field for a code that was never sent has no way to work out why.
 async function requestLoginOtp(phone) {
   const normalized = normalizePhone(phone);
   if (!normalized) throw ApiError.badRequest('Enter a valid 10-digit phone number');
 
   const user = await User.findOne({ phone: normalized });
-  if (!user) return { phone: normalized };
+  if (!user) throw ApiError.notFound('No account found with that mobile number');
 
   await issuePhoneOtp(normalized, 'login');
   return { phone: normalized };
@@ -286,9 +286,17 @@ async function verifyOtp(phone, code) {
   return user.toSafeJSON();
 }
 
+// A sign-in code only goes to an address that has an account behind it.
+//
+// This used to answer 200 for any address, so nothing could be learned about
+// who is registered — but the client then told the user "we sent a code to
+// fkkgf@gmail.com" when nothing had been sent, and they waited for an email
+// that was never coming. Saying so does allow an address to be tested for an
+// account; that is the deliberate trade, and it matches what sign-in already
+// reveals through a password attempt.
 async function requestEmailOtp(email) {
   const user = await User.findOne({ email: email.trim().toLowerCase() });
-  if (!user) return; // don't leak whether the email exists
+  if (!user) throw ApiError.notFound('No account found with that email address');
 
   await issueEmailOtp(user._id, user.email, 'email_verify');
 }
