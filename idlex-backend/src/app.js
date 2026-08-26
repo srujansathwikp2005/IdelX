@@ -77,6 +77,7 @@ app.use('/api/chat', chatRoutes);
 app.use('/api/reviews', reviewsRoutes);
 app.use('/api/admin', adminRoutes);
 app.use('/api/notifications', notificationsRoutes);
+app.use('/api/devices', require('./modules/devices/devices.routes'));
 app.use('/api/support', supportRoutes);
 app.use('/api/stats', statsRoutes);
 app.use('/api/wishlist', wishlistRoutes);
