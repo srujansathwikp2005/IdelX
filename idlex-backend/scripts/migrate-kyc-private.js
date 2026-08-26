@@ -20,8 +20,13 @@ const env = require('../src/config/env');
 const Kyc = require('../src/models/Kyc');
 
 const dryRun = process.argv.includes('--dry-run');
-const publicRoot = path.join(process.cwd(), env.uploadDir);
-const privateRoot = path.join(process.cwd(), env.kycDir);
+// path.resolve, not path.join. KYC_DIR is an absolute path in production,
+// and join glues it onto the cwd instead of replacing it — this script wrote
+// documents to <release>/opt/idlex/shared/kyc-private, inside a directory the
+// next deploy deletes. The middleware already resolved correctly; this did
+// not, and the dry run could not reveal it because it never touches disk.
+const publicRoot = path.resolve(process.cwd(), env.uploadDir);
+const privateRoot = path.resolve(process.cwd(), env.kycDir);
 
 function migrateOne(stored, report) {
   if (!stored) return { value: stored, changed: false };
@@ -34,7 +39,12 @@ function migrateOne(stored, report) {
     report.push(`  already private: ${filename}`);
   } else if (fs.existsSync(from)) {
     report.push(`  move: ${filename}`);
-    if (!dryRun) fs.renameSync(from, to);
+    if (!dryRun) {
+      fs.renameSync(from, to);
+      // Verified rather than assumed. A move that silently did not happen,
+      // followed by anything that cleans up the source, loses the file.
+      if (!fs.existsSync(to)) throw new Error(`move failed: ${filename}`);
+    }
   } else {
     // The record points at a file neither directory has. Worth saying out
     // loud rather than silently rewriting a path to nothing.
@@ -49,6 +59,11 @@ function migrateOne(stored, report) {
     console.error('MONGO_URI is not set');
     process.exit(1);
   }
+  // Printed before anything moves. A path that looks wrong here is the last
+  // chance to stop, and the dry run cannot show it any other way.
+  console.log(`public : ${publicRoot}`);
+  console.log(`private: ${privateRoot}\n`);
+
   if (!dryRun && !fs.existsSync(privateRoot)) {
     fs.mkdirSync(privateRoot, { recursive: true, mode: 0o750 });
   }
