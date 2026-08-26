@@ -5,7 +5,7 @@ const app = require('./app');
 const env = require('./config/env');
 const connectDB = require('./config/db');
 const { startExpiryJob } = require('./jobs/expire-requests');
-const { registerChatSocket } = require('./sockets/chat.socket');
+const { registerChatSocket, isOnline } = require('./sockets/chat.socket');
 const ensureDefaultAdmin = require('./utils/ensureDefaultAdmin');
 
 async function start() {
@@ -27,6 +27,9 @@ async function start() {
   // Expose the socket server to HTTP handlers so a message sent over REST
   // still reaches anyone watching the thread over the websocket.
   app.set('io', io);
+  // Presence, so an HTTP handler can tell whether the other person is
+  // already connected before pushing a notification at their phone.
+  app.set('onlineUsers', isOnline);
   registerChatSocket(io);
 
   server.listen(env.port, () => {
