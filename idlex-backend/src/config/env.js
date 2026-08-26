@@ -25,6 +25,13 @@ const env = {
     apiKey: process.env.RENFLAIR_API_KEY,
   },
 
+  push: {
+    // Absolute path to the Firebase service account JSON. Unset (local dev,
+    // CI) means notifications are created but not pushed, the same way an
+    // unset SMTP_HOST means mail is logged rather than sent.
+    serviceAccountPath: process.env.FIREBASE_SERVICE_ACCOUNT,
+  },
+
   smtp: {
     // Email delivery for OTPs. When SMTP_HOST is unset (local dev) the
     // email util falls back to logging the message so flows still work.
