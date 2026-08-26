@@ -18,13 +18,16 @@ function getMessaging() {
   }
 
   try {
-    const admin = require('firebase-admin');
+    // The modular entry points, not the `admin.apps` / `admin.messaging()`
+    // namespace: that namespace is undefined in current firebase-admin, and
+    // reading .length off it threw before any credential was even parsed.
+    const { getApps, initializeApp, cert } = require('firebase-admin/app');
+    const { getMessaging } = require('firebase-admin/messaging');
     // eslint-disable-next-line import/no-dynamic-require, global-require
     const serviceAccount = require(credentialsPath);
-    const app = admin.apps.length
-      ? admin.app()
-      : admin.initializeApp({ credential: admin.credential.cert(serviceAccount) });
-    messaging = admin.messaging(app);
+    const existing = getApps();
+    const app = existing.length ? existing[0] : initializeApp({ credential: cert(serviceAccount) });
+    messaging = getMessaging(app);
     console.log(`[push] FCM ready for project ${serviceAccount.project_id}`);
   } catch (err) {
     console.error('[push] Could not initialise FCM:', err.message);
