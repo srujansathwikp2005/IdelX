@@ -36,6 +36,15 @@ const phoneOtpRequestSchema = z.object({
   purpose: z.enum(['signup', 'profile']),
 });
 
+const registerVerifySchema = z.object({
+  email: z.string().email(),
+  code: z.string().length(6),
+});
+
+const registerResendSchema = z.object({
+  email: z.string().email(),
+});
+
 const phoneLoginRequestSchema = z.object({
   phone: z.string().min(7),
 });
@@ -82,6 +91,8 @@ const updateMeSchema = z.object({
 
 module.exports = {
   registerSchema,
+  registerVerifySchema,
+  registerResendSchema,
   loginSchema,
   otpRequestSchema,
   otpVerifySchema,

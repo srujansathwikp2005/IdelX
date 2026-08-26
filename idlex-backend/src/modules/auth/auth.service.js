@@ -1,17 +1,28 @@
 const crypto = require('crypto');
+const bcrypt = require('bcryptjs');
 const User = require('../../models/User');
+const PendingRegistration = require('../../models/PendingRegistration');
 const ApiError = require('../../utils/ApiError');
 const { signAccessToken, signRefreshToken, signPhoneVerificationToken, verifyPhoneVerificationToken } = require('../../utils/tokens');
 const { generateOtp, sendOtpSms, normalizePhone, issuePhoneOtp, verifyPhoneOtpRecord, issueEmailOtp, verifyEmailOtpRecord } = require('../../utils/otp');
-const { sendPasswordResetEmail } = require('../../utils/email');
+const { sendPasswordResetEmail, sendOtpEmail } = require('../../utils/email');
 const env = require('../../config/env');
 
 // Business logic lives here, controllers stay thin (parse req -> call
 // service -> shape response) — mirrors keeping Django views thin and
 // pushing logic into a services.py module.
 
+const REGISTRATION_TTL_MS = 10 * 60 * 1000;
+const REGISTRATION_MAX_ATTEMPTS = 5;
+
+// Starts a signup. Deliberately does not create the account: an address
+// nobody has proved they can read is not an identity, and an account that
+// exists before the proof can sign in, be messaged and hold listings while
+// still being unreachable. What was submitted waits in PendingRegistration
+// until the emailed code comes back.
 async function register({ name, email, phone, password, phoneVerificationToken }) {
-  const existing = await User.findOne({ email });
+  const normalizedEmail = String(email).trim().toLowerCase();
+  const existing = await User.findOne({ email: normalizedEmail });
   if (existing) throw ApiError.conflict('Email already registered');
 
   let normalizedPhone;
@@ -33,21 +44,111 @@ async function register({ name, email, phone, password, phoneVerificationToken }
     }
   }
 
-  const user = await User.create({ name, email, phone: normalizedPhone, password });
-  if (normalizedPhone) {
-    user.isPhoneVerified = true;
-    await user.save();
+  const code = generateOtp();
+
+  // Hashed with the same cost the User model uses, so the plaintext never
+  // exists at rest even for the ten minutes this record lives.
+  const hashed = await bcrypt.hash(password, 10);
+
+  // Upserted rather than inserted: starting the signup again — a typo, a
+  // lost email, a second tab — should replace the attempt, not collide with
+  // it on the unique index.
+  await PendingRegistration.findOneAndUpdate(
+    { email: normalizedEmail },
+    {
+      $set: {
+        name,
+        password: hashed,
+        phone: normalizedPhone,
+        phoneVerified: Boolean(normalizedPhone),
+        code,
+        attempts: 0,
+        expiresAt: new Date(Date.now() + REGISTRATION_TTL_MS),
+      },
+    },
+    { upsert: true, new: true }
+  );
+
+  // If the code cannot be sent there is nothing to verify against, so unlike
+  // the old flow this failure is reported rather than swallowed — the account
+  // does not exist yet, so there is nothing to leave half-made.
+  const sent = await sendOtpEmail({ to: normalizedEmail, otp: code, purpose: 'email_verify' });
+  if (!sent) {
+    await PendingRegistration.deleteOne({ email: normalizedEmail });
+    throw new ApiError(502, 'We could not send the verification email. Check the address and try again.');
   }
 
-  // Send the verification code as part of registering. It used to wait for
-  // the client to make a second call, so anyone whose app dropped between
-  // the two ended up with an account that could never be verified — and a
-  // failure here must not undo an account that already exists.
-  try {
-    await issueEmailOtp(user._id, user.email, 'email_verify');
-  } catch (err) {
-    console.error(`[auth] Could not send verification email to ${user.email}:`, err.message);
+  return { pending: true, email: normalizedEmail };
+}
+
+// Re-sends the code for a signup already in progress, extending its window.
+async function resendRegistrationCode(email) {
+  const normalizedEmail = String(email).trim().toLowerCase();
+  const pending = await PendingRegistration.findOne({ email: normalizedEmail });
+  if (!pending) {
+    throw ApiError.badRequest('That signup has expired. Start again.');
   }
+
+  const code = generateOtp();
+  pending.code = code;
+  pending.attempts = 0;
+  pending.expiresAt = new Date(Date.now() + REGISTRATION_TTL_MS);
+  await pending.save();
+
+  const sent = await sendOtpEmail({ to: normalizedEmail, otp: code, purpose: 'email_verify' });
+  if (!sent) throw new ApiError(502, 'We could not send the verification email. Try again shortly.');
+
+  return { pending: true, email: normalizedEmail };
+}
+
+// Completes a signup. This is where the account comes into existence, and
+// it is created already verified — there is no other way in.
+async function verifyRegistration(email, code) {
+  const normalizedEmail = String(email).trim().toLowerCase();
+  const pending = await PendingRegistration.findOne({ email: normalizedEmail });
+  if (!pending) throw ApiError.badRequest('That signup has expired. Start again.');
+
+  if (pending.attempts >= REGISTRATION_MAX_ATTEMPTS) {
+    await PendingRegistration.deleteOne({ _id: pending._id });
+    throw ApiError.badRequest('Too many incorrect attempts. Start again.');
+  }
+
+  if (pending.code !== String(code).trim()) {
+    pending.attempts += 1;
+    await pending.save();
+    throw ApiError.badRequest('The code is invalid or has expired');
+  }
+
+  // The window can close between the lookup and here.
+  if (pending.expiresAt < new Date()) {
+    await PendingRegistration.deleteOne({ _id: pending._id });
+    throw ApiError.badRequest('That code has expired. Start again.');
+  }
+
+  // Re-checked at the moment of creation: someone else may have taken the
+  // address or number during the ten minutes this signup was open.
+  if (await User.findOne({ email: normalizedEmail })) {
+    await PendingRegistration.deleteOne({ _id: pending._id });
+    throw ApiError.conflict('Email already registered');
+  }
+  if (pending.phone && (await User.findOne({ phone: pending.phone }))) {
+    throw ApiError.conflict('Phone number already registered');
+  }
+
+  const user = new User({
+    name: pending.name,
+    email: normalizedEmail,
+    phone: pending.phone,
+    password: pending.password,
+    isEmailVerified: true,
+    isPhoneVerified: Boolean(pending.phoneVerified),
+  });
+  // Tells the model's pre-save hook the digest is already final; hashing it
+  // again would store a hash of a hash and no password would ever match.
+  user.$locals.passwordAlreadyHashed = true;
+  await user.save();
+
+  await PendingRegistration.deleteOne({ _id: pending._id });
 
   return issueTokens(user);
 }
@@ -77,6 +178,18 @@ async function login({ identifier, email, password }) {
     throw ApiError.unauthorized('Invalid credentials');
   }
   if (!user.isActive) throw ApiError.forbidden('Account is suspended');
+
+  // Belt and braces. New accounts are only created once verified, so this
+  // should never fire — but nothing else in the app checks, and an account
+  // that reached the database unverified by any route must not sign in.
+  if (!user.isEmailVerified) {
+    throw ApiError.forbidden(
+      'Confirm your email address before signing in. Check your inbox for the code.',
+      { email: user.email },
+      'email_unverified'
+    );
+  }
+
   return issueTokens(user);
 }
 
@@ -293,6 +406,8 @@ module.exports = {
   verifyEmailOtp,
   requestLoginOtp,
   loginWithPhoneOtp,
+  resendRegistrationCode,
+  verifyRegistration,
   requestPasswordReset,
   confirmPasswordReset,
   updateMe,

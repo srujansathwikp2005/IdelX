@@ -9,6 +9,8 @@ const {
   otpVerifySchema,
   phoneOtpRequestSchema,
   phoneOtpVerifySchema,
+  registerVerifySchema,
+  registerResendSchema,
   phoneLoginRequestSchema,
   phoneLoginVerifySchema,
   emailOtpRequestSchema,
@@ -21,6 +23,8 @@ const {
 const router = express.Router();
 
 router.post('/register', validate(registerSchema), controller.register);
+router.post('/register/verify', validate(registerVerifySchema), controller.verifyRegistration);
+router.post('/register/resend', validate(registerResendSchema), controller.resendRegistrationCode);
 router.post('/login', validate(loginSchema), controller.login);
 router.post('/token/refresh', controller.refreshToken);
 router.post('/otp/request', validate(otpRequestSchema), controller.requestOtp);
