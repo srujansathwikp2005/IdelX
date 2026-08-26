@@ -5,6 +5,7 @@ const Conversation = require('../../models/Conversation');
 const Message = require('../../models/Message');
 const { isOnline } = require('../../sockets/chat.socket');
 const User = require('../../models/User');
+const { notify } = require('../notifications/notifications.service');
 
 const listConversations = asyncHandler(async (req, res) => {
   const conversations = await Conversation.find({ participants: req.user._id })
@@ -136,6 +137,32 @@ const sendMessage = asyncHandler(async (req, res) => {
   // message immediately, whichever path it arrived by.
   const io = req.app.get('io');
   if (io) io.to(`conversation:${conversation._id}`).emit('message:new', { conversationId: conversation._id });
+
+  // Notify whoever is not the sender. A message was the one thing on the
+  // platform that produced no notification at all: the socket event only
+  // reaches someone already watching the thread, so a message sent while the
+  // other person had the app closed was invisible until they went looking.
+  //
+  // Skipped when they are currently connected — a phone buzzing for a message
+  // already open on screen is noise, and presence is tracked for exactly this.
+  const online = req.app.get('onlineUsers');
+  const recipients = conversation.participants.filter(
+    (p) => p.toString() !== req.user._id.toString()
+  );
+
+  for (const recipient of recipients) {
+    if (online && online(recipient.toString())) continue;
+    // Not awaited: a message must not fail to send because a phone was
+    // unreachable, and the socket event has already gone out.
+    notify(recipient, {
+      type: 'message',
+      title: req.user.name || 'New message',
+      // Trimmed: a notification tray is not the place for an essay, and the
+      // full text is one tap away.
+      body: text.length > 120 ? `${text.slice(0, 117)}...` : text,
+      link: `/messages/${conversation._id}`,
+    }).catch((err) => console.error('[chat] notify failed:', err.message));
+  }
 
   await message.populate('sender', 'name avatarUrl');
   return new ApiResponse(201, message, 'Message sent').send(res);
