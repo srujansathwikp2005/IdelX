@@ -3,11 +3,65 @@ const ApiResponse = require('../../utils/ApiResponse');
 const ApiError = require('../../utils/ApiError');
 const Kyc = require('../../models/Kyc');
 const { logAudit } = require('../../utils/audit');
+const path = require('path');
+const fs = require('fs');
+const env = require('../../config/env');
+const { kycRoot } = require('../../middlewares/upload.middleware');
+const { signedKycUrl, verify } = require('../../utils/signedFile');
+
+// Adds freshly signed links to whatever file references a record holds.
+// Signed on read rather than stored, so a link is only ever as old as the
+// request that produced it.
+function withSignedFiles(kyc) {
+  const obj = kyc.toObject ? kyc.toObject() : { ...kyc };
+  if (obj.document?.fileUrl) {
+    obj.document = { ...obj.document, fileUrl: signedKycUrl(obj.document.fileUrl) };
+  }
+  if (obj.selfie?.fileUrl) {
+    obj.selfie = { ...obj.selfie, fileUrl: signedKycUrl(obj.selfie.fileUrl) };
+  }
+  return obj;
+}
 
 const getMyKyc = asyncHandler(async (req, res) => {
   let kyc = await Kyc.findOne({ user: req.user._id });
   if (!kyc) kyc = await Kyc.create({ user: req.user._id });
-  return new ApiResponse(200, kyc, 'KYC status').send(res);
+  return new ApiResponse(200, withSignedFiles(kyc), 'KYC status').send(res);
+});
+
+// Serves an identity document or selfie.
+//
+// Not behind `protect`: an <img> tag cannot send an Authorization header,
+// and the admin review screen has to show a selfie beside a document. The
+// signature in the query string is the authorisation, and it expires.
+const getKycFile = asyncHandler(async (req, res) => {
+  const filename = path.basename(String(req.params.filename || ''));
+  const { expires, token } = req.query;
+
+  if (!verify(filename, expires, token)) {
+    throw ApiError.forbidden('This link has expired. Reload the page and try again.');
+  }
+
+  let filePath = path.join(kycRoot, filename);
+  // basename above already strips traversal; this is the belt to that
+  // braces, so a future change to the parsing cannot open the filesystem.
+  if (!filePath.startsWith(kycRoot)) throw ApiError.forbidden('Not allowed');
+
+  // Records written before the move still point at files sitting in the
+  // public directory. Serving those here too means deploying and migrating
+  // need not happen in the same instant. Safe to delete once the migration
+  // has run everywhere — the signature is still required either way.
+  if (!fs.existsSync(filePath)) {
+    const legacy = path.join(path.resolve(process.cwd(), env.uploadDir), filename);
+    if (fs.existsSync(legacy)) filePath = legacy;
+    else throw ApiError.notFound('File not found');
+  }
+
+  // Never cached by a proxy: the URL is short-lived by design and a shared
+  // cache would outlive it.
+  res.setHeader('Cache-Control', 'private, no-store');
+  res.setHeader('X-Content-Type-Options', 'nosniff');
+  return res.sendFile(filePath);
 });
 
 // Single-step submission: the user uploads a document (PDF) and a live
@@ -21,11 +75,13 @@ const submitKyc = asyncHandler(async (req, res) => {
   if (!kyc) kyc = await Kyc.create({ user: req.user._id });
 
   kyc.document = {
-    fileUrl: `/uploads/${files.file[0].filename}`,
+    // The filename only. A stored '/uploads/...' path was a public URL
+    // that stayed valid forever once anyone had seen it.
+    fileUrl: files.file[0].filename,
     uploadedAt: new Date(),
   };
   kyc.selfie = {
-    fileUrl: `/uploads/${files.selfie[0].filename}`,
+    fileUrl: files.selfie[0].filename,
     uploadedAt: new Date(),
   };
 
@@ -64,4 +120,4 @@ const submitKyc = asyncHandler(async (req, res) => {
   return new ApiResponse(200, kyc, 'KYC submitted for review').send(res);
 });
 
-module.exports = { getMyKyc, submitKyc };
+module.exports = { getMyKyc, submitKyc, getKycFile, withSignedFiles };

@@ -10,6 +10,12 @@ const ApiError = require('../utils/ApiError');
 const uploadRoot = path.join(process.cwd(), env.uploadDir);
 if (!fs.existsSync(uploadRoot)) fs.mkdirSync(uploadRoot, { recursive: true });
 
+// Identity documents never go to the public root. Nothing serves this
+// directory statically; the only way out of it is the signed route in the
+// KYC module.
+const kycRoot = path.resolve(process.cwd(), env.kycDir);
+if (!fs.existsSync(kycRoot)) fs.mkdirSync(kycRoot, { recursive: true, mode: 0o750 });
+
 const storage = multer.diskStorage({
   destination: (req, file, cb) => cb(null, uploadRoot),
   filename: (req, file, cb) => {
@@ -46,11 +52,9 @@ const fileFilter = (req, file, cb) => {
   );
 };
 
-const upload = multer({
-  storage,
-  fileFilter,
-  limits: { fileSize: 10 * 1024 * 1024 }, // 10MB — plenty for a KYC PDF
-});
+const LIMITS = { fileSize: 10 * 1024 * 1024 }; // 10MB — plenty for a KYC PDF
+
+const upload = multer({ storage, fileFilter, limits: LIMITS });
 
 // Converts any uploaded HEIC/HEIF to JPEG on disk, in place, so nothing
 // downstream has to know which format the phone produced. Runs after multer
@@ -96,6 +100,26 @@ async function normalizeImages(req, res, next) {
 // `upload.array('photos', 10)` keeps working unchanged.
 const wrap = (method) => (...args) => [upload[method](...args), normalizeImages];
 
+// The same multer configuration, writing to the private root instead. Kept
+// as a separate instance rather than a per-request destination so a route
+// cannot accidentally send identity documents to the public directory by
+// forgetting a flag.
+const kycStorage = multer.diskStorage({
+  destination: (req, file, cb) => cb(null, kycRoot),
+  filename: (req, file, cb) => {
+    const unique = `${Date.now()}-${Math.round(Math.random() * 1e9)}`;
+    cb(null, `${unique}${path.extname(file.originalname)}`);
+  },
+});
+
+const kycUpload = multer({
+  storage: kycStorage,
+  fileFilter,
+  limits: LIMITS,
+});
+
+const wrapKyc = (method) => (...args) => [kycUpload[method](...args), normalizeImages];
+
 module.exports = {
   single: wrap('single'),
   array: wrap('array'),
@@ -103,4 +127,10 @@ module.exports = {
   none: wrap('none'),
   any: wrap('any'),
   normalizeImages,
+  kycRoot,
+  // Routes handling identity documents use these instead.
+  kyc: {
+    single: wrapKyc('single'),
+    fields: wrapKyc('fields'),
+  },
 };
