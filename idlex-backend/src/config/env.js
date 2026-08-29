@@ -32,6 +32,14 @@ const env = {
     serviceAccountPath: process.env.FIREBASE_SERVICE_ACCOUNT,
   },
 
+  manualPayment: {
+    // Where renters send money during the prototype. Served to the app
+    // rather than built into it, so changing the account does not need a
+    // release.
+    upiId: process.env.MANUAL_PAYMENT_UPI_ID || null,
+    payeeName: process.env.MANUAL_PAYMENT_PAYEE_NAME || 'IdleX',
+  },
+
   smtp: {
     // Email delivery for OTPs. When SMTP_HOST is unset (local dev) the
     // email util falls back to logging the message so flows still work.
