@@ -171,8 +171,54 @@ async function sendKycRejectedEmail({ to, name, reason }) {
   }
 }
 
+// Sent when an admin confirms the money arrived. The renter has been waiting
+// on a person to check a bank statement, so this is the first solid
+// confirmation they get -- and it carries the reference they can quote if
+// anything is ever disputed.
+async function sendPaymentConfirmedEmail({
+  to, name, bookingId, itemTitle, rentalAmount, securityDeposit, totalAmount, utr,
+}) {
+  const subject = `IdleX payment confirmed - booking ${bookingId}`;
+  const text =
+    `${name ? name + ',' : 'Hello,'}\n\n` +
+    `Your payment has been verified and your booking is confirmed.\n\n` +
+    `Item: ${itemTitle}\n` +
+    `Booking ID: ${bookingId}\n` +
+    `Transaction ID: ${utr}\n\n` +
+    `Rental: Rs ${rentalAmount}\n` +
+    `Refundable deposit: Rs ${securityDeposit}\n` +
+    `Total paid: Rs ${totalAmount}\n\n` +
+    `The deposit is held and returned after the item comes back undamaged.`;
+  const html = `
+    <div style="font-family: Arial, sans-serif; max-width: 520px; margin: 0 auto; padding: 24px; border: 1px solid #e5e7eb; border-radius: 12px;">
+      <div style="font-size: 20px; font-weight: 700; margin-bottom: 16px;">Idle<span style="color:#6C4EF5;">X</span></div>
+      <p style="color: #374151; line-height: 1.6;">${name ? name + ',' : 'Hello,'}</p>
+      <p style="color: #374151; line-height: 1.6;">Your payment has been verified and your booking is <strong style="color:#15803d;">confirmed</strong>.</p>
+      <div style="background:#f9fafb;border:1px solid #e5e7eb;border-radius:8px;padding:16px;margin:20px 0;">
+        <p style="margin:0 0 10px;font-weight:600;color:#111827;">${itemTitle}</p>
+        <table style="width:100%;border-collapse:collapse;font-size:14px;color:#374151;">
+          <tr><td style="padding:3px 0;">Rental</td><td align="right">Rs ${rentalAmount}</td></tr>
+          <tr><td style="padding:3px 0;">Refundable deposit</td><td align="right">Rs ${securityDeposit}</td></tr>
+          <tr><td style="padding:6px 0 0;border-top:1px solid #e5e7eb;font-weight:700;color:#111827;">Total paid</td><td align="right" style="padding:6px 0 0;border-top:1px solid #e5e7eb;font-weight:700;color:#111827;">Rs ${totalAmount}</td></tr>
+        </table>
+      </div>
+      <p style="color:#6b7280;font-size:13px;">Booking ID: <span style="font-family:monospace;">${bookingId}</span><br/>Transaction ID: <span style="font-family:monospace;">${utr}</span></p>
+      <p style="color:#6b7280;font-size:13px;">The deposit is held and returned after the item comes back undamaged.</p>
+    </div>`;
+  try {
+    await sendEmail({ to, subject, text, html });
+    return true;
+  } catch (err) {
+    // A confirmation that fails to send must not undo a verification that
+    // has already confirmed the booking.
+    console.error(`[email] Failed to send payment confirmation to ${to}:`, err.message);
+    return false;
+  }
+}
+
 module.exports = {
   sendEmail,
+  sendPaymentConfirmedEmail,
   sendOtpEmail,
   sendPasswordResetEmail,
   sendPaymentIssueEmail,

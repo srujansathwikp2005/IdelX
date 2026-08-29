@@ -71,6 +71,7 @@ app.use('/api/categories', require('./modules/categories/categories.routes'));
 app.get('/api/listings/:id/reviews', reviewsController.listListingReviews); // nested under listings, per the doc
 app.use('/api/bookings', bookingsRoutes);
 app.use('/api/payments', paymentsRoutes);
+app.use('/api/manual-payments', require('./modules/manual-payments/manual-payments.routes'));
 app.use('/api/ledger', require('./modules/ledger/ledger.routes'));
 app.use('/api', require('./modules/legal/legal.routes'));
 app.use('/api/chat', chatRoutes);
