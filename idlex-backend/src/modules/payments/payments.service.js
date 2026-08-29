@@ -468,8 +468,30 @@ async function notifyAdminsOfCapture(payment, booking) {
 async function releaseRentToOwner(booking) {
   if (booking.escrow?.rentStatus === 'released') return { alreadyReleased: true };
 
-  const payment = await Payment.findOne({ booking: booking._id, status: 'captured' });
-  if (!payment) throw ApiError.badRequest('No captured payment for this booking');
+  let payment = await Payment.findOne({ booking: booking._id, status: 'captured' });
+
+  // A booking paid by UPI has no gateway Payment at all, and requiring one
+  // here meant the owner was simply never paid: the throw was caught and
+  // logged by the caller, the rental started, and the money stayed held with
+  // nothing recorded as owed.
+  if (!payment) {
+    const ManualPayment = require('../../models/ManualPayment');
+    const manual = await ManualPayment.findOne({ booking: booking._id, status: 'verified' });
+    if (!manual) {
+      throw ApiError.badRequest('No verified payment for this booking');
+    }
+    // Shaped like a Payment for the settlement provider's benefit. It is not
+    // saved — nothing downstream needs it to be, and writing a fake gateway
+    // record would make the two payment paths indistinguishable later.
+    payment = {
+      _id: manual._id,
+      booking: booking._id,
+      amount: manual.totalAmount,
+      gatewayOrderId: null,
+      gatewayPaymentId: null,
+      manualReference: manual.utr,
+    };
+  }
 
   // Routed through the settlement provider rather than calling a gateway
   // directly, so which provider runs is configuration, not code. With none
