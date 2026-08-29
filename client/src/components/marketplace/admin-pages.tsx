@@ -12,6 +12,7 @@ import { Modal } from "@/components/ui/modal";
 import { cn } from "@/lib/utils";
 import { LineChart, BarChart, DonutChart, ProgressRows, type ChartDatum } from "@/components/marketplace/charts";
 import { api } from "@/lib/api-client";
+import { useDebouncedValue } from "@/lib/use-debounced-value";
 import { RequireAuth, useAuth, errorMessage, useIsMounted } from "@/lib/auth";
 import { ApiError, useFetchData } from "@/lib/use-fetch-data";
 import { formatCurrency, formatDate, formatDateTime, timeAgo } from "@/lib/formatters";
@@ -691,8 +692,65 @@ export function AdminPaymentsPage() {
 // Existing pages
 // ---------------------------------------------------------------------------
 
+/**
+ * Search box for the admin tables.
+ *
+ * Searches on the server rather than filtering what is on screen: the list
+ * endpoints are paginated, so filtering client-side would only ever search
+ * the first page and quietly miss everyone after it.
+ */
+function AdminSearch({
+  value,
+  onChange,
+  placeholder,
+  resultCount,
+  isSearching,
+}: {
+  value: string;
+  onChange: (v: string) => void;
+  placeholder: string;
+  resultCount?: number;
+  isSearching?: boolean;
+}) {
+  return (
+    <div className="w-full sm:w-80">
+      <div className="relative">
+        <Input
+          type="search"
+          value={value}
+          onChange={(e) => onChange(e.target.value)}
+          placeholder={placeholder}
+          aria-label={placeholder}
+          className="pr-16"
+        />
+        {value ? (
+          <button
+            type="button"
+            onClick={() => onChange("")}
+            className="absolute right-2 top-1/2 -translate-y-1/2 rounded px-2 py-1 text-xs text-muted-foreground hover:text-foreground"
+          >
+            Clear
+          </button>
+        ) : null}
+      </div>
+      {value ? (
+        <p className="mt-1.5 text-xs text-muted-foreground">
+          {isSearching
+            ? "Searching…"
+            : `${resultCount ?? 0} ${resultCount === 1 ? "match" : "matches"}`}
+        </p>
+      ) : null}
+    </div>
+  );
+}
+
 export function AdminUsersPage() {
-  const { data, isLoading, error, refetch } = useFetchData<User[]>("/api/admin/users", []);
+  const [search, setSearch] = React.useState("");
+  const query = useDebouncedValue(search.trim());
+  const { data, isLoading, error, refetch } = useFetchData<User[]>(
+    query ? `/api/admin/users?q=${encodeURIComponent(query)}` : "/api/admin/users",
+    [],
+  );
 
   const suspend = async (id: string, isActive: boolean) => {
     await api.patch<User>(`/api/admin/users/${id}`, { isActive: !isActive });
@@ -706,6 +764,13 @@ export function AdminUsersPage() {
           <h1 className="text-2xl font-bold">Users</h1>
           <p className="mt-1 text-sm text-muted-foreground">Manage registered accounts and suspensions.</p>
         </div>
+        <AdminSearch
+          value={search}
+          onChange={setSearch}
+          placeholder="Search name, email or phone"
+          resultCount={data?.length}
+          isSearching={isLoading || search.trim() !== query}
+        />
       </div>
       <AdminError error={error} />
       {isLoading && <p className="text-sm text-muted-foreground">Loading…</p>}
@@ -837,7 +902,12 @@ export function AdminDisputesPage() {
 }
 
 export function AdminKycPage() {
-  const { data, isLoading, error, refetch } = useFetchData<Kyc[]>("/api/admin/kyc", []);
+  const [search, setSearch] = React.useState("");
+  const query = useDebouncedValue(search.trim());
+  const { data, isLoading, error, refetch } = useFetchData<Kyc[]>(
+    query ? `/api/admin/kyc?q=${encodeURIComponent(query)}` : "/api/admin/kyc",
+    [],
+  );
   // Which submission's bank details are open, or null for none. Holding the
   // record itself keeps the dialog in step with the row that opened it.
   const [bankDetailsFor, setBankDetailsFor] = React.useState<Kyc | null>(null);
@@ -856,6 +926,13 @@ export function AdminKycPage() {
             Users upload an identity document (PDF) plus a live selfie. Download the PDF, compare the selfie with the document photo, then approve or reject.
           </p>
         </div>
+        <AdminSearch
+          value={search}
+          onChange={setSearch}
+          placeholder="Search name, email or phone"
+          resultCount={data?.length}
+          isSearching={isLoading || search.trim() !== query}
+        />
       </div>
       <AdminError error={error} />
       {isLoading && <p className="text-sm text-muted-foreground">Loading…</p>}

@@ -214,9 +214,25 @@ const listPayments = asyncHandler(async (req, res) => {
 // Existing admin operations (instrumented with audit logs)
 // ---------------------------------------------------------------------------
 
+// Escapes a user's text before it becomes a regular expression. Without
+// this a stray "(" is a syntax error and takes the whole page down, and a
+// pattern like ".*" quietly matches everyone.
+function searchRegex(term) {
+  const escaped = String(term).trim().replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  return new RegExp(escaped, 'i');
+}
+
 const listUsers = asyncHandler(async (req, res) => {
-  const { page = 1, limit = 20, role } = req.query;
+  const { page = 1, limit = 20, role, q } = req.query;
   const filter = role ? { role } : {};
+
+  // Name, email or phone — an admin looking for someone has whichever of
+  // the three the complaint arrived with.
+  if (q && String(q).trim()) {
+    const rx = searchRegex(q);
+    filter.$or = [{ name: rx }, { email: rx }, { phone: rx }];
+  }
+
   const users = await User.find(filter)
     .sort('-createdAt')
     .skip((page - 1) * limit)
@@ -331,8 +347,17 @@ const listReports = asyncHandler(async (req, res) => {
 // KYC review queue — the admin half of the stepper flow: users submit
 // (status -> pending), admins approve/reject here.
 const listKyc = asyncHandler(async (req, res) => {
-  const { status } = req.query;
+  const { status, q } = req.query;
   const filter = status ? { status } : {};
+
+  // The submission carries no name of its own, so a search has to find the
+  // matching users first and then their submissions.
+  if (q && String(q).trim()) {
+    const rx = searchRegex(q);
+    const users = await User.find({ $or: [{ name: rx }, { email: rx }, { phone: rx }] }).select('_id');
+    filter.user = { $in: users.map((u) => u._id) };
+  }
+
   const kycs = await Kyc.find(filter)
     .sort('-createdAt')
     .populate('user', 'name email phone isOwner role');
