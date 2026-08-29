@@ -1704,3 +1704,200 @@ function SettlementGroup({
     </section>
   );
 }
+
+/** A payment the renter says they made, waiting on someone to confirm it. */
+type ManualPayment = {
+  _id: string;
+  utr: string;
+  status: "verification_pending" | "verified" | "rejected";
+  rentalAmount: number;
+  platformFee: number;
+  securityDeposit: number;
+  totalAmount: number;
+  rejectionReason?: string | null;
+  createdAt: string;
+  payer?: { _id: string; name?: string; email?: string; phone?: string } | null;
+  listing?: { _id: string; title?: string } | null;
+  booking?: { _id: string; status?: string; startDate?: string; endDate?: string } | null;
+};
+
+/**
+ * Verify payments received by UPI.
+ *
+ * The one screen in the admin panel that moves money forward: nothing a
+ * renter does confirms a booking, so until someone here matches a reference
+ * against the bank statement, the rental does not happen. Laid out so the
+ * two figures that have to agree — what was owed and what to look for — are
+ * next to each other rather than in different columns.
+ */
+export function AdminManualPaymentsPage() {
+  const [status, setStatus] = React.useState("verification_pending");
+  const [busyId, setBusyId] = React.useState<string | null>(null);
+  const [rejecting, setRejecting] = React.useState<ManualPayment | null>(null);
+  const [reason, setReason] = React.useState("");
+  const { data, isLoading, error, refetch } = useFetchData<ManualPayment[]>(
+    `/api/manual-payments/review?status=${status}`,
+    [],
+  );
+
+  const review = async (id: string, next: "verified" | "rejected", rejectionReason?: string) => {
+    setBusyId(id);
+    try {
+      await api.patch(`/api/manual-payments/review/${id}`, { status: next, rejectionReason });
+      setRejecting(null);
+      setReason("");
+      refetch();
+    } finally {
+      setBusyId(null);
+    }
+  };
+
+  const rows = data ?? [];
+
+  return (
+    <AdminShell>
+      <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
+        <div>
+          <h1 className="text-2xl font-bold">Verify Payments</h1>
+          <p className="mt-1 text-sm text-muted-foreground">
+            Renters pay by UPI and submit the transaction reference. Check it against the money
+            received before verifying — a booking is only confirmed once you do.
+          </p>
+        </div>
+        <div className="w-56">
+          <Select
+            value={status}
+            onChange={(e) => setStatus(e.target.value)}
+            options={[
+              { value: "verification_pending", label: "Awaiting verification" },
+              { value: "verified", label: "Verified" },
+              { value: "rejected", label: "Rejected" },
+              { value: "all", label: "All" },
+            ]}
+          />
+        </div>
+      </div>
+
+      <AdminError error={error} />
+      {isLoading && <p className="text-sm text-muted-foreground">Loading…</p>}
+
+      {!isLoading && rows.length === 0 && (
+        <section className="mt-6 rounded-lg border border-border bg-card p-10 text-center">
+          <p className="text-sm text-muted-foreground">
+            {status === "verification_pending"
+              ? "Nothing waiting to be checked."
+              : "No payments with that status."}
+          </p>
+        </section>
+      )}
+
+      <div className="mt-6 space-y-4">
+        {rows.map((p) => (
+          <section key={p._id} className="rounded-lg border border-border bg-card p-5">
+            <div className="flex flex-wrap items-start justify-between gap-4">
+              <div className="min-w-0">
+                <p className="font-semibold">{p.listing?.title ?? "Unknown item"}</p>
+                <p className="mt-0.5 text-sm text-muted-foreground">
+                  {p.payer?.name ?? "Unknown"} · {p.payer?.email ?? "—"}
+                  {p.payer?.phone ? ` · ${p.payer.phone}` : ""}
+                </p>
+                <p className="mt-0.5 text-xs text-muted-foreground">
+                  Booking {p.booking?._id ?? "—"} · submitted{" "}
+                  {new Date(p.createdAt).toLocaleString()}
+                </p>
+              </div>
+              <Badge
+                variant={
+                  p.status === "verified" ? "success" : p.status === "rejected" ? "danger" : "warning"
+                }
+              >
+                {p.status === "verification_pending" ? "Awaiting verification" : p.status}
+              </Badge>
+            </div>
+
+            <div className="mt-4 grid gap-4 sm:grid-cols-2">
+              {/* What was owed. */}
+              <div className="rounded-md border border-border bg-muted/30 p-3 text-sm">
+                <p className="mb-2 text-xs uppercase tracking-wide text-muted-foreground">
+                  Expected
+                </p>
+                <div className="flex justify-between"><span>Rental</span><span>₹{p.rentalAmount}</span></div>
+                <div className="flex justify-between"><span>Platform fee</span><span>₹{p.platformFee}</span></div>
+                <div className="flex justify-between"><span>Refundable deposit</span><span>₹{p.securityDeposit}</span></div>
+                <div className="mt-2 flex justify-between border-t border-border pt-2 font-semibold">
+                  <span>Total</span><span>₹{p.totalAmount}</span>
+                </div>
+              </div>
+
+              {/* What to look for on the statement. */}
+              <div className="rounded-md border border-border bg-muted/30 p-3 text-sm">
+                <p className="mb-2 text-xs uppercase tracking-wide text-muted-foreground">
+                  Look for this reference
+                </p>
+                <p className="break-all font-mono text-base font-semibold">{p.utr}</p>
+                <p className="mt-2 text-xs text-muted-foreground">
+                  Confirm ₹{p.totalAmount} arrived against this reference before verifying.
+                </p>
+                {p.rejectionReason ? (
+                  <p className="mt-2 text-xs text-danger">Rejected: {p.rejectionReason}</p>
+                ) : null}
+              </div>
+            </div>
+
+            {p.status === "verification_pending" && (
+              <div className="mt-4 flex flex-wrap gap-2">
+                <Button
+                  size="sm"
+                  disabled={busyId === p._id}
+                  onClick={() => review(p._id, "verified")}
+                >
+                  {busyId === p._id ? "Working…" : `Verify ₹${p.totalAmount} received`}
+                </Button>
+                <Button
+                  size="sm"
+                  variant="danger"
+                  disabled={busyId === p._id}
+                  onClick={() => setRejecting(p)}
+                >
+                  Reject
+                </Button>
+              </div>
+            )}
+          </section>
+        ))}
+      </div>
+
+      {/* Rejection asks for a reason, because the renter is shown it and
+          "rejected" on its own is not something they can act on. */}
+      <Modal
+        open={!!rejecting}
+        onClose={() => setRejecting(null)}
+        title="Reject this payment"
+      >
+        <p className="text-sm text-muted-foreground">
+          The renter sees this and can submit a different transaction ID.
+        </p>
+        <Textarea
+          className="mt-3"
+          rows={3}
+          value={reason}
+          onChange={(e) => setReason(e.target.value)}
+          placeholder="No payment of that amount found against this reference."
+        />
+        <div className="mt-4 flex justify-end gap-2">
+          <Button variant="outline" size="sm" onClick={() => setRejecting(null)}>
+            Cancel
+          </Button>
+          <Button
+            variant="danger"
+            size="sm"
+            disabled={!rejecting || busyId === rejecting._id}
+            onClick={() => rejecting && review(rejecting._id, "rejected", reason.trim() || undefined)}
+          >
+            Reject payment
+          </Button>
+        </div>
+      </Modal>
+    </AdminShell>
+  );
+}
