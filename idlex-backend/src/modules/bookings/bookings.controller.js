@@ -302,9 +302,16 @@ const reportIssue = asyncHandler(async (req, res) => {
   // arrived, or is not what was described -- and telling them to wait until
   // the rental is over before they can say so is how a complaint becomes a
   // chargeback instead.
+  // Status names taken from the Booking enum, not guessed: 'paid' was in
+  // this list and is not a status the model has, so it was a branch that
+  // could never be reached.
+  //
+  // A renter can dispute from 'confirmed' -- the point at which they have
+  // paid and are owed an item -- through to 'completed'. Before that,
+  // nothing has been exchanged to dispute.
   const allowed = isOwner
     ? ['active', 'return_requested']
-    : ['confirmed', 'paid', 'active', 'return_requested', 'completed'];
+    : ['confirmed', 'active', 'return_requested', 'completed'];
   if (!allowed.includes(booking.status)) {
     throw ApiError.badRequest(`Cannot raise a dispute on a booking in '${booking.status}' state`);
   }
