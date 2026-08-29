@@ -287,11 +287,36 @@ const requestReturn = asyncHandler(async (req, res) => {
 const reportIssue = asyncHandler(async (req, res) => {
   const booking = await Booking.findById(req.params.id);
   if (!booking) throw ApiError.notFound('Booking not found');
-  if (booking.owner.toString() !== req.user._id.toString()) {
-    throw ApiError.forbidden('Only the owner can report an issue with a return');
+
+  const isOwner = booking.owner.toString() === req.user._id.toString();
+  const isRenter = booking.renter.toString() === req.user._id.toString();
+  if (!isOwner && !isRenter) {
+    throw ApiError.forbidden('Only the people on this booking can raise a dispute');
   }
-  if (!['active', 'return_requested'].includes(booking.status)) {
-    throw ApiError.badRequest(`Cannot report an issue on a booking in '${booking.status}' state`);
+
+  // The two sides can go wrong at different moments, so they are allowed to
+  // raise a dispute at different points.
+  //
+  // An owner claims against a return, which only exists once the item is out.
+  // A renter's complaint usually starts earlier -- an item that never
+  // arrived, or is not what was described -- and telling them to wait until
+  // the rental is over before they can say so is how a complaint becomes a
+  // chargeback instead.
+  const allowed = isOwner
+    ? ['active', 'return_requested']
+    : ['confirmed', 'paid', 'active', 'return_requested', 'completed'];
+  if (!allowed.includes(booking.status)) {
+    throw ApiError.badRequest(`Cannot raise a dispute on a booking in '${booking.status}' state`);
+  }
+
+  // One open dispute per booking. A second is a second claim over the same
+  // deposit, and an admin resolving one would not know the other existed.
+  const existing = await Dispute.findOne({
+    booking: booking._id,
+    status: { $in: ['open', 'under_review'] },
+  });
+  if (existing) {
+    throw ApiError.conflict('A dispute is already open on this booking');
   }
 
   const reason = String(req.body.reason || '').trim();
@@ -304,7 +329,11 @@ const reportIssue = asyncHandler(async (req, res) => {
     category: req.body.category || 'other',
     // Cannot exceed the deposit: claiming more than was held is meaningless,
     // and an inflated number anchors the admin's decision unfairly.
-    claimedAmount: Math.min(Number(req.body.claimedAmount || 0), booking.securityDeposit || 0),
+    // Only an owner claims against the deposit. A renter's dispute is a
+    // complaint to be judged, not a bid for someone else's money.
+    claimedAmount: isOwner
+      ? Math.min(Number(req.body.claimedAmount || 0), booking.securityDeposit || 0)
+      : 0,
     evidence: Array.isArray(req.body.evidence) ? req.body.evidence : [],
   });
 
@@ -320,7 +349,9 @@ const reportIssue = asyncHandler(async (req, res) => {
     category: 'booking',
     resourceType: 'booking',
     resourceId: booking._id.toString(),
-    summary: 'Owner reported an issue with a returned item',
+    summary: isOwner
+      ? 'Owner reported an issue with a returned item'
+      : 'Renter raised a dispute on their rental',
     details: {
       dispute: dispute._id,
       category: dispute.category,
@@ -330,16 +361,21 @@ const reportIssue = asyncHandler(async (req, res) => {
     req,
   });
 
-  // The renter must know their deposit is held and why — this is the point
-  // where they would otherwise expect a refund.
-  await notify(booking.renter, {
+  // Whoever did not raise it needs to hear about it. Notifying the renter
+  // unconditionally told the wrong person when the renter was the one
+  // complaining -- and left the owner unaware of a claim against them.
+  await notify(isOwner ? booking.renter : booking.owner, {
     type: 'dispute',
-    title: 'An issue was reported with your rental',
-    body: `The owner reported: ${reason}. Your security deposit is held until this is reviewed.`,
-    link: `/my-rentals/${booking._id}`,
+    title: isOwner
+      ? 'An issue was reported with your rental'
+      : 'A renter raised a dispute on your item',
+    body: isOwner
+      ? `The owner reported: ${reason}. Your security deposit is held until this is reviewed.`
+      : `The renter reported: ${reason}. An admin will review it.`,
+    link: `/bookings/${booking._id}`,
   }).catch(() => {});
 
-  return new ApiResponse(201, dispute, 'Issue reported — an admin will review it').send(res);
+  return new ApiResponse(201, dispute, 'Raised — an admin will review it').send(res);
 });
 
 // Owner confirms they received the item back — booking is completed.

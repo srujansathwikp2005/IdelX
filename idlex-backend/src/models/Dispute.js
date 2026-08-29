@@ -11,7 +11,10 @@ const disputeSchema = new mongoose.Schema(
     // admin needs this before deciding, not buried in free text.
     category: {
       type: String,
-      enum: ['damage', 'missing_item', 'late_return', 'other'],
+      // The first three are an owner's claims against a return. The next two
+      // are a renter's, and had nowhere to go before -- both landed on
+      // 'other', which tells an admin nothing about what to look at.
+      enum: ['damage', 'missing_item', 'late_return', 'not_as_described', 'not_received', 'other'],
       default: 'other',
     },
 
