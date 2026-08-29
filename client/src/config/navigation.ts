@@ -45,6 +45,9 @@ export const ADMIN_SIDEBAR: Array<{ label: string; href: string; icon: string; b
   { label: "Payments & Payouts", href: ROUTES.ADMIN_PAYMENTS, icon: "Wallet" },
   // Separate from Payments: that screen shows money coming in, this one shows
   // what still has to go out and is the only place a payout gets recorded.
+  // Money coming in that a person has to confirm actually arrived. Sits
+  // above Settlements because nothing can go out until this has been done.
+  { label: "Verify Payments", href: ROUTES.ADMIN_MANUAL_PAYMENTS, icon: "BadgeCheck" },
   { label: "Settlements", href: ROUTES.ADMIN_SETTLEMENTS, icon: "Banknote" },
   // The count is injected at render time from the real pending queue; a
   // literal here reported 12 submissions awaiting review no matter what.

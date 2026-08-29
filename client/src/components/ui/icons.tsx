@@ -97,6 +97,10 @@ export const Clock = make(<><circle cx="12" cy="12" r="10" /><polyline points="1
 export const Loader = make(<><line x1="12" y1="2" x2="12" y2="6" /><line x1="12" y1="18" x2="12" y2="22" /><line x1="4.93" y1="4.93" x2="7.76" y2="7.76" /><line x1="16.24" y1="16.24" x2="19.07" y2="19.07" /><line x1="2" y1="12" x2="6" y2="12" /><line x1="18" y1="12" x2="22" y2="12" /><line x1="4.93" y1="19.07" x2="7.76" y2="16.24" /><line x1="16.24" y1="7.76" x2="19.07" y2="4.93" /></>);
 export const Save = make(<><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2Z" /><polyline points="17 21 17 13 7 13 7 21" /><polyline points="7 3 7 8 15 8" /></>);
 export const Send = make(<><line x1="22" y1="2" x2="11" y2="13" /><polygon points="22 2 15 22 11 13 2 9 22 2" /></>);
+// A tick inside a seal — money that a person has confirmed, as distinct
+// from ShieldCheck, which this nav already uses for identity verification.
+export const BadgeCheck = make(<><path d="M12 2 14.4 4.2l3.1-.5 1 3 2.8 1.4-1.1 3 1.1 3-2.8 1.4-1 3-3.1-.5L12 22l-2.4-2.2-3.1.5-1-3L2.7 16l1.1-3-1.1-3 2.8-1.4 1-3 3.1.5Z" /><path d="m9 12 2 2 4-4" /></>);
+
 export const Paperclip = make(<><path d="m21.44 11.05-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48" /></>);
 
 /** Generic icon resolver — used in config-driven nav. */
@@ -104,4 +108,5 @@ export const ICONS: Record<string, React.FC<IconProps>> = {
   Home, Search, CalendarCheck, Calendar, Repeat, Wallet, Heart, MessageCircle, Star, User,
   ShieldCheck, Settings, HelpCircle, Package, Banknote, Users, LayoutDashboard, AlertTriangle,
   Flag, Tags, Tag, ScrollText, LifeBuoy, Camera, Trees, Wrench, Bike, Car, BookOpen, Smartphone,
+  BadgeCheck,
 };
