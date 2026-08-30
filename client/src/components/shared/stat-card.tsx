@@ -12,9 +12,11 @@ interface StatCardProps {
   };
   icon?: string;
   className?: string;
+  /** For a value that carries a state, e.g. a verified profile in green. */
+  valueClassName?: string;
 }
 
-export function StatCard({ title, value, description, change, icon, className }: StatCardProps) {
+export function StatCard({ title, value, description, change, icon, className, valueClassName }: StatCardProps) {
   const Icon = icon ? ICONS[icon] : null;
   return (
     <div className={cn("rounded-xl border border-border bg-card p-6 shadow-sm", className)}>
@@ -27,7 +29,7 @@ export function StatCard({ title, value, description, change, icon, className }:
         )}
       </div>
       <div className="mt-2 flex items-baseline gap-2">
-        <span className="text-2xl font-bold tracking-tight text-foreground">{value}</span>
+        <span className={cn("text-2xl font-bold tracking-tight text-foreground", valueClassName)}>{value}</span>
         {change && (
           <span
             className={cn(

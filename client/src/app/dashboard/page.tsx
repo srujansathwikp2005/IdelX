@@ -8,8 +8,11 @@ import { Button } from "@/components/ui/button";
 import { RequireAuth, useAuth, errorMessage } from "@/lib/auth";
 import { api } from "@/lib/api-client";
 import { useFetchData } from "@/lib/use-fetch-data";
-import { formatCurrency, formatDate } from "@/lib/formatters";
-import type { Booking, Listing, Payout } from "@/lib/api-types";
+import { formatCurrency, formatDate, timeAgo } from "@/lib/formatters";
+import type { Booking, Kyc, Listing, Payout } from "@/lib/api-types";
+import { kycDisplay } from "@/lib/kyc-status";
+import { ICONS } from "@/components/ui/icons";
+import { LineChart } from "@/components/marketplace/charts";
 import { ROUTES } from "@/lib/constants";
 import * as React from "react";
 
@@ -51,6 +54,7 @@ function DashboardInner() {
   const { data: renterBookings } = useFetchData<Booking[]>("/api/bookings", []);
   const { data: ownerBookings, refetch: refetchOwner } = useFetchData<Booking[]>("/api/bookings/owner", [isOwner]);
   const { data: payouts } = useFetchData<Payout[]>("/api/payments/payouts", [isOwner]);
+  const { data: kyc } = useFetchData<Kyc>("/api/kyc", [user?._id]);
   const [approvalError, setApprovalError] = React.useState<string | null>(null);
   const [busyId, setBusyId] = React.useState<string | null>(null);
 
@@ -88,77 +92,191 @@ function DashboardInner() {
 
   const upcoming = (renterBookings ?? []).filter((b) => ["requested", "confirmed", "active"].includes(b.status));
   const ownerUpcoming = (ownerBookings ?? []).filter((b) => ["requested", "confirmed", "active", "return_requested"].includes(b.status));
-  const recentCompleted = (renterBookings ?? [])
-    .filter((b) => b.status === "completed")
-    .sort((a, b) => +new Date(b.updatedAt || b.createdAt) - +new Date(a.updatedAt || a.createdAt))
-    .slice(0, 5);
   const listedCount = myListings?.length ?? 0;
   const publishedCount = myListings?.filter((l) => l.status === "published").length ?? 0;
   const payoutTotal = (payouts ?? []).filter((p) => p.status !== "failed").reduce((sum, p) => sum + p.amount, 0);
 
+  // One feed out of three sources, newest first. There is no activity table
+  // for a normal user — the audit log is an admin thing — so this is assembled
+  // from the records that already exist rather than from a new collection.
+  const activity = React.useMemo(() => {
+    type Entry = { id: string; icon: string; text: string; at: string; amount?: number };
+    const entries: Entry[] = [];
+
+    for (const b of ownerBookings ?? []) {
+      const title = typeof b.listing === "object" && b.listing ? b.listing.title : "your listing";
+      if (b.status === "requested") {
+        entries.push({ id: `req-${b._id}`, icon: "CalendarCheck", text: `New booking request for ${title}`, at: b.createdAt });
+      }
+      if (["confirmed", "active", "completed"].includes(b.status)) {
+        entries.push({
+          id: `pay-${b._id}`,
+          icon: "Banknote",
+          text: `Payment received for ${title}`,
+          at: b.updatedAt || b.createdAt,
+          amount: b.totalAmount,
+        });
+      }
+    }
+    for (const l of myListings ?? []) {
+      if (l.status === "published") {
+        entries.push({ id: `live-${l._id}`, icon: "Package", text: `Your listing '${l.title}' is live`, at: l.updatedAt || l.createdAt });
+      }
+    }
+    for (const b of renterBookings ?? []) {
+      if (b.status === "completed") {
+        const title = typeof b.listing === "object" && b.listing ? b.listing.title : "a rental";
+        entries.push({ id: `done-${b._id}`, icon: "Star", text: `Rental completed for ${title}`, at: b.updatedAt || b.createdAt });
+      }
+    }
+    return entries.sort((a, b) => +new Date(b.at) - +new Date(a.at)).slice(0, 5);
+  }, [ownerBookings, myListings, renterBookings]);
+
+  // Earnings by month, from payouts that were not refused.
+  const earnings = React.useMemo(() => {
+    const months = new Map<string, number>();
+    const now = new Date();
+    for (let i = 5; i >= 0; i--) {
+      const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+      months.set(d.toLocaleDateString("en-IN", { month: "short" }), 0);
+    }
+    for (const p of payouts ?? []) {
+      if (p.status === "failed") continue;
+      const key = new Date(p.createdAt).toLocaleDateString("en-IN", { month: "short" });
+      if (months.has(key)) months.set(key, (months.get(key) ?? 0) + p.amount);
+    }
+    return [...months].map(([label, value]) => ({ label, value }));
+  }, [payouts]);
+
+  const kycState = kycDisplay(kyc);
+
   return (
     <DashboardShell title="Dashboard">
-      <div className="grid gap-4 md:grid-cols-4">
-        <StatCard title="Active bookings" value={String(upcoming.length + ownerUpcoming.length)} description="Across your rentals" icon="CalendarCheck" />
-        <StatCard title="Listed items" value={String(listedCount)} description={`${publishedCount} published`} icon="Package" />
-        <StatCard title="Payout eligible" value={formatCurrency(payoutTotal)} description="Owner earnings" icon="Wallet" />
-        <StatCard title="Role" value={isOwner ? "Owner" : "Renter"} description={user?.email ?? ""} icon="ShieldCheck" />
+      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+        <StatCard
+          title="Active Bookings"
+          value={String(upcoming.length + ownerUpcoming.length)}
+          description="Across your rentals"
+          icon="CalendarCheck"
+        />
+        <StatCard
+          title="Listed Items"
+          value={String(listedCount)}
+          description={`${publishedCount} published`}
+          icon="Package"
+        />
+        <StatCard
+          title="Total Earnings"
+          value={formatCurrency(payoutTotal)}
+          description="Paid out to you"
+          icon="Wallet"
+        />
+        <StatCard
+          title="Profile Status"
+          value={kycState.label}
+          description={kycState.label === "Verified" ? "All good!" : "Finish verification to get paid"}
+          icon="ShieldCheck"
+          valueClassName={kycState.label === "Verified" ? "text-success" : undefined}
+        />
       </div>
-      {approvalError && <p className="mt-4 rounded-md bg-danger-50 p-3 text-sm text-danger">{approvalError}</p>}
-      <section className="mt-6 grid gap-6 lg:grid-cols-2">
-        <div className="rounded-lg border border-border bg-card p-5">
-          <h2 className="font-semibold">Upcoming rentals</h2>
-          <div className="mt-4 space-y-3">
-            {upcoming.length === 0 && <p className="rounded-lg bg-muted p-4 text-sm text-muted-foreground">No upcoming rentals. Browse the marketplace to book something.</p>}
-            {upcoming.map((booking) => <BookingRow key={booking._id} booking={booking} />)}
-          </div>
-        </div>
-        <div className="rounded-lg border border-border bg-card p-5">
-          <h2 className="font-semibold">{isOwner ? "Incoming requests" : "Recent activity"}</h2>
-          <div className="mt-4 space-y-3">
-            {ownerUpcoming.length === 0 && <p className="rounded-lg bg-muted p-4 text-sm text-muted-foreground">No requests yet.</p>}
-            {ownerUpcoming.map((booking) => <BookingRow key={booking._id} booking={booking} onApprove={isOwner ? approve : undefined} onConfirmReturn={isOwner ? confirmReturn : undefined} busy={busyId === booking._id} />)}
-          </div>
-        </div>
-      </section>
-      <section className="mt-6 rounded-lg border border-border bg-card p-5">
-        <div className="flex items-center justify-between">
-          <h2 className="font-semibold">Recently completed bookings</h2>
-          <Link href={ROUTES.MY_RENTALS} className="text-sm font-semibold text-primary">View all</Link>
-        </div>
-        <div className="mt-4 space-y-3">
-          {recentCompleted.length === 0 && (
-            <p className="rounded-lg bg-muted p-4 text-sm text-muted-foreground">No completed bookings yet.</p>
+
+      {approvalError && (
+        <p className="mt-4 rounded-md bg-danger-50 p-3 text-sm text-danger-700">{approvalError}</p>
+      )}
+
+      <section className="mt-5 grid gap-5 lg:grid-cols-2">
+        <Panel
+          title="Upcoming Bookings"
+          action={<Link href={ROUTES.MY_RENTALS} className="text-sm font-semibold text-primary">View all</Link>}
+        >
+          {upcoming.length === 0 && ownerUpcoming.length === 0 ? (
+            <Empty>Nothing booked yet. Browse the marketplace to rent something.</Empty>
+          ) : (
+            <div className="flex flex-col gap-2.5">
+              {[...upcoming, ...ownerUpcoming].slice(0, 4).map((booking) => (
+                <BookingRow
+                  key={booking._id}
+                  booking={booking}
+                  onApprove={isOwner ? approve : undefined}
+                  onConfirmReturn={isOwner ? confirmReturn : undefined}
+                  busy={busyId === booking._id}
+                />
+              ))}
+            </div>
           )}
-          {recentCompleted.map((booking) => {
-            const listing = typeof booking.listing === "object" && booking.listing !== null ? booking.listing : null;
-            const listingId = listing ? listing._id : typeof booking.listing === "string" ? booking.listing : null;
-            const image = listing?.photos?.[0]?.url ?? "https://images.unsplash.com/photo-1504148455328-c376907d081c?auto=format&fit=crop&w=800&q=80";
-            return (
-              <div key={booking._id} className="flex items-center gap-3 rounded-lg bg-muted p-3">
-                <Link href={ROUTES.RENTAL_DETAIL(booking._id)} className="flex min-w-0 flex-1 items-center gap-3">
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img src={image} alt={listing?.title ?? "listing photo"} className="h-12 w-16 shrink-0 rounded-md object-cover" />
-                  <div className="min-w-0">
-                    <p className="truncate font-medium">{listing?.title ?? "Rental"}</p>
-                    <p className="text-sm text-muted-foreground">{formatDate(booking.startDate)} - {formatDate(booking.endDate)}</p>
-                  </div>
-                  <div className="ml-auto flex shrink-0 items-center gap-2">
-                    <Badge variant="success">completed</Badge>
-                    <span className="text-sm font-semibold">{formatCurrency(booking.totalAmount)}</span>
-                  </div>
-                </Link>
-                {listingId && (
-                  <Link href={ROUTES.PRODUCT(listingId)} className="shrink-0">
-                    <Button size="sm" variant="outline">Book Again</Button>
-                  </Link>
-                )}
-              </div>
-            );
-          })}
+        </Panel>
+
+        <Panel
+          title="Recent Activity"
+          action={<Link href={ROUTES.MY_RENTALS} className="text-sm font-semibold text-primary">View all activity</Link>}
+        >
+          {activity.length === 0 ? (
+            <Empty>Nothing has happened yet. Bookings and payouts show up here.</Empty>
+          ) : (
+            <ul className="flex flex-col gap-3.5">
+              {activity.map((entry) => {
+                const Icon = ICONS[entry.icon];
+                return (
+                  <li key={entry.id} className="flex items-start gap-3">
+                    <span className="mt-0.5 grid h-8 w-8 shrink-0 place-items-center rounded-lg bg-primary-50 text-primary">
+                      {Icon && <Icon size={15} />}
+                    </span>
+                    <div className="min-w-0 flex-1">
+                      <p className="text-sm">{entry.text}</p>
+                      <p className="text-xs text-muted-foreground">{timeAgo(entry.at)}</p>
+                    </div>
+                    {entry.amount != null && (
+                      <span className="shrink-0 text-sm font-semibold text-success">
+                        + {formatCurrency(entry.amount)}
+                      </span>
+                    )}
+                  </li>
+                );
+              })}
+            </ul>
+          )}
+        </Panel>
+      </section>
+
+      <section className="mt-5 rounded-xl border border-border bg-card p-5 shadow-sm">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <h2 className="font-semibold">Earnings Overview</h2>
+          <span className="rounded-lg border border-border px-3 py-1.5 text-sm text-muted-foreground">
+            Last 6 months
+          </span>
+        </div>
+        <div className="mt-4">
+          <LineChart data={earnings} formatter={(v) => formatCurrency(v)} />
         </div>
       </section>
     </DashboardShell>
+  );
+}
+
+/** A titled panel with an optional action on the right. */
+function Panel({
+  title,
+  action,
+  children,
+}: {
+  title: string;
+  action?: React.ReactNode;
+  children: React.ReactNode;
+}) {
+  return (
+    <div className="rounded-xl border border-border bg-card p-5 shadow-sm">
+      <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+        <h2 className="font-semibold">{title}</h2>
+        {action}
+      </div>
+      {children}
+    </div>
+  );
+}
+
+function Empty({ children }: { children: React.ReactNode }) {
+  return (
+    <p className="rounded-lg bg-muted p-5 text-sm text-muted-foreground">{children}</p>
   );
 }
 

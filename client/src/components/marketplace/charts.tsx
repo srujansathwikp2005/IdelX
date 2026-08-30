@@ -47,7 +47,7 @@ function Tooltip({ xPct, topPct, children }: { xPct: number; topPct: number; chi
 export function LineChart({
   data,
   formatter,
-  color = "#2563eb",
+  color = "var(--color-primary)",
   height = CHART_HEIGHT,
 }: {
   data: ChartDatum[];
@@ -132,7 +132,7 @@ export function LineChart({
 export function BarChart({
   data,
   formatter,
-  color = "#2563eb",
+  color = "var(--color-primary)",
   height = CHART_HEIGHT,
   barGap = 6,
 }: {
@@ -179,7 +179,7 @@ export function BarChart({
   );
 }
 
-export const CHART_COLORS = ["#2563eb", "#10b981", "#f59e0b", "#ef4444", "#8b5cf6", "#06b6d4", "#ec4899", "#64748b"];
+export const CHART_COLORS = ["#6c4ef5", "#10b981", "#f59e0b", "#ef4444", "#9b7bff", "#06b6d4", "#ec4899", "#64748b"];
 
 export function DonutChart({
   data,
@@ -257,7 +257,7 @@ export function DonutChart({
 export function ProgressRows({
   data,
   formatter = (v) => String(v),
-  color = "#2563eb",
+  color = "var(--color-primary)",
 }: {
   data: Array<{ label: string; value: number }>;
   formatter?: (v: number) => string;

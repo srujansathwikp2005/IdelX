@@ -53,9 +53,13 @@ export function DashboardSidebar({
   const homeHref = isAdmin ? ROUTES.ADMIN : ROUTES.DASHBOARD;
 
   return (
-    <aside className="h-full flex flex-col bg-card border-r border-border w-64">
+    // Dark in both themes, like the footer. A dashboard sidebar is chrome
+    // rather than content: it stays put while the page beside it changes, and
+    // holding one constant tone is what makes it read as the frame rather
+    // than as another panel.
+    <aside className="flex h-full w-64 flex-col border-r border-white/5 bg-inverse text-inverse-foreground">
       {/* Brand */}
-      <div className="h-16 flex items-center justify-between px-4 border-b border-border">
+      <div className="flex h-16 items-center justify-between border-b border-white/10 px-4">
         <Link href={homeHref}>
           <BrandLockup />
         </Link>
@@ -66,18 +70,21 @@ export function DashboardSidebar({
         )}
       </div>
 
-      {/* User card */}
-      <div className="p-4 border-b border-border">
+      {/* Who is signed in, and the way to their own details. The email used
+          to sit here, which is the one fact the person already knows. */}
+      <div className="border-b border-white/10 p-4">
         <div className="flex items-center gap-3">
           <Avatar name={user?.name ?? "User"} src={user?.avatarUrl ?? undefined} size="md" />
-          <div className="flex-1 min-w-0">
-            <p className="text-sm font-semibold truncate">{user?.name ?? "User"}</p>
-            <p className="text-xs text-muted-foreground truncate">{user?.email ?? ""}</p>
+          <div className="min-w-0 flex-1">
+            <p className="truncate text-sm font-semibold text-white">{user?.name ?? "User"}</p>
+            <Link
+              href={ROUTES.PROFILE}
+              onClick={onCloseMobile}
+              className="text-xs text-inverse-foreground/70 transition-colors hover:text-white"
+            >
+              View Profile
+            </Link>
           </div>
-        </div>
-        <div className="mt-2 flex items-center gap-1">
-          {user?.isEmailVerified && <Badge variant="success" className="text-[10px]">Email verified</Badge>}
-          {isOwner && <Badge className="text-[10px]">Owner</Badge>}
         </div>
       </div>
 
@@ -94,8 +101,8 @@ export function DashboardSidebar({
               className={cn(
                 "flex items-center gap-3 px-4 py-2.5 mx-2 rounded-lg text-sm transition-colors",
                 active
-                  ? "bg-primary text-on-brand font-medium"
-                  : "text-foreground hover:bg-muted"
+                  ? "bg-primary font-medium text-on-brand"
+                  : "text-inverse-foreground/80 hover:bg-white/5 hover:text-white"
               )}
             >
               {Icon && <Icon size={18} />}
@@ -112,7 +119,7 @@ export function DashboardSidebar({
                   <span
                     className={cn(
                       "min-w-5 h-5 px-1.5 inline-flex items-center justify-center rounded-full text-[10px] font-bold",
-                      active ? "bg-card text-primary" : "bg-danger text-on-brand"
+                      active ? "bg-white text-primary" : "bg-danger text-on-brand"
                     )}
                   >
                     {item.badge}
@@ -125,10 +132,10 @@ export function DashboardSidebar({
       </nav>
 
       {/* Logout */}
-      <div className="p-3 border-t border-border">
+      <div className="border-t border-white/10 p-3">
         <Button
           variant="ghost"
-          className="w-full justify-start gap-3 px-3 py-2 text-sm text-foreground hover:bg-muted"
+          className="w-full justify-start gap-3 px-3 py-2 text-sm text-inverse-foreground/80 hover:bg-white/5 hover:text-white"
           onClick={() => {
             logout();
             router.push(ROUTES.LOGIN);
