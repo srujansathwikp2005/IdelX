@@ -2,6 +2,7 @@ const asyncHandler = require('../../utils/asyncHandler');
 const ApiResponse = require('../../utils/ApiResponse');
 const ApiError = require('../../utils/ApiError');
 const authService = require('./auth.service');
+const deletionService = require('./account-deletion.service');
 const { verifyRefreshToken, signAccessToken } = require('../../utils/tokens');
 const User = require('../../models/User');
 const { logAudit } = require('../../utils/audit');
