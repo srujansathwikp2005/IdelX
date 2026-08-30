@@ -133,7 +133,7 @@ export default function RequestBookingPage({ params }: { params: Promise<{ produ
               </CardContent>
             </Card>
 
-            <p className="rounded-lg bg-muted/50 p-4 text-sm text-muted-foreground">
+            <p className="rounded-lg bg-panel p-4 text-sm text-muted-foreground">
               <strong>You will not be charged yet.</strong> The owner reviews your request first —
               once they approve it you&apos;ll be notified and can pay to secure the booking. An
               unanswered request expires after 24 hours and frees the dates again.

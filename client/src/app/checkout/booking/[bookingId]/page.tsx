@@ -231,7 +231,7 @@ export default function PayForBookingPage({ params }: { params: Promise<{ bookin
             </div>
 
             {booking.deliveryAddress?.line1 && (
-              <div className="rounded-md bg-muted/40 p-3 text-sm">
+              <div className="rounded-md bg-panel p-3 text-sm">
                 <p className="font-medium">Delivering to</p>
                 <p className="mt-1 text-muted-foreground">
                   {[booking.deliveryAddress.line1, booking.deliveryAddress.line2, booking.deliveryAddress.city, booking.deliveryAddress.pincode]

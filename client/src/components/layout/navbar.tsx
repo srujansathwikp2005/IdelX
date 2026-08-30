@@ -72,7 +72,7 @@ export function Navbar() {
               name="q"
               type="text"
               placeholder="Search for items (camera, tent, bike...)"
-              className="h-10 w-full rounded-lg border border-border bg-muted/40 pl-10 pr-4 text-sm transition-all duration-200 focus:border-primary focus:bg-card focus:outline-none focus:ring-2 focus:ring-primary/20"
+              className="h-10 w-full rounded-lg border border-border bg-panel pl-10 pr-4 text-sm transition-all duration-200 focus:border-primary focus:bg-card focus:outline-none focus:ring-2 focus:ring-primary/20"
             />
           </form>
         </div>
@@ -175,7 +175,7 @@ export function Navbar() {
               name="q"
               type="text"
               placeholder="Search for items..."
-              className="h-10 w-full rounded-lg border border-border bg-muted/40 pl-10 pr-4 text-sm focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
+              className="h-10 w-full rounded-lg border border-border bg-panel pl-10 pr-4 text-sm focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
             />
           </form>
           <Link

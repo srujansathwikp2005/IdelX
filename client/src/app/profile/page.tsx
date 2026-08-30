@@ -153,7 +153,7 @@ function ProfileInner() {
           <Input label="Phone" value={phone} onChange={(e) => { setPhone(e.target.value); resetPhoneOtp(); }} />
         </div>
         {phoneChanged && !phoneVerified && (
-          <div className="mt-4 flex flex-wrap items-center gap-2 rounded-lg border border-border bg-muted/50 p-4">
+          <div className="mt-4 flex flex-wrap items-center gap-2 rounded-lg border border-border bg-panel p-4">
             <p className="text-sm text-muted-foreground">
               You changed your phone number — verify it with an OTP to save.
             </p>

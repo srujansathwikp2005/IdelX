@@ -91,6 +91,19 @@
   /* A band that stays dark in both themes — the footer, a chart tooltip.
      Painting those with --foreground made them flip to near-white at night,
      which is the one place the inversion is wrong. */
+  /* An inset surface that sits ON a card — a dropzone, a note, a summary
+     block. It cannot be --muted: muted is the recessed page ground, which is
+     a shade lighter than white here but far darker than a card at night, so
+     using it inside a card punches a hole in the dark theme. This moves one
+     step away from the card in whichever direction reads as inset. */
+  --panel: #f5f5f9;
+
+  /* The boundary of something you can operate. --border is a hairline for
+     separating stacked rows and is deliberately faint; at 1.11:1 against a
+     dark card it made a dashed dropzone disappear entirely. A control's edge
+     is the whole affordance, so it gets its own token at 3:1. */
+  --border-strong: #918bab;
+
   --inverse: #181528;
   --inverse-foreground: #d2cfdd;
 
@@ -182,6 +195,9 @@
   --card: #1e1c2a;
   --card-foreground: #f2f1f7;
 
+  --panel: #2a2739;
+  --border-strong: #7a7099;
+
   --inverse: #08070e;
   --inverse-foreground: #b8b4c8;
 
@@ -263,6 +279,9 @@
     --card: #1e1c2a;
     --card-foreground: #f2f1f7;
 
+    --panel: #2a2739;
+    --border-strong: #7a7099;
+
     --inverse: #08070e;
     --inverse-foreground: #b8b4c8;
 
@@ -282,6 +301,8 @@
   --color-ring: var(--ring);
   --color-card: var(--card);
   --color-card-foreground: var(--card-foreground);
+  --color-panel: var(--panel);
+  --color-border-strong: var(--border-strong);
   --color-inverse: var(--inverse);
   --color-inverse-foreground: var(--inverse-foreground);
   --color-on-brand: var(--on-brand);

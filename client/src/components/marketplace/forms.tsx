@@ -657,7 +657,7 @@ export function ListingStepperForm({ edit = false, listingId }: { edit?: boolean
         <div className="md:col-span-2">
           <label className="mb-2 block text-sm font-medium">Photos</label>
           <div className="flex flex-wrap items-start gap-4">
-            <label className="inline-flex h-24 w-24 shrink-0 cursor-pointer flex-col items-center justify-center gap-1.5 rounded-lg border-2 border-dashed border-border bg-muted/50 px-3 text-center text-xs font-medium text-muted-foreground transition-all duration-200 hover:border-primary hover:bg-primary-50 hover:text-primary hover:shadow-sm">
+            <label className="inline-flex h-24 w-24 shrink-0 cursor-pointer flex-col items-center justify-center gap-1.5 rounded-lg border-2 border-dashed border-border-strong bg-panel px-3 text-center text-xs font-medium text-muted-foreground transition-all duration-200 hover:border-primary hover:bg-primary-50 hover:text-primary hover:shadow-sm">
               <Upload size={18} className="mx-auto" />
               <span>Upload</span>
               <input
@@ -1077,7 +1077,7 @@ export function KycStepperForm() {
         </div>
       )}
       <div className="grid gap-4 rounded-xl border border-border bg-card p-6 shadow-sm md:grid-cols-2">
-        <div className="md:col-span-2 flex items-start gap-3 rounded-lg bg-muted/50 p-4">
+        <div className="md:col-span-2 flex items-start gap-3 rounded-lg bg-panel p-4">
           <ShieldCheck size={18} className="mt-0.5 shrink-0 text-primary" />
           <p className="text-sm leading-6 text-muted-foreground">
             Upload your identity document as a <strong>PDF</strong> (e.g. Aadhaar, PAN, passport or
@@ -1088,7 +1088,7 @@ export function KycStepperForm() {
         </div>
         <div>
           <p className="mb-1.5 text-sm font-medium">Identity document (PDF)</p>
-          <label className="flex h-10 w-full cursor-pointer items-center justify-center gap-2 overflow-hidden rounded-md border-2 border-dashed border-border bg-muted/50 px-3 text-sm font-medium text-muted-foreground transition-all duration-200 hover:border-primary hover:bg-primary-50 hover:text-primary hover:shadow-sm">
+          <label className="flex h-10 w-full cursor-pointer items-center justify-center gap-2 overflow-hidden rounded-md border-2 border-dashed border-border-strong bg-panel px-3 text-sm font-medium text-muted-foreground transition-all duration-200 hover:border-primary hover:bg-primary-50 hover:text-primary hover:shadow-sm">
             <Upload size={16} className="shrink-0" />
             <span className="truncate">{pdfFile ? pdfFile.name : "Upload PDF file"}</span>
             <input
@@ -1105,7 +1105,7 @@ export function KycStepperForm() {
             <p className="text-sm font-medium">Live selfie</p>
           </div>
           {cameraStatus === "idle" && (
-            <div className="rounded-lg border-2 border-dashed border-border bg-muted/50 p-5">
+            <div className="rounded-lg border-2 border-dashed border-border-strong bg-panel p-5">
               <div className="flex items-start gap-3">
                 <Camera size={20} className="mt-0.5 shrink-0 text-muted-foreground" />
                 <p className="text-sm text-muted-foreground">
@@ -1119,7 +1119,7 @@ export function KycStepperForm() {
             </div>
           )}
           {cameraStatus === "requesting" && (
-            <div className="flex items-center gap-3 rounded-lg bg-muted/50 p-4">
+            <div className="flex items-center gap-3 rounded-lg bg-panel p-4">
               <span className="h-4 w-4 animate-spin rounded-full border-2 border-primary border-t-transparent" />
               <p className="text-sm text-muted-foreground">
                 Requesting camera access — allow it in your browser prompt…
@@ -1159,7 +1159,7 @@ export function KycStepperForm() {
             )}
           </div>
         </div>
-        <div className="md:col-span-2 flex items-start gap-3 rounded-lg bg-muted/50 p-4">
+        <div className="md:col-span-2 flex items-start gap-3 rounded-lg bg-panel p-4">
           <ShieldCheck size={18} className="mt-0.5 shrink-0 text-primary" />
           <p className="text-sm leading-6 text-muted-foreground">
             Payment setup: your rental earnings are paid out over UPI once your

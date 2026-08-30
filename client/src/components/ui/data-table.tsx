@@ -65,7 +65,7 @@ export function Th({ className, ...rest }: React.ThHTMLAttributes<HTMLTableCellE
   return (
     <th
       className={cn(
-        "px-4 py-3 font-semibold text-muted-foreground bg-muted/50 text-xs uppercase tracking-wider",
+        "px-4 py-3 font-semibold text-muted-foreground bg-panel text-xs uppercase tracking-wider",
         className
       )}
       {...rest}

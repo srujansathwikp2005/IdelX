@@ -543,7 +543,7 @@ export function AdminAuditLogsPage() {
             {(data?.items ?? []).map((log) => (
               <React.Fragment key={log._id}>
                 <tr
-                  className={expanded === log._id ? "bg-muted/60" : "cursor-pointer hover:bg-muted/50"}
+                  className={expanded === log._id ? "bg-panel" : "cursor-pointer hover:bg-panel"}
                   onClick={() => setExpanded(expanded === log._id ? null : log._id)}
                 >
                   <Td className="whitespace-nowrap">{formatDateTime(log.createdAt)}</Td>
@@ -567,7 +567,7 @@ export function AdminAuditLogsPage() {
                   </Td>
                 </tr>
                 {expanded === log._id && (
-                  <tr className="bg-muted/60">
+                  <tr className="bg-panel">
                     <Td colSpan={6}>
                       <div className="grid gap-3 text-sm md:grid-cols-2">
                         <div>
@@ -990,14 +990,14 @@ type DisputeParty = { _id?: string; name?: string; email?: string; phone?: strin
 function PartyCard({ role, party, note }: { role: string; party?: DisputeParty | null; note?: string }) {
   if (!party || typeof party !== "object") {
     return (
-      <div className="rounded-md border border-border bg-muted/30 p-3 text-sm">
+      <div className="rounded-md border border-border bg-panel p-3 text-sm">
         <p className="text-xs uppercase tracking-wide text-muted-foreground">{role}</p>
         <p className="mt-1 text-muted-foreground">Account no longer exists</p>
       </div>
     );
   }
   return (
-    <div className="rounded-md border border-border bg-muted/30 p-3 text-sm">
+    <div className="rounded-md border border-border bg-panel p-3 text-sm">
       <p className="text-xs uppercase tracking-wide text-muted-foreground">
         {role}
         {note ? <span className="ml-1 normal-case text-foreground">· {note}</span> : null}
@@ -1098,7 +1098,7 @@ export function AdminDisputesPage() {
                 </Badge>
               </div>
 
-              <div className="mt-4 rounded-md border border-border bg-muted/30 p-3">
+              <div className="mt-4 rounded-md border border-border bg-panel p-3">
                 <p className="text-xs uppercase tracking-wide text-muted-foreground">
                   What was reported
                   {d.category ? ` · ${String(d.category).replace(/_/g, " ")}` : ""}
@@ -1832,7 +1832,7 @@ export function AdminSettlementsPage() {
       >
         {paying && (
           <div className="space-y-4">
-            <div className="rounded-md bg-muted/50 p-3 text-sm">
+            <div className="rounded-md bg-panel p-3 text-sm">
               <p className="flex justify-between">
                 <span className="text-muted-foreground">Amount</span>
                 <strong>{formatCurrency(paying.amount)}</strong>
@@ -1923,7 +1923,7 @@ function SettlementGroup({
                     <button
                       type="button"
                       onClick={() => onCopy(target)}
-                      className="select-all rounded bg-muted/60 px-2 py-1 font-mono text-xs hover:bg-muted"
+                      className="select-all rounded bg-panel px-2 py-1 font-mono text-xs hover:bg-muted"
                       title="Click to copy"
                     >
                       {target}
@@ -2065,7 +2065,7 @@ export function AdminManualPaymentsPage() {
 
             <div className="mt-4 grid gap-4 sm:grid-cols-2">
               {/* What was owed. */}
-              <div className="rounded-md border border-border bg-muted/30 p-3 text-sm">
+              <div className="rounded-md border border-border bg-panel p-3 text-sm">
                 <p className="mb-2 text-xs uppercase tracking-wide text-muted-foreground">
                   Expected
                 </p>
@@ -2078,7 +2078,7 @@ export function AdminManualPaymentsPage() {
               </div>
 
               {/* What to look for on the statement. */}
-              <div className="rounded-md border border-border bg-muted/30 p-3 text-sm">
+              <div className="rounded-md border border-border bg-panel p-3 text-sm">
                 <p className="mb-2 text-xs uppercase tracking-wide text-muted-foreground">
                   Look for this reference
                 </p>
