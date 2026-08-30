@@ -41,4 +41,10 @@ router.post(
   controller.addAvailabilityBlock
 );
 
+router.delete(
+  '/:id/availability/:blockId',
+  authorize('owner', 'admin'),
+  controller.removeAvailabilityBlock
+);
+
 module.exports = router;

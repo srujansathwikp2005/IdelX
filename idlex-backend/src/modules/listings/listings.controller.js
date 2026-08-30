@@ -127,6 +127,42 @@ const addAvailabilityBlock = asyncHandler(async (req, res) => {
   return new ApiResponse(201, listing.availability, 'Availability block added').send(res);
 });
 
+// Removes a block an owner set. Adding one was possible and removing one was
+// not, so a range entered by mistake -- or dates that freed up again -- stayed
+// closed for good and the owner had no way to reopen them.
+//
+// Only blocks the owner created can go. A 'booked' entry is the record of a
+// real booking, and deleting it would let the same dates be sold twice.
+const removeAvailabilityBlock = asyncHandler(async (req, res) => {
+  const listing = await Listing.findById(req.params.id);
+  if (!listing) throw ApiError.notFound('Listing not found');
+  if (listing.owner.toString() !== req.user._id.toString() && req.user.role !== 'admin') {
+    throw ApiError.forbidden('This listing is not yours');
+  }
+
+  const block = listing.availability.id(req.params.blockId);
+  if (!block) throw ApiError.notFound('That date range is not blocked');
+  if (block.reason === 'booked') {
+    throw ApiError.badRequest('These dates are held by a booking and cannot be reopened here');
+  }
+
+  block.deleteOne();
+  await listing.save();
+
+  logAudit({
+    actor: req.user._id,
+    action: 'listing.availability_unblocked',
+    category: 'listing',
+    resourceType: 'listing',
+    resourceId: listing._id.toString(),
+    summary: 'Owner reopened blocked dates',
+    details: { startDate: block.startDate, endDate: block.endDate },
+    req,
+  });
+
+  return new ApiResponse(200, listing.availability, 'Dates reopened').send(res);
+});
+
 // Public: every review left on a listing, newest first. Reviews are part of
 // how a stranger decides whether to rent, so this is deliberately readable
 // without a session — the same reason the listing itself is public.
@@ -152,4 +188,5 @@ module.exports = {
   deletePhoto,
   getAvailability,
   addAvailabilityBlock,
+  removeAvailabilityBlock,
 };
