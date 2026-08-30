@@ -337,10 +337,23 @@ const moderateListing = asyncHandler(async (req, res) => {
 });
 
 const listDisputes = asyncHandler(async (req, res) => {
+  // Both sides' contact details, not just a first name.
+  //
+  // Resolving a dispute means talking to people: the admin has to hear the
+  // other side before deciding who keeps a deposit. A name alone left them
+  // looking the person up in the users table by hand -- and the person they
+  // most needed, the one being complained about, was not shown at all.
   const disputes = await Dispute.find()
     .sort('-createdAt')
-    .populate('booking')
-    .populate('raisedBy', 'name email');
+    .populate({
+      path: 'booking',
+      populate: [
+        { path: 'listing', select: 'title' },
+        { path: 'renter', select: 'name email phone' },
+        { path: 'owner', select: 'name email phone' },
+      ],
+    })
+    .populate('raisedBy', 'name email phone');
   return new ApiResponse(200, disputes, 'Disputes').send(res);
 });
 

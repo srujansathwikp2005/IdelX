@@ -984,46 +984,161 @@ export function AdminListingsPage() {
   );
 }
 
+type DisputeParty = { _id?: string; name?: string; email?: string; phone?: string };
+
+/** One person's contact details, laid out so they can be acted on. */
+function PartyCard({ role, party, note }: { role: string; party?: DisputeParty | null; note?: string }) {
+  if (!party || typeof party !== "object") {
+    return (
+      <div className="rounded-md border border-border bg-muted/30 p-3 text-sm">
+        <p className="text-xs uppercase tracking-wide text-muted-foreground">{role}</p>
+        <p className="mt-1 text-muted-foreground">Account no longer exists</p>
+      </div>
+    );
+  }
+  return (
+    <div className="rounded-md border border-border bg-muted/30 p-3 text-sm">
+      <p className="text-xs uppercase tracking-wide text-muted-foreground">
+        {role}
+        {note ? <span className="ml-1 normal-case text-foreground">· {note}</span> : null}
+      </p>
+      <p className="mt-1 font-medium">{party.name ?? "Unknown"}</p>
+      {/* Links, not text. An admin reading this is about to contact them, and
+          a copy-paste step between the two is friction for no reason. */}
+      {party.email ? (
+        <a href={`mailto:${party.email}`} className="mt-0.5 block break-all text-primary hover:underline">
+          {party.email}
+        </a>
+      ) : (
+        <p className="mt-0.5 text-muted-foreground">No email</p>
+      )}
+      {party.phone ? (
+        <a href={`tel:${party.phone}`} className="block text-primary hover:underline">
+          {party.phone}
+        </a>
+      ) : (
+        <p className="text-muted-foreground">No phone number</p>
+      )}
+    </div>
+  );
+}
+
 export function AdminDisputesPage() {
   const { data, isLoading, error, refetch } = useFetchData<Dispute[]>("/api/admin/disputes", []);
+  const [busyId, setBusyId] = React.useState<string | null>(null);
 
   const resolve = async (id: string) => {
-    await api.post<Dispute>(`/api/admin/disputes/${id}/resolve`, { status: "resolved", resolutionNote: "Resolved by admin" });
-    refetch();
+    setBusyId(id);
+    try {
+      await api.post<Dispute>(`/api/admin/disputes/${id}/resolve`, {
+        status: "resolved",
+        resolutionNote: "Resolved by admin",
+      });
+      refetch();
+    } finally {
+      setBusyId(null);
+    }
   };
+
+  const rows = data ?? [];
 
   return (
     <AdminShell>
-      <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
-        <div>
-          <h1 className="text-2xl font-bold">Disputes</h1>
-          <p className="mt-1 text-sm text-muted-foreground">Review and resolve disputes.</p>
-        </div>
+      <div className="mb-5">
+        <h1 className="text-2xl font-bold">Disputes</h1>
+        <p className="mt-1 text-sm text-muted-foreground">
+          Hear both sides before deciding. Contact details for each party are below.
+        </p>
       </div>
       <AdminError error={error} />
       {isLoading && <p className="text-sm text-muted-foreground">Loading…</p>}
-      <section className="mt-6 rounded-lg border border-border bg-card p-5">
-        <Table>
-          <thead>
-            <tr>
-              <Th>Reason</Th>
-              <Th>Raised by</Th>
-              <Th>Status</Th>
-              <Th>Action</Th>
-            </tr>
-          </thead>
-          <tbody>
-            {(data ?? []).map((dispute) => (
-              <tr key={dispute._id}>
-                <Td>{dispute.reason}</Td>
-                <Td>{dispute.raisedBy && typeof dispute.raisedBy === "object" ? dispute.raisedBy.name : "User"}</Td>
-                <Td><Badge variant={dispute.status === "open" ? "danger" : dispute.status === "resolved" ? "success" : "warning"}>{dispute.status}</Badge></Td>
-                <Td>{dispute.status !== "resolved" && <Button size="sm" onClick={() => resolve(dispute._id)}>Resolve</Button>}</Td>
-              </tr>
-            ))}
-          </tbody>
-        </Table>
-      </section>
+
+      {!isLoading && rows.length === 0 && (
+        <section className="rounded-lg border border-border bg-card p-10 text-center">
+          <p className="text-sm text-muted-foreground">No disputes.</p>
+        </section>
+      )}
+
+      <div className="space-y-4">
+        {rows.map((d) => {
+          const booking = (d.booking && typeof d.booking === "object" ? d.booking : null) as
+            | (Record<string, unknown> & {
+                _id?: string;
+                listing?: { title?: string } | string;
+                renter?: DisputeParty;
+                owner?: DisputeParty;
+                securityDeposit?: number;
+              })
+            | null;
+          const raiser = (d.raisedBy && typeof d.raisedBy === "object" ? d.raisedBy : null) as DisputeParty | null;
+          const raisedByOwner = Boolean(
+            raiser?._id && booking?.owner?._id && raiser._id === booking.owner._id,
+          );
+          const listingTitle =
+            booking?.listing && typeof booking.listing === "object"
+              ? booking.listing.title
+              : undefined;
+
+          return (
+            <section key={d._id} className="rounded-lg border border-border bg-card p-5">
+              <div className="flex flex-wrap items-start justify-between gap-3">
+                <div className="min-w-0">
+                  <p className="font-semibold">{listingTitle ?? "Unknown item"}</p>
+                  <p className="mt-0.5 text-xs text-muted-foreground">
+                    Booking {booking?._id ?? "—"}
+                    {d.createdAt ? ` · raised ${new Date(d.createdAt).toLocaleString()}` : ""}
+                  </p>
+                </div>
+                <Badge
+                  variant={
+                    d.status === "open" ? "danger" : d.status === "resolved" ? "success" : "warning"
+                  }
+                >
+                  {d.status}
+                </Badge>
+              </div>
+
+              <div className="mt-4 rounded-md border border-border bg-muted/30 p-3">
+                <p className="text-xs uppercase tracking-wide text-muted-foreground">
+                  What was reported
+                  {d.category ? ` · ${String(d.category).replace(/_/g, " ")}` : ""}
+                </p>
+                <p className="mt-1 text-sm">{d.reason}</p>
+                {d.claimedAmount ? (
+                  <p className="mt-2 text-sm">
+                    Claimed <strong>₹{d.claimedAmount}</strong>
+                    {booking?.securityDeposit ? ` of a ₹${booking.securityDeposit} deposit` : ""}
+                  </p>
+                ) : null}
+              </div>
+
+              {/* Both parties, with the complainant marked. Whoever is being
+                  complained about is the one an admin most needs to reach,
+                  and they were not shown at all. */}
+              <div className="mt-4 grid gap-3 sm:grid-cols-2">
+                <PartyCard
+                  role="Renter"
+                  party={booking?.renter}
+                  note={raiser && !raisedByOwner ? "raised this" : undefined}
+                />
+                <PartyCard
+                  role="Owner"
+                  party={booking?.owner}
+                  note={raisedByOwner ? "raised this" : undefined}
+                />
+              </div>
+
+              {d.status !== "resolved" && (
+                <div className="mt-4">
+                  <Button size="sm" disabled={busyId === d._id} onClick={() => resolve(d._id)}>
+                    {busyId === d._id ? "Working…" : "Mark resolved"}
+                  </Button>
+                </div>
+              )}
+            </section>
+          );
+        })}
+      </div>
     </AdminShell>
   );
 }
@@ -1656,10 +1771,10 @@ export function AdminSettlementsPage() {
 
       {data && data.provider === "manual" && (
         <div className="mb-5 rounded-lg border border-accent-200 bg-accent-50 p-4 text-sm text-accent-700">
-          <strong>Transfers are manual.</strong> Nothing here is sent automatically — send
-          the money from the platform account by UPI or bank transfer, then mark it paid.
-          Deposit refunds to renters go back to the original card through the gateway and
-          normally settle themselves; anything listed here needs a person.
+          <strong>Transfers are manual.</strong> Payments arrive by UPI, so there is no
+          gateway to send money back through — every line here needs a person. Send it
+          from the platform account to the UPI ID shown, then record it below so it is
+          not paid twice.
         </div>
       )}
 
@@ -1692,7 +1807,7 @@ export function AdminSettlementsPage() {
       {renters.length > 0 && (
         <SettlementGroup
           title="Renters awaiting refund"
-          caption="Deposits the gateway did not refund automatically — usually because the original payment could not be traced. These need a manual transfer."
+          caption="Deposits to return after a rental ended. Send by UPI to the ID shown, then record it here."
           items={renters}
           recipientName={recipientName}
           payTarget={payTarget}
@@ -1800,20 +1915,26 @@ function SettlementGroup({
                   {o.recipient?.email ? ` · ${o.recipient.email}` : ""}
                 </p>
                 {target ? (
-                  <button
-                    type="button"
-                    onClick={() => onCopy(target)}
-                    className="mt-2 select-all rounded bg-muted/60 px-2 py-1 font-mono text-xs hover:bg-muted"
-                    title="Click to copy"
-                  >
-                    {target}
-                  </button>
+                  // Labelled and click-to-copy: this is the string the admin
+                  // pastes into a UPI app, and mistyping it sends someone
+                  // else's money to a stranger.
+                  <div className="mt-2 flex items-center gap-2">
+                    <span className="text-xs text-muted-foreground">Send to</span>
+                    <button
+                      type="button"
+                      onClick={() => onCopy(target)}
+                      className="select-all rounded bg-muted/60 px-2 py-1 font-mono text-xs hover:bg-muted"
+                      title="Click to copy"
+                    >
+                      {target}
+                    </button>
+                  </div>
                 ) : (
                   // Said plainly rather than shown as an empty field: an admin
                   // needs to know why they cannot pay this one, and that the
                   // fix is asking the owner for details.
                   <p className="mt-2 text-xs text-danger">
-                    No payout details on file — ask them to complete KYC bank details.
+                    No payout details on file — they have not given a UPI ID.
                   </p>
                 )}
               </div>

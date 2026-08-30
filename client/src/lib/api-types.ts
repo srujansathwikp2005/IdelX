@@ -240,8 +240,21 @@ export type Message = {
 export type Dispute = {
   _id: string;
   booking: string | Booking;
-  raisedBy: string | Pick<User, "_id" | "name" | "email">;
+  // Phone included: an admin resolving a dispute needs to reach both people,
+  // and an email address alone is a slow way to settle who keeps a deposit.
+  raisedBy: string | Pick<User, "_id" | "name" | "email" | "phone">;
   reason: string;
+  // What kind of complaint. The owner's three are about a return; the
+  // renter's two are about never getting the item or it not matching.
+  category?:
+    | "damage"
+    | "missing_item"
+    | "late_return"
+    | "not_as_described"
+    | "not_received"
+    | "other";
+  // Only an owner claims against the deposit; a renter's dispute carries 0.
+  claimedAmount?: number;
   status: "open" | "under_review" | "resolved" | "rejected";
   resolutionNote: string | null;
   resolvedBy: string | null;

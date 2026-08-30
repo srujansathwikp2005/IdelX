@@ -34,10 +34,16 @@ const outstanding = asyncHandler(async (req, res) => {
 
   const rows = await Promise.all(
     entries.map(async (entry) => {
-      const settings =
-        entry.to === 'owner' && entry.counterparty
-          ? await PayoutSettings.findOne({ owner: entry.counterparty._id }).lean()
-          : null;
+      // Looked up for whoever is being paid, owner or renter.
+      //
+      // Renters were skipped on the reasoning that a deposit goes back to the
+      // card it came from and needs no details. That held while a gateway was
+      // refunding; under manual UPI there is no instrument to return to, and
+      // the admin needs somewhere to send the money. The screen said "no
+      // payout details on file" for people who had given a UPI ID.
+      const settings = entry.counterparty
+        ? await PayoutSettings.findOne({ owner: entry.counterparty._id }).lean()
+        : null;
 
       return {
         id: entry._id,
@@ -48,9 +54,8 @@ const outstanding = asyncHandler(async (req, res) => {
         recipient: entry.counterparty,
         createdAt: entry.createdAt,
         note: entry.note,
-        // Present for an owner with payout details saved; null for a renter
-        // refund, which goes back to the original payment instrument and
-        // needs no bank details at all.
+        // Where to send it. Null only when the person has never given any,
+        // which since KYC requires a UPI ID should not happen.
         payoutDetails: settings
           ? {
               accountHolderName: settings.accountHolderName,
