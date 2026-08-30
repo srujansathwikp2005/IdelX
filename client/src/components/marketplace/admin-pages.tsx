@@ -256,7 +256,12 @@ function WorkQueues({ queues }: { queues: AdminQueues | null }) {
     },
   ].filter((i) => i.count > 0);
 
-  if (queues && items.length === 0) {
+  // Nothing at all until the counts are in. Rendering the heading over an
+  // empty grid while loading reads as "nothing needs you", which is the one
+  // thing this section must never say when it does not yet know.
+  if (!queues) return null;
+
+  if (items.length === 0) {
     return (
       <section className="rounded-lg border border-border bg-card px-5 py-4">
         <p className="text-sm font-medium">Nothing waiting</p>
