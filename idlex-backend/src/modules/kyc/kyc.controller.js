@@ -88,16 +88,37 @@ const submitKyc = asyncHandler(async (req, res) => {
   // Bank details are part of payment setup: on KYC approval they become
   // the user's PayoutSettings so owners can receive rental earnings.
   const { accountHolderName, accountNumber, ifsc, bankName, upiId } = req.body;
-  if (!String(accountHolderName || '').trim() || !String(accountNumber || '').trim() ||
-      !String(ifsc || '').trim() || !String(bankName || '').trim()) {
+
+  // UPI is what payouts actually go out on, so it is the one that has to be
+  // there. Requiring a full bank account as well asked owners for an IFSC
+  // and account number nothing in the platform uses -- the most sensitive
+  // details we hold, collected for a rail we do not settle on.
+  const upi = String(upiId || '').trim();
+  if (!upi) {
+    throw ApiError.badRequest('A UPI ID is required — payouts are sent by UPI');
+  }
+  // Shape only, not existence: a typo here means a payout that bounces, and
+  // an admin reading it back against a failed transfer needs it to at least
+  // look like an address.
+  if (!/^[\w.\-]{2,64}@[a-zA-Z]{2,32}$/.test(upi)) {
+    throw ApiError.badRequest('That does not look like a UPI ID. It should look like name@bank');
+  }
+
+  // Bank details are optional. Some owners will want a fallback for a payout
+  // that cannot go by UPI, and an account holder name is worth having when
+  // one is given, but none of it blocks verification.
+  const anyBankField = [accountHolderName, accountNumber, ifsc, bankName]
+    .some((v) => String(v || '').trim());
+  if (anyBankField && (!String(accountNumber || '').trim() || !String(ifsc || '').trim())) {
+    // Half a bank account is worse than none: it looks usable and is not.
     throw ApiError.badRequest(
-      'Bank details are required for payment setup: account holder name, account number, IFSC code and bank name'
+      'If you add bank details, include both the account number and the IFSC code'
     );
   }
   kyc.bankDetails = {
-    accountHolderName: String(accountHolderName).trim(),
-    accountNumber: String(accountNumber).trim(),
-    ifsc: String(ifsc).trim().toUpperCase(),
+    accountHolderName: accountHolderName ? String(accountHolderName).trim() : undefined,
+    accountNumber: accountNumber ? String(accountNumber).trim() : undefined,
+    ifsc: ifsc ? String(ifsc).trim().toUpperCase() : undefined,
     bankName: String(bankName).trim(),
     upiId: upiId ? String(upiId).trim() : undefined,
   };
