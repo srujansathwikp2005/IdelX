@@ -13,22 +13,30 @@ const AuditLog = require('../../models/AuditLog');
 const { logAudit } = require('../../utils/audit');
 const { sendKycApprovedEmail, sendKycRejectedEmail } = require('../../utils/email');
 const { withSignedFiles } = require('../kyc/kyc.controller');
+const ManualPayment = require('../../models/ManualPayment');
 
 // Dashboard numbers — Django's aggregation API equivalent via Mongo's
 // countDocuments / aggregate.
 const getStats = asyncHandler(async (req, res) => {
-  const [users, listings, activeBookings, revenue] = await Promise.all([
+  const [users, listings, activeBookings, revenue, manualRevenue] = await Promise.all([
     User.countDocuments(),
     Listing.countDocuments(),
     Booking.countDocuments({ status: { $in: ['confirmed', 'active'] } }),
     Payment.aggregate([{ $match: { status: 'captured' } }, { $group: { _id: null, total: { $sum: '$amount' } } }]),
+    // Manual UPI payments are money too. Counting only the gateway model
+    // meant revenue stopped moving the day the prototype switched to UPI,
+    // while the platform carried on taking payments.
+    ManualPayment.aggregate([
+      { $match: { status: 'verified' } },
+      { $group: { _id: null, total: { $sum: '$totalAmount' } } },
+    ]),
   ]);
 
   return new ApiResponse(200, {
     totalUsers: users,
     totalListings: listings,
     activeBookings,
-    totalRevenue: revenue[0]?.total || 0,
+    totalRevenue: (revenue[0]?.total || 0) + (manualRevenue[0]?.total || 0),
   }, 'Dashboard stats').send(res);
 });
 
@@ -91,6 +99,13 @@ const getAnalytics = asyncHandler(async (req, res) => {
         Listing.countDocuments(),
         Booking.countDocuments({ status: { $in: ['confirmed', 'active'] } }),
         Payment.aggregate([{ $match: { status: 'captured' } }, { $group: { _id: null, total: { $sum: '$amount' } } }]),
+    // Manual UPI payments are money too. Counting only the gateway model
+    // meant revenue stopped moving the day the prototype switched to UPI,
+    // while the platform carried on taking payments.
+    ManualPayment.aggregate([
+      { $match: { status: 'verified' } },
+      { $group: { _id: null, total: { $sum: '$totalAmount' } } },
+    ]),
       ]),
     ]);
 
@@ -221,6 +236,45 @@ function searchRegex(term) {
   const escaped = String(term).trim().replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
   return new RegExp(escaped, 'i');
 }
+
+// What is waiting on a human, right now.
+//
+// The dashboard led with totals -- users, listings, revenue -- which say how
+// the platform is doing but not what anyone has to do about it. An operator
+// running a manual-payment marketplace opens this screen to find out whether
+// money is waiting to be verified or paid out, and had to click into five
+// separate pages to discover it.
+//
+// One request rather than five, because five would race each other on every
+// page load and the numbers are read together or not at all.
+const getQueues = asyncHandler(async (req, res) => {
+  const ManualPaymentModel = require('../../models/ManualPayment');
+  const DisputeModel = require('../../models/Dispute');
+  const LedgerEntry = require('../../models/LedgerEntry');
+
+  const [paymentsToVerify, kycPending, disputesOpen, extensionsPending, outstanding] =
+    await Promise.all([
+      ManualPaymentModel.countDocuments({ status: 'verification_pending' }),
+      Kyc.countDocuments({ status: 'pending' }),
+      DisputeModel.countDocuments({ status: { $in: ['open', 'under_review'] } }),
+      // Extension requests are embedded in the booking, so they are counted
+      // by matching the sub-document rather than by a collection count.
+      Booking.countDocuments({ 'extensionRequests.status': 'pending' }),
+      LedgerEntry.aggregate([
+        { $match: { settlement: 'pending', to: { $in: ['owner', 'renter'] } } },
+        { $group: { _id: null, count: { $sum: 1 }, amount: { $sum: '$amount' } } },
+      ]),
+    ]);
+
+  return new ApiResponse(200, {
+    paymentsToVerify,
+    kycPending,
+    disputesOpen,
+    extensionsPending,
+    payoutsOutstanding: outstanding[0]?.count || 0,
+    payoutsAmount: outstanding[0]?.amount || 0,
+  }, 'Admin queues').send(res);
+});
 
 const listUsers = asyncHandler(async (req, res) => {
   const { page = 1, limit = 20, role, q } = req.query;
@@ -493,6 +547,7 @@ const listExtensionRequests = asyncHandler(async (req, res) => {
 });
 
 module.exports = {
+  getQueues,
   listConversations,
   listCategories,
   listExtensionRequests,

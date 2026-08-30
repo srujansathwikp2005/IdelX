@@ -46,7 +46,7 @@ const getDoc = asyncHandler(async (req, res) => {
 // reason: an answer that is wrong in one place is worse than no answer.
 const HELP = {
   title: 'Help & Support',
-  contactEmail: 'support@idlex.in',
+  contactEmail: 'idlexsupport@gmail.com',
   sections: [
     {
       heading: 'Renting an item',

@@ -10,6 +10,7 @@ const router = express.Router();
 
 router.use(protect, authorize('admin'));
 
+router.get('/queues', controller.getQueues);
 router.get('/stats', controller.getStats);
 router.get('/analytics', controller.getAnalytics);
 router.get('/audit-logs', controller.listAuditLogs);

@@ -12,7 +12,7 @@ import { kycDisplay } from "@/lib/kyc-status";
 import type { Kyc } from "@/lib/api-types";
 import { LogOut, X } from "@/components/ui/icons";
 import { ICONS } from "@/components/ui/icons";
-import { ADMIN_SIDEBAR, RENTER_SIDEBAR, OWNER_SIDEBAR } from "@/config/navigation";
+import { ADMIN_SIDEBAR_FLAT, RENTER_SIDEBAR, OWNER_SIDEBAR } from "@/config/navigation";
 import { ROUTES } from "@/lib/constants";
 import { useAuth } from "@/lib/auth";
 
@@ -27,7 +27,7 @@ export function DashboardSidebar({
   const isAdmin = user?.role === "admin";
   const isOwner = user?.isOwner || user?.role === "owner" || user?.role === "admin";
   // Admins only see admin routes — user routes are not displayed.
-  const baseItems = isAdmin ? ADMIN_SIDEBAR : isOwner ? OWNER_SIDEBAR : RENTER_SIDEBAR;
+  const baseItems = isAdmin ? ADMIN_SIDEBAR_FLAT : isOwner ? OWNER_SIDEBAR : RENTER_SIDEBAR;
 
   // Real KYC state, not a literal. Non-admins see their own status; admins
   // see how many submissions are actually awaiting review.
