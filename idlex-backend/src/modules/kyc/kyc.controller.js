@@ -119,7 +119,7 @@ const submitKyc = asyncHandler(async (req, res) => {
     accountHolderName: accountHolderName ? String(accountHolderName).trim() : undefined,
     accountNumber: accountNumber ? String(accountNumber).trim() : undefined,
     ifsc: ifsc ? String(ifsc).trim().toUpperCase() : undefined,
-    bankName: String(bankName).trim(),
+    bankName: bankName ? String(bankName).trim() : undefined,
     upiId: upiId ? String(upiId).trim() : undefined,
   };
 

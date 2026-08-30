@@ -1009,8 +1009,21 @@ export function KycStepperForm() {
       setError("Capture a live selfie to complete KYC");
       return;
     }
-    if (!accountHolderName.trim() || !accountNumber.trim() || !ifsc.trim() || !bankName.trim()) {
-      setError("Bank details are required for payment setup: account holder name, account number, IFSC and bank name");
+    // UPI is what payouts actually go out on, so it is the one that has to be
+    // here. Bank details were the requirement back when payouts went through a
+    // gateway, and asking for them now blocks people over something unused.
+    if (!upiId.trim()) {
+      setError("Add your UPI ID — payouts are sent by UPI");
+      return;
+    }
+    if (!/^[a-zA-Z0-9._-]{2,64}@[a-zA-Z][a-zA-Z0-9.-]{1,32}$/.test(upiId.trim())) {
+      setError("That does not look like a UPI ID. It should look like name@bank");
+      return;
+    }
+    // All four or none: a half-filled bank account cannot be paid into.
+    const bankFields = [accountHolderName, accountNumber, ifsc, bankName].map((v) => v.trim());
+    if (bankFields.some(Boolean) && !bankFields.every(Boolean)) {
+      setError("Fill in all four bank fields, or leave them all empty");
       return;
     }
     setError(null);
@@ -1149,9 +1162,26 @@ export function KycStepperForm() {
         <div className="md:col-span-2 flex items-start gap-3 rounded-lg bg-muted/50 p-4">
           <ShieldCheck size={18} className="mt-0.5 shrink-0 text-primary" />
           <p className="text-sm leading-6 text-muted-foreground">
-            Payment setup: your bank details are used to receive your rental
-            earnings (payouts) once your KYC is approved. Approved payouts
-            are sent to this account through the Razorpay gateway.
+            Payment setup: your rental earnings are paid out over UPI once your
+            KYC is approved, so the UPI ID is the one we need. Bank details are
+            optional, and only used as a fallback if a UPI transfer cannot go
+            through.
+          </p>
+        </div>
+        <div className="md:col-span-2">
+          <Input
+            label="UPI ID"
+            value={upiId}
+            onChange={(e) => setUpiId(e.target.value)}
+            placeholder="yourname@upi"
+            hint="Where your earnings are sent."
+            required
+          />
+        </div>
+        <div className="md:col-span-2">
+          <p className="text-sm font-medium text-foreground">Bank account (optional)</p>
+          <p className="mt-0.5 text-sm text-muted-foreground">
+            Only needed as a fallback if a UPI transfer cannot go through.
           </p>
         </div>
         <Input
@@ -1159,14 +1189,12 @@ export function KycStepperForm() {
           value={accountHolderName}
           onChange={(e) => setAccountHolderName(e.target.value)}
           placeholder="Name as printed on the bank account"
-          required
         />
         <Input
           label="Bank name"
           value={bankName}
           onChange={(e) => setBankName(e.target.value)}
           placeholder="e.g. HDFC Bank"
-          required
         />
         <Input
           label="Account number"
@@ -1175,23 +1203,14 @@ export function KycStepperForm() {
           value={accountNumber}
           onChange={(e) => setAccountNumber(e.target.value.replace(/\D/g, ""))}
           placeholder="Bank account number"
-          required
         />
         <Input
           label="IFSC code"
           value={ifsc}
           onChange={(e) => setIfsc(e.target.value.toUpperCase())}
           placeholder="e.g. HDFC0001234"
-          required
         />
-        <div className="md:col-span-2">
-          <Input
-            label="UPI ID (optional)"
-            value={upiId}
-            onChange={(e) => setUpiId(e.target.value)}
-            placeholder="yourname@upi"
-          />
-        </div>
+
       </div>
       <FieldError message={error} />
       <Notice message={notice} />

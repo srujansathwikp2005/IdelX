@@ -390,19 +390,29 @@ async function updateMe(userId, { name, phone, phoneVerificationToken, avatarUrl
     if (!normalized) throw ApiError.badRequest('Enter a valid 10-digit phone number');
     const inUse = await User.findOne({ phone: normalized, _id: { $ne: userId } });
     if (inUse) throw ApiError.conflict('Phone number already in use by another account');
-    if (!phoneVerificationToken) {
+    // Adding a first number is not the same as changing one. Signup asks for
+    // a number without an SMS code, so demanding one here would leave the
+    // accounts that predate the requirement unable to add what they are now
+    // being asked for — which is the opposite of the point.
+    const isFirstNumber = !user.phone;
+
+    if (!isFirstNumber && !phoneVerificationToken) {
       throw ApiError.badRequest('Verify the new phone number with an OTP before saving');
     }
-    try {
-      const payload = verifyPhoneVerificationToken(phoneVerificationToken);
-      if (payload.phone !== normalized || payload.purpose !== 'profile') {
-        throw new Error('mismatch');
+
+    if (phoneVerificationToken) {
+      try {
+        const payload = verifyPhoneVerificationToken(phoneVerificationToken);
+        if (payload.phone !== normalized || payload.purpose !== 'profile') {
+          throw new Error('mismatch');
+        }
+      } catch (err) {
+        throw ApiError.badRequest('Phone verification is invalid or expired. Request a new OTP');
       }
-    } catch (err) {
-      throw ApiError.badRequest('Phone verification is invalid or expired. Request a new OTP');
+      user.isPhoneVerified = true;
     }
+
     user.phone = normalized;
-    user.isPhoneVerified = true;
   }
 
   if (becomeOwner) {
