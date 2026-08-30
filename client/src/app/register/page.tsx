@@ -21,6 +21,7 @@ import {
 import { ROUTES } from "@/lib/constants";
 import { useAuth, errorMessage, isNetworkError } from "@/lib/auth";
 import { api } from "@/lib/api-client";
+import { BrandLockup } from "@/components/layout/brand";
 
 const roles = [
   {
@@ -172,13 +173,8 @@ export default function RegisterPage() {
     <main className="min-h-screen bg-card">
       <div className="mx-auto grid min-h-screen max-w-7xl px-4 py-6 sm:px-6 lg:grid-cols-[0.88fr_1fr] lg:gap-12 lg:py-10">
         <section className="hidden flex-col justify-between rounded-2xl bg-primary-50 p-8 lg:flex">
-          <Link href={ROUTES.HOME} className="flex w-fit items-center gap-2">
-            <span className="grid h-9 w-9 place-items-center rounded-lg bg-primary text-sm font-bold text-white">
-              iX
-            </span>
-            <span className="text-xl font-bold text-foreground">
-              Idle<span className="text-primary">X</span>
-            </span>
+          <Link href={ROUTES.HOME} className="w-fit">
+            <BrandLockup size={36} wordmarkClassName="text-xl text-foreground" />
           </Link>
 
           <div className="py-10">
@@ -237,13 +233,8 @@ export default function RegisterPage() {
         <section className="flex min-h-screen items-center justify-center py-6 lg:min-h-0">
           <div className="w-full max-w-xl">
             <div className="mb-8 flex items-center justify-between">
-              <Link href={ROUTES.HOME} className="flex items-center gap-2 lg:hidden">
-                <span className="grid h-9 w-9 place-items-center rounded-lg bg-primary text-sm font-bold text-white">
-                  iX
-                </span>
-                <span className="text-xl font-bold">
-                  Idle<span className="text-primary">X</span>
-                </span>
+              <Link href={ROUTES.HOME} className="lg:hidden">
+                <BrandLockup size={36} wordmarkClassName="text-xl" />
               </Link>
               <Link href={ROUTES.LOGIN} className="ml-auto text-sm font-semibold text-primary">
                 Already registered? Sign in

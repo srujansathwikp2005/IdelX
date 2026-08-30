@@ -50,7 +50,7 @@ export function Footer() {
 
         {/* Thin gradient rule instead of a flat border — same accent language as the rest of the site */}
         <div className="mt-10 h-px w-full bg-linear-to-r from-transparent via-white/10 to-transparent" />
-        <p className="mt-6 text-center text-xs text-inverse-foreground/45">
+        <p className="mt-6 text-center text-xs text-inverse-foreground/65">
           Made for people who'd rather borrow than buy.
         </p>
       </div>

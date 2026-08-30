@@ -58,10 +58,20 @@
   --color-gray-800: #1f2937;
   --color-gray-900: #111827;
 
-  /* Status */
-  --color-success: #10b981;
-  --color-warning: #f59e0b;
-  --color-danger: #ef4444;
+  --color-danger-50: #fef2f2;
+  --color-danger-200: #fecdd3;
+  --color-danger-500: #ef4444;
+  --color-danger-700: #b91c1c;
+
+  /* Status
+     One step darker than the palette's mid tone, because each of these is
+     used as text as often as it is used as a fill. At #ef4444 the error
+     messages sat at 3.8:1 on white and white sat at 3.8:1 on the button —
+     both under the 4.5:1 a body-size string needs. The dark theme lifts
+     them instead, for the same reason in the other direction. */
+  --color-success: #047857;
+  --color-warning: #b45309;
+  --color-danger: #dc2626;
   --color-info: #6c4ef5;
 
   /* Surface
@@ -149,6 +159,11 @@
 
   /* Status colours lift off near-black; the light-theme values are too dense
      to read at body size here. */
+  --color-danger-50: #3a1620;
+  --color-danger-200: #5c2430;
+  --color-danger-500: #f87171;
+  --color-danger-700: #fecdd3;
+
   --color-success: #34d399;
   --color-warning: #fbbf24;
   --color-danger: #f87171;
@@ -225,6 +240,11 @@
 
     /* Status colours lift off near-black; the light-theme values are too dense
        to read at body size here. */
+    --color-danger-50: #3a1620;
+    --color-danger-200: #5c2430;
+    --color-danger-500: #f87171;
+    --color-danger-700: #fecdd3;
+
     --color-success: #34d399;
     --color-warning: #fbbf24;
     --color-danger: #f87171;
@@ -301,6 +321,10 @@
   --color-success: var(--color-success);
   --color-warning: var(--color-warning);
   --color-danger: var(--color-danger);
+  --color-danger-50: var(--color-danger-50);
+  --color-danger-200: var(--color-danger-200);
+  --color-danger-500: var(--color-danger-500);
+  --color-danger-700: var(--color-danger-700);
   --color-info: var(--color-info);
 
   --font-heading: var(--font-poppins), ui-sans-serif, system-ui, sans-serif;

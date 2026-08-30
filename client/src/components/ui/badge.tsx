@@ -7,7 +7,7 @@ const variants: Record<Variant, string> = {
   default: "bg-primary-50 text-primary-700 border border-primary-200",
   success: "bg-secondary-50 text-secondary-700 border border-secondary-200",
   warning: "bg-accent-50 text-accent-700 border border-accent-200",
-  danger: "bg-red-50 text-red-700 border border-red-200",
+  danger: "bg-danger-50 text-danger-700 border border-danger-200",
   info: "bg-primary-50 text-primary-700 border border-primary-200",
   secondary: "bg-gray-100 text-gray-700 border border-gray-200",
   outline: "bg-transparent text-foreground border border-border",

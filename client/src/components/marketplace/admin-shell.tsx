@@ -23,7 +23,9 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
     <div className="min-h-screen bg-muted lg:grid lg:grid-cols-[280px_1fr]">
       <aside className="hidden border-r border-border bg-card lg:block">
         <div className="flex h-16 items-center gap-2 border-b border-border px-5">
-          <Link href={ROUTES.ADMIN}>
+          {/* Out of the panel and back to the site. The sidebar's own
+              Dashboard row is the way back to /admin. */}
+          <Link href={ROUTES.HOME} title="Back to IdleX">
             <BrandLockup suffix="Admin" />
           </Link>
           <ThemeToggle className="ml-auto" />

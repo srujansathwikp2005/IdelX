@@ -9,7 +9,7 @@ import { Stepper } from "@/components/ui/stepper";
 import { Badge } from "@/components/ui/badge";
 import { Checkbox, RadioGroup } from "@/components/ui/form-controls";
 import {
-  AlertTriangle, Camera, CheckCircle, Clock, IdCard, Lock, Mail, Repeat, ShieldCheck, Upload,
+  AlertTriangle, Camera, CheckCircle, Clock, IdCard, Mail, Repeat, ShieldCheck, Upload,
 } from "@/components/ui/icons";
 import { api, ApiError, getStoredUser, setStoredUser } from "@/lib/api-client";
 import { useAuth } from "@/lib/auth";
@@ -130,13 +130,7 @@ function AuthPanelInner({ mode }: { mode: AuthMode }) {
       className="mx-auto w-full max-w-md animate-[fadeInUp_0.4s_ease-out] rounded-xl border border-border bg-card p-7 shadow-lg shadow-black/5"
     >
       <div className="mb-6">
-        <div className="flex items-center gap-2">
-          <Badge variant="default" className="bg-linear-to-r from-primary to-primary-600 text-on-brand">
-            Secure access
-          </Badge>
-          <Lock size={14} className="text-muted-foreground" />
-        </div>
-        <h1 className="mt-3 text-2xl font-bold tracking-tight">{titles[mode]}</h1>
+        <h1 className="text-2xl font-bold tracking-tight">{titles[mode]}</h1>
         <p className="mt-2 text-sm text-muted-foreground">
           {mode === "otp" ? "Enter your phone number to receive a code." : "Sign in to your IdleX account."}
         </p>
@@ -282,12 +276,7 @@ export function EmailVerifyPanel({ initialEmail = "" }: { initialEmail?: string 
       className="mx-auto w-full max-w-md animate-[fadeInUp_0.4s_ease-out] rounded-xl border border-border bg-card p-7 shadow-lg shadow-black/5"
     >
       <div className="mb-6">
-        <div className="flex items-center gap-2">
-          <Badge variant="default" className="bg-linear-to-r from-primary to-primary-600 text-on-brand">
-            Email verification
-          </Badge>
-        </div>
-        <div className="mt-3 flex items-center gap-2.5">
+        <div className="flex items-center gap-2.5">
           <span className="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-primary-50 text-primary">
             <Mail size={17} />
           </span>

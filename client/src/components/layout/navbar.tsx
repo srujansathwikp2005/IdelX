@@ -142,7 +142,7 @@ export function Navbar() {
                   )}
                   <hr className="my-2 border-border" />
                   <button
-                    className="flex w-full items-center gap-3 rounded-md px-3 py-2 text-sm text-foreground transition-colors hover:bg-red-50 hover:text-red-600"
+                    className="flex w-full items-center gap-3 rounded-md px-3 py-2 text-sm text-foreground transition-colors hover:bg-danger-50 hover:text-danger-700"
                     onClick={() => { logout(); router.push(ROUTES.HOME); }}
                   >
                     <span className="text-muted-foreground"><LogOut size={16} /></span>

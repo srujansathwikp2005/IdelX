@@ -34,7 +34,7 @@ export function StatCard({ title, value, description, change, icon, className }:
               "inline-flex items-center gap-0.5 text-xs font-medium px-1.5 py-0.5 rounded-full",
               change.type === "increase"
                 ? "bg-secondary-50 text-secondary-700"
-                : "bg-red-50 text-red-700"
+                : "bg-danger-50 text-danger-700"
             )}
           >
             {change.type === "increase" ? <TrendingUp size={12} /> : <TrendingDown size={12} />}
