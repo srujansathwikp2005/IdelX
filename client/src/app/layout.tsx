@@ -1,5 +1,25 @@
 import type { Metadata } from "next";
+import { Inter, Poppins } from "next/font/google";
+
 import "./globals.css";
+
+// The stylesheet has always asked for these two by name. Nothing ever loaded
+// them, so --font-poppins and --font-inter were undefined, which makes the
+// whole `font-family: var(--font-body)` declaration invalid — and an invalid
+// font-family falls back to the browser default, which is a serif. Every
+// heading and every paragraph on the site has been rendering in Times.
+const poppins = Poppins({
+  subsets: ["latin"],
+  weight: ["500", "600", "700"],
+  variable: "--font-poppins",
+  display: "swap",
+});
+
+const inter = Inter({
+  subsets: ["latin"],
+  variable: "--font-inter",
+  display: "swap",
+});
 import { AuthProvider, RouteGuard } from "@/lib/auth";
 import { ThemeProvider } from "@/lib/theme";
 
@@ -21,7 +41,11 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" className="h-full antialiased" suppressHydrationWarning>
+    <html
+      lang="en"
+      className={`${poppins.variable} ${inter.variable} h-full antialiased`}
+      suppressHydrationWarning
+    >
       <head>
         {/* Runs before the first paint, so a person who chose dark does not
             get a white page for the length of a hydration. React cannot do
