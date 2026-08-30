@@ -7,6 +7,7 @@ import { PublicShell } from "@/components/marketplace/app-shell";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Avatar } from "@/components/ui/avatar";
 import { Heart, MapPin, Repeat, ShieldCheck } from "@/components/ui/icons";
 import { StarRating } from "@/components/ui/star-rating";
 import { cn } from "@/lib/utils";
@@ -103,161 +104,266 @@ export default function ProductPage({ params }: { params: Promise<{ productId: s
     }
   };
 
+  const city = listing.location?.city || "India";
+  const region = [listing.location?.city, listing.location?.state].filter(Boolean).join(", ") || "India";
+
+  // Shown as the pick-up window. A listing with no blocks is simply available,
+  // which is worth saying rather than leaving the row blank.
+  const nextBlock = (listing.availability ?? [])
+    .filter((b) => b.endDate && new Date(b.endDate) >= new Date())
+    .sort((a, b) => +new Date(a.startDate) - +new Date(b.startDate))[0];
+
+  const rules = [
+    "No damage or misuse",
+    "Return on time",
+    "Keep original accessories safe",
+    "Report any issues immediately",
+  ];
+
   return (
     <PublicShell>
-      <section className="mx-auto grid max-w-7xl gap-8 px-4 py-8 sm:px-6 lg:grid-cols-[1fr_360px]">
-        <div>
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src={image} alt={listing.title} className="aspect-video w-full rounded-lg object-cover" />
+      <section className="mx-auto max-w-7xl px-4 pb-12 pt-5 sm:px-6">
+        <nav aria-label="Breadcrumb" className="flex flex-wrap items-center gap-1.5 text-sm text-muted-foreground">
+          <Link href={ROUTES.HOME} className="transition-colors hover:text-foreground">Home</Link>
+          <span aria-hidden>›</span>
+          <Link href={ROUTES.CATEGORIES} className="transition-colors hover:text-foreground">Categories</Link>
+          <span aria-hidden>›</span>
+          <Link
+            href={`${ROUTES.SEARCH}?category=${listing.category}`}
+            className="capitalize transition-colors hover:text-foreground"
+          >
+            {listing.category.replace(/-/g, " ")}
+          </Link>
+          <span aria-hidden>›</span>
+          <span className="truncate font-medium text-foreground">{listing.title}</span>
+        </nav>
 
-          {gallery.length > 1 && (
-            // Thumbnail strip. Only shown for more than one photo — a single
-            // thumbnail under its own full-size image is just noise.
-            <div className="mt-3 flex gap-2 overflow-x-auto pb-1">
-              {gallery.map((photo, i) => (
-                <button
-                  key={photo._id ?? photo.url}
-                  type="button"
-                  onClick={() => setActivePhoto(i)}
-                  aria-label={`View photo ${i + 1} of ${gallery.length}`}
-                  aria-current={i === activePhoto}
-                  className={cn(
-                    "h-16 w-20 shrink-0 overflow-hidden rounded-md border-2 transition-all",
-                    i === activePhoto
-                      ? "border-primary"
-                      : "border-transparent opacity-70 hover:opacity-100"
-                  )}
-                >
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img
-                    src={photo.url}
-                    alt={photo.caption || `${listing.title} photo ${i + 1}`}
-                    className="h-full w-full object-cover"
-                  />
-                </button>
-              ))}
-            </div>
-          )}
-          <div className="mt-6">
-            <Badge variant="outline">{listing.category}</Badge>
-            <h1 className="mt-3 text-3xl font-bold">{listing.title}</h1>
-            <p className="mt-2 flex items-center gap-2 text-sm text-muted-foreground">
-              <MapPin size={16} />
-              {listing.location?.city || "India"} - hosted by {owner}
-            </p>
-            <div className="mt-4 flex flex-wrap gap-2">
-              <Badge variant={listing.status === "published" ? "success" : "secondary"}>{listing.status}</Badge>
-              {listing.securityDeposit > 0 && <Badge variant="secondary">Deposit {formatCurrency(listing.securityDeposit)}</Badge>}
-              {listing.extension?.allowed ? (
-                <Badge variant="success">Extension available</Badge>
-              ) : (
-                <Badge variant="outline">No extension allowed</Badge>
-              )}
-            </div>
-            <p className="mt-6 leading-7 text-muted-foreground">{listing.description}</p>
+        <div className="mt-5 grid gap-6 lg:grid-cols-[1fr_380px]">
+          <div>
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src={image}
+              alt={listing.title}
+              className="aspect-4/3 w-full rounded-2xl border border-border object-cover"
+            />
 
-            <div className="mt-8">
-              <h2 className="text-xl font-semibold">Reviews ({reviews?.length ?? 0})</h2>
-              <div className="mt-4 space-y-4">
-                {(reviews ?? []).length === 0 && (
-                  <p className="rounded-lg border border-border bg-card p-6 text-sm text-muted-foreground">
-                    No reviews yet. Be the first to rent and review this item.
-                  </p>
-                )}
-                {(reviews ?? []).map((review) => (
-                  <div key={review._id} className="rounded-lg border border-border bg-card p-4">
-                    <div className="flex items-center gap-2">
-                      <p className="font-semibold">{typeof review.reviewer === "object" ? review.reviewer.name : "Renter"}</p>
-                      <StarRating value={review.rating} size={14} />
-                      <span className="ml-auto text-xs text-muted-foreground">{formatDate(review.createdAt)}</span>
-                    </div>
-                    {review.comment && <p className="mt-2 text-sm text-muted-foreground">{review.comment}</p>}
-                  </div>
-                ))}
+            {gallery.length > 1 && (
+              // Four thumbnails, and a count on the last one when there are
+              // more. A strip that scrolls off the edge hides how many there
+              // are; a number says it outright.
+              <div className="mt-3 grid grid-cols-4 gap-3">
+                {gallery.slice(0, 4).map((photo, i) => {
+                  const isLast = i === 3 && gallery.length > 4;
+                  return (
+                    <button
+                      key={photo._id ?? photo.url}
+                      type="button"
+                      onClick={() => setActivePhoto(i)}
+                      aria-label={`View photo ${i + 1} of ${gallery.length}`}
+                      aria-current={i === activePhoto}
+                      className={cn(
+                        "relative aspect-4/3 overflow-hidden rounded-xl border-2 transition-all",
+                        i === activePhoto ? "border-primary" : "border-transparent hover:border-border"
+                      )}
+                    >
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img
+                        src={photo.url}
+                        alt={photo.caption || `${listing.title} photo ${i + 1}`}
+                        className="h-full w-full object-cover"
+                      />
+                      {isLast && (
+                        <span className="absolute inset-0 grid place-items-center bg-black/55 text-sm font-semibold text-white">
+                          +{gallery.length - 3}
+                        </span>
+                      )}
+                    </button>
+                  );
+                })}
               </div>
-            </div>
+            )}
           </div>
-        </div>
-        <Card className="h-max">
-          <CardHeader>
-            <CardTitle>{formatCurrency(listing.pricePerDay)} / day</CardTitle>
-            <div className="flex items-center gap-1 text-sm text-accent-700">
-              <StarRating value={listing.ratingAvg} size={15} /> {listing.ratingAvg || "New"} {listing.ratingCount > 0 && `from ${listing.ratingCount} reviews`}
-            </div>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="rounded-lg bg-muted p-4 text-sm">
-              <p className="flex justify-between"><span>Security deposit</span><strong>{formatCurrency(listing.securityDeposit)}</strong></p>
-              <p className="mt-2 flex justify-between"><span>Platform protection</span><strong>Included</strong></p>
-            </div>
-            {listing.extension?.allowed ? (
-              <div className="rounded-lg border border-primary-200 bg-primary-50 p-4 text-sm text-primary-900">
-                <p className="flex items-center gap-2 font-semibold text-primary">
-                  <Repeat size={16} />
-                  Rental extension available
+
+          <Card className="h-max">
+            <CardContent className="space-y-4 pt-6">
+              <Badge variant="default" className="capitalize">
+                {listing.category.replace(/-/g, " ")}
+              </Badge>
+              <h1 className="text-2xl font-bold tracking-tight">{listing.title}</h1>
+
+              <div className="flex flex-wrap items-center gap-2 text-sm">
+                <Avatar name={owner} size="sm" />
+                <span className="text-muted-foreground">by</span>
+                <span className="font-medium">{owner}</span>
+                <span className="ml-auto flex items-center gap-1 font-medium text-accent-700">
+                  <StarRating value={listing.ratingAvg} size={14} />
+                  {listing.ratingAvg ? listing.ratingAvg.toFixed(1) : "New"}
+                  {listing.ratingCount > 0 && (
+                    <span className="font-normal text-muted-foreground">
+                      ({listing.ratingCount} review{listing.ratingCount === 1 ? "" : "s"})
+                    </span>
+                  )}
+                </span>
+              </div>
+
+              <div className="border-t border-border pt-4">
+                <p className="text-2xl font-bold">
+                  {formatCurrency(listing.pricePerDay)}
+                  <span className="text-base font-normal text-muted-foreground"> / day</span>
                 </p>
-                <ul className="mt-2 space-y-1 text-xs text-primary-900">
-                  <li>
-                    Pricing:{" "}
+                <p className="mt-1 text-sm text-muted-foreground">
+                  Security deposit: {formatCurrency(listing.securityDeposit)}{" "}
+                  <span className="text-xs">(Refundable)</span>
+                </p>
+              </div>
+
+              <div className="flex flex-col gap-3 border-t border-border pt-4 text-sm">
+                <div className="flex items-start gap-2.5">
+                  <MapPin size={16} className="mt-0.5 shrink-0 text-primary" />
+                  <div>
+                    <p className="font-medium">Pick-up</p>
+                    <p className="text-muted-foreground">{region}</p>
+                  </div>
+                </div>
+                <div className="flex items-start gap-2.5">
+                  <ShieldCheck size={16} className="mt-0.5 shrink-0 text-primary" />
+                  <div className="min-w-0 flex-1">
+                    <div className="flex items-baseline justify-between gap-3">
+                      <p className="font-medium">Availability</p>
+                      <Link
+                        href={ROUTES.CHECKOUT(listing._id)}
+                        className="text-xs font-medium text-primary transition-colors hover:text-primary-700"
+                      >
+                        Change dates
+                      </Link>
+                    </div>
+                    <p className="text-muted-foreground">
+                      {nextBlock
+                        ? `Booked ${formatDate(nextBlock.startDate)} – ${formatDate(nextBlock.endDate)}`
+                        : "Available now"}
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              {isOwn ? (
+                <div className="rounded-lg border border-border bg-muted p-3 text-center text-sm text-muted-foreground">
+                  This is your listing — you can&apos;t book your own items.
+                </div>
+              ) : (
+                <Link href={ROUTES.CHECKOUT(listing._id)} className="block">
+                  <Button fullWidth>Request to Book</Button>
+                </Link>
+              )}
+
+              {signedIn && (
+                <>
+                  <Button
+                    variant="outline"
+                    fullWidth
+                    loading={wishlistBusy}
+                    onClick={toggleWishlist}
+                    leftIcon={<Heart size={16} className={saved ? "fill-danger text-danger" : ""} />}
+                  >
+                    {saved ? "Saved to Wishlist" : "Add to Wishlist"}
+                  </Button>
+                  {wishlistError && (
+                    <p className="rounded-md bg-danger-50 p-2 text-xs text-danger-700">{wishlistError}</p>
+                  )}
+                </>
+              )}
+
+              {signedIn && !isOwn && (
+                <>
+                  <Button variant="ghost" fullWidth loading={messageBusy} onClick={messageOwner}>
+                    Message owner
+                  </Button>
+                  {messageError && (
+                    <p className="rounded-md bg-danger-50 p-2 text-xs text-danger-700">{messageError}</p>
+                  )}
+                </>
+              )}
+            </CardContent>
+          </Card>
+        </div>
+
+        <div className="mt-6 grid gap-5 lg:grid-cols-[1fr_380px]">
+          <Card>
+            <CardHeader>
+              <CardTitle>About this item</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <p className="leading-7 text-muted-foreground">{listing.description}</p>
+
+              <div className="mt-5 flex flex-col gap-2 border-t border-border pt-4 text-sm">
+                <p className="flex items-center gap-2">
+                  <ShieldCheck size={15} className="shrink-0 text-primary" />
+                  KYC verified owner and protected handover
+                </p>
+                <p className="flex items-center gap-2">
+                  <MapPin size={15} className="shrink-0 text-primary" />
+                  Picked up in {city}
+                </p>
+                <p className="flex items-center gap-2">
+                  <Repeat size={15} className="shrink-0 text-primary" />
+                  {listing.extension?.allowed
+                    ? `Extendable by up to ${listing.extension.maxExtensionDays} day${
+                        listing.extension.maxExtensionDays === 1 ? "" : "s"
+                      }, requested ${listing.extension.requestBeforeHours}h before the end`
+                    : "Cannot be extended once booked"}
+                </p>
+                {listing.extension?.allowed && (
+                  <p className="flex items-center gap-2">
+                    <Repeat size={15} className="shrink-0 text-primary" />
+                    Extension priced{" "}
                     {listing.extension.pricing === "custom"
                       ? `${listing.extension.ratePercent}% above the daily rate`
-                      : "Same as the daily rate"}
-                  </li>
-                  <li>Request: at least {listing.extension.requestBeforeHours}h before the booking ends</li>
-                  <li>Maximum: {listing.extension.maxExtensionDays} extra day{listing.extension.maxExtensionDays === 1 ? "" : "s"}</li>
-                </ul>
-              </div>
-            ) : (
-              <div className="rounded-lg border border-border bg-muted p-3 text-sm text-muted-foreground">
-                <p className="flex items-center gap-2">
-                  <Repeat size={16} />
-                  No extension allowed
-                </p>
-              </div>
-            )}
-            <div className="flex items-center gap-2 rounded-lg border border-secondary-200 bg-secondary-50 p-3 text-sm text-secondary-700">
-              <ShieldCheck size={18} />
-              KYC verified owner and protected handover
-            </div>
-            {isOwn ? (
-              <div className="rounded-lg border border-border bg-muted p-3 text-center text-sm text-muted-foreground">
-                This is your listing — you can&apos;t book your own items.
-              </div>
-            ) : (
-              <Link href={ROUTES.CHECKOUT(listing._id)}><Button fullWidth>Request to Book</Button></Link>
-            )}
-
-            {/* The messages page tells people to "message an owner from a
-                listing", but there was no way to do it — conversations could
-                only be opened by knowing a URL. */}
-            {signedIn && !isOwn && (
-              <Button variant="outline" fullWidth loading={messageBusy} onClick={messageOwner}>
-                Message owner
-              </Button>
-            )}
-            {messageError && (
-              <p className="rounded-md bg-danger-50 p-2 text-xs text-danger">{messageError}</p>
-            )}
-            {signedIn && (
-              <>
-                <Button
-                  variant="outline"
-                  fullWidth
-                  loading={wishlistBusy}
-                  onClick={toggleWishlist}
-                  leftIcon={
-                    <Heart size={16} className={saved ? "fill-danger text-danger" : ""} />
-                  }
-                >
-                  {saved ? "Saved to Wishlist" : "Save to Wishlist"}
-                </Button>
-                {wishlistError && (
-                  <p className="rounded-md bg-danger-50 p-2 text-xs text-danger">{wishlistError}</p>
+                      : "at the same daily rate"}
+                  </p>
                 )}
-              </>
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card className="h-max">
+            <CardHeader>
+              <CardTitle>Rules</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <ul className="flex flex-col gap-2.5 text-sm text-muted-foreground">
+                {rules.map((rule) => (
+                  <li key={rule} className="flex items-start gap-2.5">
+                    <ShieldCheck size={15} className="mt-0.5 shrink-0 text-primary" />
+                    {rule}
+                  </li>
+                ))}
+              </ul>
+            </CardContent>
+          </Card>
+        </div>
+
+        <div className="mt-6">
+          <h2 className="text-xl font-semibold">Reviews ({reviews?.length ?? 0})</h2>
+          <div className="mt-4 flex flex-col gap-4">
+            {(reviews ?? []).length === 0 && (
+              <p className="rounded-xl border border-border bg-card p-6 text-sm text-muted-foreground">
+                No reviews yet. Be the first to rent and review this item.
+              </p>
             )}
-          </CardContent>
-        </Card>
+            {(reviews ?? []).map((review) => (
+              <div key={review._id} className="rounded-xl border border-border bg-card p-4">
+                <div className="flex items-center gap-2">
+                  <p className="font-semibold">
+                    {typeof review.reviewer === "object" ? review.reviewer.name : "Renter"}
+                  </p>
+                  <StarRating value={review.rating} size={14} />
+                  <span className="ml-auto text-xs text-muted-foreground">{formatDate(review.createdAt)}</span>
+                </div>
+                {review.comment && <p className="mt-2 text-sm text-muted-foreground">{review.comment}</p>}
+              </div>
+            ))}
+          </div>
+        </div>
       </section>
     </PublicShell>
   );
