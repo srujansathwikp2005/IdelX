@@ -2,6 +2,7 @@
 
 import * as React from "react";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 import { AdminShell } from "@/components/marketplace/admin-shell";
 import { StatCard } from "@/components/shared/stat-card";
 import { Badge } from "@/components/ui/badge";
@@ -191,9 +192,123 @@ function paymentStatusVariant(status: Payment["status"]): "default" | "success" 
 // Dashboard — graphical metrics + activity
 // ---------------------------------------------------------------------------
 
+
+/** Counts of everything waiting on a person. */
+type AdminQueues = {
+  paymentsToVerify: number;
+  kycPending: number;
+  disputesOpen: number;
+  extensionsPending: number;
+  payoutsOutstanding: number;
+  payoutsAmount: number;
+};
+
+/**
+ * What needs doing, at the top of the dashboard.
+ *
+ * The screen opened with totals — users, listings, revenue — which say how
+ * the platform is doing but not what anyone has to do about it. On a
+ * marketplace where payments are verified by hand, an operator opens this to
+ * find out whether money is waiting, and had to click through five separate
+ * pages to discover it.
+ *
+ * Only queues with something in them are shown. A row of zeroes trains
+ * people to ignore the row, and then they miss the one that is not zero.
+ */
+function WorkQueues({ queues }: { queues: AdminQueues | null }) {
+  const items = [
+    {
+      label: "Payments to verify",
+      count: queues?.paymentsToVerify ?? 0,
+      href: ROUTES.ADMIN_MANUAL_PAYMENTS,
+      note: "Bookings stay unconfirmed until you check these",
+      tone: "urgent" as const,
+    },
+    {
+      label: "Payouts to send",
+      count: queues?.payoutsOutstanding ?? 0,
+      href: ROUTES.ADMIN_SETTLEMENTS,
+      note: queues?.payoutsAmount
+        ? `${formatCurrency(queues.payoutsAmount)} owed to owners and renters`
+        : "Money owed out",
+      tone: "urgent" as const,
+    },
+    {
+      label: "KYC to review",
+      count: queues?.kycPending ?? 0,
+      href: ROUTES.ADMIN_KYC,
+      note: "People cannot rent or list until approved",
+      tone: "normal" as const,
+    },
+    {
+      label: "Open disputes",
+      count: queues?.disputesOpen ?? 0,
+      href: ROUTES.ADMIN_DISPUTES,
+      note: "Deposits are held while these are open",
+      tone: "normal" as const,
+    },
+    {
+      label: "Extension requests",
+      count: queues?.extensionsPending ?? 0,
+      href: ROUTES.ADMIN_EXTENSION_REQUESTS,
+      note: "Renters waiting on a longer rental",
+      tone: "normal" as const,
+    },
+  ].filter((i) => i.count > 0);
+
+  if (queues && items.length === 0) {
+    return (
+      <section className="rounded-lg border border-border bg-card px-5 py-4">
+        <p className="text-sm font-medium">Nothing waiting</p>
+        <p className="mt-0.5 text-sm text-muted-foreground">
+          No payments, payouts, verifications or disputes need attention right now.
+        </p>
+      </section>
+    );
+  }
+
+  return (
+    <section>
+      <h2 className="mb-3 text-sm font-semibold uppercase tracking-wide text-muted-foreground">
+        Needs you now
+      </h2>
+      <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+        {items.map((i) => (
+          <Link
+            key={i.label}
+            href={i.href}
+            className={cn(
+              "group rounded-lg border bg-card p-4 transition-colors",
+              // Money waiting reads differently from a queue that can sit an
+              // hour. The colour carries that, not just the ordering.
+              i.tone === "urgent"
+                ? "border-warning/40 hover:border-warning"
+                : "border-border hover:border-foreground/30",
+            )}
+          >
+            <div className="flex items-baseline justify-between gap-3">
+              <span className="text-sm font-medium">{i.label}</span>
+              <span
+                className={cn(
+                  "text-2xl font-bold tabular-nums",
+                  i.tone === "urgent" ? "text-warning" : "text-foreground",
+                )}
+              >
+                {i.count}
+              </span>
+            </div>
+            <p className="mt-1 text-xs text-muted-foreground">{i.note}</p>
+          </Link>
+        ))}
+      </div>
+    </section>
+  );
+}
+
 export function AdminOverview() {
   const { data: analytics, error: analyticsError } = useFetchData<AdminAnalytics>("/api/admin/analytics", []);
   const { data: stats } = useFetchData<AdminStats>("/api/admin/stats", []);
+  const { data: queues } = useFetchData<AdminQueues>("/api/admin/queues", []);
 
   const totals = analytics?.totals ?? stats;
   const activity = analytics?.recentActivity ?? [];
@@ -202,7 +317,14 @@ export function AdminOverview() {
     <AdminShell>
       <AdminError error={analyticsError} />
 
-      {/* Stat cards */}
+      {/* Work first, then how the platform is doing. */}
+      <div className="mb-8">
+        <WorkQueues queues={queues} />
+      </div>
+
+      <h2 className="mb-3 text-sm font-semibold uppercase tracking-wide text-muted-foreground">
+        Platform
+      </h2>
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
         <StatCard
           title="Total users"

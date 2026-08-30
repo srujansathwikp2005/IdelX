@@ -37,31 +37,80 @@ export const OWNER_SIDEBAR: Array<{ label: string; href: string; icon: string; b
 ];
 
 /** Admin sidebar (matches the admin dashboard screenshot). */
-export const ADMIN_SIDEBAR: Array<{ label: string; href: string; icon: string; badge?: number | string }> = [
-  { label: "Dashboard", href: ROUTES.ADMIN, icon: "LayoutDashboard" },
-  { label: "Users", href: ROUTES.ADMIN_USERS, icon: "Users" },
-  { label: "Listings", href: ROUTES.ADMIN_LISTINGS, icon: "Package" },
-  { label: "Bookings", href: ROUTES.ADMIN_BOOKINGS, icon: "CalendarCheck" },
-  { label: "Payments & Payouts", href: ROUTES.ADMIN_PAYMENTS, icon: "Wallet" },
-  // Separate from Payments: that screen shows money coming in, this one shows
-  // what still has to go out and is the only place a payout gets recorded.
-  // Money coming in that a person has to confirm actually arrived. Sits
-  // above Settlements because nothing can go out until this has been done.
-  { label: "Verify Payments", href: ROUTES.ADMIN_MANUAL_PAYMENTS, icon: "BadgeCheck" },
-  { label: "Settlements", href: ROUTES.ADMIN_SETTLEMENTS, icon: "Banknote" },
-  // The count is injected at render time from the real pending queue; a
-  // literal here reported 12 submissions awaiting review no matter what.
-  { label: "KYC Verification", href: ROUTES.ADMIN_KYC, icon: "ShieldCheck" },
-  { label: "Disputes", href: ROUTES.ADMIN_DISPUTES, icon: "AlertTriangle" },
-  { label: "Reviews & Reports", href: ROUTES.ADMIN_REPORTS, icon: "Flag" },
-  { label: "Extension Requests", href: ROUTES.ADMIN_EXTENSION_REQUESTS, icon: "Repeat", badge: 6 },
-  { label: "Messages", href: ROUTES.ADMIN_MESSAGES, icon: "MessageCircle" },
-  { label: "Categories & Attributes", href: ROUTES.ADMIN_CATEGORIES, icon: "Tags" },
-  { label: "Offers & Promotions", href: ROUTES.ADMIN_OFFERS, icon: "Tag" },
-  { label: "System Settings", href: ROUTES.ADMIN_SYSTEM, icon: "Settings" },
-  { label: "Audit Logs", href: ROUTES.ADMIN_AUDIT, icon: "ScrollText" },
-  { label: "Support Tickets", href: ROUTES.ADMIN_SUPPORT, icon: "LifeBuoy" },
+/**
+ * Admin navigation, grouped.
+ *
+ * Sixteen items in one flat list meant scanning the whole column to find
+ * anything: money sat next to categories sat next to audit logs. The groups
+ * are ordered by how often an operator needs them — money first, because on
+ * a manual-payment marketplace nothing moves until someone acts on it.
+ *
+ * `queueKey` names which pending count belongs on an item. Counts are
+ * injected at render from the live queue endpoint; a literal here reported
+ * six extension requests forever, whatever the truth was.
+ */
+export type AdminNavItem = {
+  label: string;
+  href: string;
+  icon: string;
+  // Present so the shared dashboard sidebar, which renders one flat list for
+  // every role, can read the same shape from all three configs. Admin items
+  // carry a live count instead, via queueKey.
+  badge?: number | string;
+  queueKey?: "paymentsToVerify" | "payoutsOutstanding" | "kycPending" | "disputesOpen" | "extensionsPending";
+};
+
+export const ADMIN_SIDEBAR: Array<{ section: string | null; items: AdminNavItem[] }> = [
+  {
+    section: null,
+    items: [{ label: "Dashboard", href: ROUTES.ADMIN, icon: "LayoutDashboard" }],
+  },
+  {
+    section: "Money",
+    items: [
+      // Verify sits above Settlements because nothing can go out until money
+      // coming in has been confirmed.
+      { label: "Verify Payments", href: ROUTES.ADMIN_MANUAL_PAYMENTS, icon: "BadgeCheck", queueKey: "paymentsToVerify" },
+      { label: "Settlements", href: ROUTES.ADMIN_SETTLEMENTS, icon: "Banknote", queueKey: "payoutsOutstanding" },
+      { label: "Payments & Payouts", href: ROUTES.ADMIN_PAYMENTS, icon: "Wallet" },
+    ],
+  },
+  {
+    section: "Queues",
+    items: [
+      { label: "KYC Verification", href: ROUTES.ADMIN_KYC, icon: "ShieldCheck", queueKey: "kycPending" },
+      { label: "Disputes", href: ROUTES.ADMIN_DISPUTES, icon: "AlertTriangle", queueKey: "disputesOpen" },
+      { label: "Extension Requests", href: ROUTES.ADMIN_EXTENSION_REQUESTS, icon: "Repeat", queueKey: "extensionsPending" },
+      { label: "Support Tickets", href: ROUTES.ADMIN_SUPPORT, icon: "LifeBuoy" },
+    ],
+  },
+  {
+    section: "Marketplace",
+    items: [
+      { label: "Users", href: ROUTES.ADMIN_USERS, icon: "Users" },
+      { label: "Listings", href: ROUTES.ADMIN_LISTINGS, icon: "Package" },
+      { label: "Bookings", href: ROUTES.ADMIN_BOOKINGS, icon: "CalendarCheck" },
+      { label: "Messages", href: ROUTES.ADMIN_MESSAGES, icon: "MessageCircle" },
+      { label: "Reviews & Reports", href: ROUTES.ADMIN_REPORTS, icon: "Flag" },
+      { label: "Categories & Attributes", href: ROUTES.ADMIN_CATEGORIES, icon: "Tags" },
+      { label: "Offers & Promotions", href: ROUTES.ADMIN_OFFERS, icon: "Tag" },
+    ],
+  },
+  {
+    section: "System",
+    items: [
+      { label: "System Settings", href: ROUTES.ADMIN_SYSTEM, icon: "Settings" },
+      { label: "Audit Logs", href: ROUTES.ADMIN_AUDIT, icon: "ScrollText" },
+    ],
+  },
 ];
+
+/**
+ * The same admin items without their grouping, for the shared dashboard
+ * sidebar, which renders one flat list for all three roles. Derived rather
+ * than written twice so an item cannot exist in one and not the other.
+ */
+export const ADMIN_SIDEBAR_FLAT = ADMIN_SIDEBAR.flatMap((g) => g.items);
 
 /** Mobile bottom nav — varies by role. */
 export const BOTTOM_NAV: Record<UserRole, Array<{ label: string; href: string; icon: string }>> = {
