@@ -13,6 +13,8 @@ import { ROUTES } from "@/lib/constants";
 import { useAuth } from "@/lib/auth";
 import { getToken } from "@/lib/api-client";
 import { useHostStatus } from "@/lib/use-host-status";
+import { BrandMark } from "./brand";
+import { ThemeToggle } from "./theme-toggle";
 
 export function Navbar() {
   const router = useRouter();
@@ -31,15 +33,16 @@ export function Navbar() {
   const isAdmin = user?.role === "admin";
 
   return (
-    <header className="sticky top-0 z-40 border-b border-border bg-white/80 backdrop-blur-md">
+    <header className="sticky top-0 z-40 border-b border-border bg-card/80 backdrop-blur-md">
       <div className="mx-auto flex h-16 max-w-7xl items-center gap-4 px-4 sm:px-6">
         {/* Logo */}
         <Link href={ROUTES.HOME} className="group flex shrink-0 items-center gap-2">
-          <div className="flex h-8 w-8 items-center justify-center rounded-md bg-linear-to-br from-primary to-violet-600 text-sm font-bold text-white shadow-sm shadow-primary/30 transition-transform duration-300 group-hover:scale-105 group-hover:rotate-3">
-            iX
-          </div>
+          <BrandMark
+            size={32}
+            className="transition-transform duration-300 group-hover:scale-105 group-hover:rotate-3"
+          />
           <span className="text-lg font-bold tracking-tight text-foreground">
-            Idle<span className="bg-linear-to-r from-primary to-violet-600 bg-clip-text text-transparent">X</span>
+            Idle<span className="text-primary">X</span>
           </span>
         </Link>
 
@@ -70,7 +73,7 @@ export function Navbar() {
               name="q"
               type="text"
               placeholder="Search for items (camera, tent, bike...)"
-              className="h-10 w-full rounded-lg border border-border bg-muted/40 pl-10 pr-4 text-sm transition-all duration-200 focus:border-primary focus:bg-white focus:outline-none focus:ring-2 focus:ring-primary/20"
+              className="h-10 w-full rounded-lg border border-border bg-muted/40 pl-10 pr-4 text-sm transition-all duration-200 focus:border-primary focus:bg-card focus:outline-none focus:ring-2 focus:ring-primary/20"
             />
           </form>
         </div>
@@ -93,6 +96,7 @@ export function Navbar() {
               </Link>
             </>
           )}
+          <ThemeToggle className="hidden sm:inline-flex" />
           {!isAdmin && (
             <Link href={isHost ? ROUTES.LISTING_NEW : ROUTES.BECOME_HOST} className="hidden md:inline-flex">
               <Button
@@ -169,7 +173,7 @@ export function Navbar() {
 
       {/* Mobile dropdown nav */}
       {open && (
-        <div className="animate-[fadeInDown_0.2s_ease-out] space-y-2 border-t border-border bg-white px-4 py-3 md:hidden">
+        <div className="animate-[fadeInDown_0.2s_ease-out] space-y-2 border-t border-border bg-card px-4 py-3 md:hidden">
           <form action={ROUTES.SEARCH} className="relative">
             <Search size={18} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
             <input

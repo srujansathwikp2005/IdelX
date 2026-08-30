@@ -30,7 +30,7 @@ export function DashboardShell({
             aria-label="Close menu"
             onClick={() => setOpen(false)}
           />
-          <div className="relative h-full w-72 bg-white">
+          <div className="relative h-full w-72 bg-card">
             <DashboardSidebar onCloseMobile={() => setOpen(false)} />
           </div>
         </div>

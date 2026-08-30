@@ -36,7 +36,7 @@ function useHover(): [number | null, (i: number | null) => void] {
 function Tooltip({ xPct, topPct, children }: { xPct: number; topPct: number; children: React.ReactNode }) {
   return (
     <div
-      className="pointer-events-none absolute z-10 -translate-x-1/2 whitespace-nowrap rounded-md border border-border bg-foreground px-2.5 py-1.5 text-xs font-medium text-white shadow-lg"
+      className="pointer-events-none absolute z-10 -translate-x-1/2 whitespace-nowrap rounded-md border border-border bg-inverse px-2.5 py-1.5 text-xs font-medium text-white shadow-lg"
       style={{ left: `${xPct}%`, top: `${topPct}%`, transform: "translate(-50%, -130%)" }}
     >
       {children}

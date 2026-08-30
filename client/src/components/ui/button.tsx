@@ -9,15 +9,15 @@ type Size = "sm" | "md" | "lg" | "icon";
 
 const variants: Record<Variant, string> = {
   primary:
-    "bg-primary text-white hover:bg-primary-700 active:bg-primary-800 shadow-sm",
+    "bg-primary text-on-brand hover:bg-primary-700 active:bg-primary-800 shadow-sm",
   secondary:
-    "bg-secondary text-white hover:bg-secondary-600 active:bg-secondary-700 shadow-sm",
+    "bg-secondary text-on-brand hover:bg-secondary-600 active:bg-secondary-700 shadow-sm",
   ghost:
     "bg-transparent text-foreground hover:bg-muted",
   outline:
     "bg-transparent text-foreground border border-border hover:bg-muted",
   danger:
-    "bg-danger text-white hover:opacity-90 shadow-sm",
+    "bg-danger text-on-brand hover:opacity-90 shadow-sm",
   link:
     "bg-transparent text-primary hover:underline px-0",
 };

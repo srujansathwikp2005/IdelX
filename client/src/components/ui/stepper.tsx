@@ -37,7 +37,7 @@ export function Stepper({
                     "flex h-9 w-9 items-center justify-center rounded-full border-2 text-sm font-medium",
                     isCompleted && "bg-primary border-primary text-white",
                     isActive && "border-primary text-primary bg-primary-50",
-                    !isCompleted && !isActive && "border-gray-300 text-gray-400 bg-white"
+                    !isCompleted && !isActive && "border-gray-300 text-gray-400 bg-card"
                   )}
                 >
                   {isCompleted ? <Check size={16} /> : i + 1}

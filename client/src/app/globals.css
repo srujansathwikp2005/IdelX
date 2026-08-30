@@ -1,21 +1,32 @@
 @import "tailwindcss";
 
+/* Dark is opt-in by attribute, not by media query alone: the provider writes
+   data-theme on <html> so an explicit choice beats the operating system in
+   both directions. */
+@custom-variant dark ([data-theme="dark"] &);
+
 /* =============================================================================
    IdleX Design Tokens
-    — Royal Blue primary, Emerald secondary, Amber accent
+    — Violet primary, Emerald secondary, Amber accent
+
+   The violet scale and the neutrals below are the app's, step for step
+   (AppColors in lib/theme/colors.dart), so the site, the dashboard and the
+   admin panel read as the same product as the phone. They used to be royal
+   blue here and violet there, which is the older of the two decisions: the
+   client's mockups chose violet.
    ============================================================================= */
 :root {
   /* Brand */
-  --color-primary-50: #eff6ff;
-  --color-primary-100: #dbeafe;
-  --color-primary-200: #bfdbfe;
-  --color-primary-300: #93c5fd;
-  --color-primary-400: #60a5fa;
-  --color-primary-500: #3b82f6;
-  --color-primary-600: #2563eb;
-  --color-primary-700: #1d4ed8;
-  --color-primary-800: #1e40af;
-  --color-primary-900: #1e3a8a;
+  --color-primary-50: #f3f1fe;
+  --color-primary-100: #e7e3fd;
+  --color-primary-200: #d0c9fb;
+  --color-primary-300: #b6a6fd;
+  --color-primary-400: #9b7bff;
+  --color-primary-500: #7c5cfc;
+  --color-primary-600: #6c4ef5;
+  --color-primary-700: #5a48d6;
+  --color-primary-800: #4736b0;
+  --color-primary-900: #2e2380;
 
   --color-secondary-50: #ecfdf5;
   --color-secondary-100: #d1fae5;
@@ -51,20 +62,195 @@
   --color-success: #10b981;
   --color-warning: #f59e0b;
   --color-danger: #ef4444;
-  --color-info: #3b82f6;
+  --color-info: #6c4ef5;
 
-  /* Surface */
+  /* Surface
+     Chosen neutrals rather than inherited ones: paper for the page, white
+     kept for cards so they have something to lift off, a deep violet-leaning
+     ink instead of near-black, and a hairline border in the same family. */
   --background: #ffffff;
-  --foreground: #111827;
-  --muted: #f9fafb;
-  --muted-foreground: #6b7280;
-  --border: #e5e7eb;
-  --input: #e5e7eb;
-  --ring: #2563eb;
+  --foreground: #181528;
+  --muted: #f7f7fa;
+  --muted-foreground: #6e6a85;
+  --border: #eae9f2;
+  --input: #eae9f2;
+  --ring: #6c4ef5;
   --card: #ffffff;
-  --card-foreground: #111827;
+  --card-foreground: #181528;
+
+  /* A band that stays dark in both themes — the footer, a chart tooltip.
+     Painting those with --foreground made them flip to near-white at night,
+     which is the one place the inversion is wrong. */
+  --inverse: #181528;
+  --inverse-foreground: #d2cfdd;
+
+  /* What sits on a filled brand or status colour. White on light, near-black
+     on dark: the ramp lifts at night so a violet button becomes bright
+     enough that white text on it stops being readable. */
+  --on-brand: #ffffff;
 }
 
+
+/* =============================================================================
+   Dark theme
+    — the app's dark palette (AppColors.inkDark / surfaceDark / hairlineDark),
+      so a phone and a laptop side by side show the same product at night.
+
+   The violet ramp is rebuilt rather than reused. A step name here means "this
+   far from the ground", not "this light": `bg-primary-50 text-primary-700`
+   is a pale chip with dark text on white and a deep chip with pale text on
+   near-black, and every component that already used those steps flips with
+   the theme without being touched.
+   ============================================================================= */
+[data-theme="dark"] {
+  --color-primary-50: #1c1836;
+  --color-primary-100: #241f45;
+  --color-primary-200: #322b5e;
+  --color-primary-300: #453c7d;
+  --color-primary-400: #6c4ef5;
+  --color-primary-500: #7c5cfc;
+  /* The step `bg-primary` resolves to. 600 on near-black fails contrast at
+     body size, so the brand lifts here exactly as it does in the app. */
+  --color-primary-600: #9b7bff;
+  --color-primary-700: #b6a6fd;
+  --color-primary-800: #d0c9fb;
+  --color-primary-900: #e7e3fd;
+
+  --color-secondary-50: #0c2a20;
+  --color-secondary-100: #10362a;
+  --color-secondary-200: #14513c;
+  --color-secondary-300: #1c7256;
+  --color-secondary-400: #10b981;
+  --color-secondary-500: #34d399;
+  --color-secondary-600: #6ee7b7;
+  --color-secondary-700: #a7f3d0;
+
+  --color-accent-50: #2e2008;
+  --color-accent-100: #3d2a09;
+  --color-accent-200: #573c0d;
+  --color-accent-300: #7a5410;
+  --color-accent-400: #d97706;
+  --color-accent-500: #f59e0b;
+  --color-accent-600: #fbbf24;
+  --color-accent-700: #fcd34d;
+
+  /* Neutrals run the other way too, so `text-gray-500` stays a quiet grey
+     against the ground it sits on rather than sinking into it. */
+  --color-gray-50: #14131d;
+  --color-gray-100: #1e1c2a;
+  --color-gray-200: #272435;
+  --color-gray-300: #3a3650;
+  --color-gray-400: #6e6a85;
+  --color-gray-500: #9c98b0;
+  --color-gray-600: #b8b4c8;
+  --color-gray-700: #d2cfdd;
+  --color-gray-800: #e6e4ee;
+  --color-gray-900: #f2f1f7;
+
+  /* Status colours lift off near-black; the light-theme values are too dense
+     to read at body size here. */
+  --color-success: #34d399;
+  --color-warning: #fbbf24;
+  --color-danger: #f87171;
+  --color-info: #9b7bff;
+
+  /* Surface. `--muted` is the recessed ground a card sits on, which is
+     darker here and lighter in the light theme — the relationship holds
+     even though the direction flips. */
+  --background: #14131d;
+  --foreground: #f2f1f7;
+  --muted: #08070e;
+  --muted-foreground: #9c98b0;
+  --border: #272435;
+  --input: #272435;
+  --ring: #9b7bff;
+  --card: #1e1c2a;
+  --card-foreground: #f2f1f7;
+
+  --inverse: #08070e;
+  --inverse-foreground: #b8b4c8;
+
+  --on-brand: #111827;
+
+  color-scheme: dark;
+}
+
+/* Nobody has chosen yet: follow the system, but never override an explicit
+   light choice. */
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --color-primary-50: #1c1836;
+    --color-primary-100: #241f45;
+    --color-primary-200: #322b5e;
+    --color-primary-300: #453c7d;
+    --color-primary-400: #6c4ef5;
+    --color-primary-500: #7c5cfc;
+    /* The step `bg-primary` resolves to. 600 on near-black fails contrast at
+       body size, so the brand lifts here exactly as it does in the app. */
+    --color-primary-600: #9b7bff;
+    --color-primary-700: #b6a6fd;
+    --color-primary-800: #d0c9fb;
+    --color-primary-900: #e7e3fd;
+
+    --color-secondary-50: #0c2a20;
+    --color-secondary-100: #10362a;
+    --color-secondary-200: #14513c;
+    --color-secondary-300: #1c7256;
+    --color-secondary-400: #10b981;
+    --color-secondary-500: #34d399;
+    --color-secondary-600: #6ee7b7;
+    --color-secondary-700: #a7f3d0;
+
+    --color-accent-50: #2e2008;
+    --color-accent-100: #3d2a09;
+    --color-accent-200: #573c0d;
+    --color-accent-300: #7a5410;
+    --color-accent-400: #d97706;
+    --color-accent-500: #f59e0b;
+    --color-accent-600: #fbbf24;
+    --color-accent-700: #fcd34d;
+
+    /* Neutrals run the other way too, so `text-gray-500` stays a quiet grey
+       against the ground it sits on rather than sinking into it. */
+    --color-gray-50: #14131d;
+    --color-gray-100: #1e1c2a;
+    --color-gray-200: #272435;
+    --color-gray-300: #3a3650;
+    --color-gray-400: #6e6a85;
+    --color-gray-500: #9c98b0;
+    --color-gray-600: #b8b4c8;
+    --color-gray-700: #d2cfdd;
+    --color-gray-800: #e6e4ee;
+    --color-gray-900: #f2f1f7;
+
+    /* Status colours lift off near-black; the light-theme values are too dense
+       to read at body size here. */
+    --color-success: #34d399;
+    --color-warning: #fbbf24;
+    --color-danger: #f87171;
+    --color-info: #9b7bff;
+
+    /* Surface. `--muted` is the recessed ground a card sits on, which is
+       darker here and lighter in the light theme — the relationship holds
+       even though the direction flips. */
+    --background: #14131d;
+    --foreground: #f2f1f7;
+    --muted: #08070e;
+    --muted-foreground: #9c98b0;
+    --border: #272435;
+    --input: #272435;
+    --ring: #9b7bff;
+    --card: #1e1c2a;
+    --card-foreground: #f2f1f7;
+
+    --inverse: #08070e;
+    --inverse-foreground: #b8b4c8;
+
+    --on-brand: #111827;
+
+    color-scheme: dark;
+  }
+}
 
 @theme inline {
   --color-background: var(--background);
@@ -76,6 +262,9 @@
   --color-ring: var(--ring);
   --color-card: var(--card);
   --color-card-foreground: var(--card-foreground);
+  --color-inverse: var(--inverse);
+  --color-inverse-foreground: var(--inverse-foreground);
+  --color-on-brand: var(--on-brand);
 
   --color-primary: var(--color-primary-600);
   --color-primary-50: var(--color-primary-50);

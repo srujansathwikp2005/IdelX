@@ -131,7 +131,7 @@ function AuthPanelInner({ mode }: { mode: AuthMode }) {
     >
       <div className="mb-6">
         <div className="flex items-center gap-2">
-          <Badge variant="default" className="bg-linear-to-r from-primary to-violet-600 text-white">
+          <Badge variant="default" className="bg-linear-to-r from-primary to-primary-600 text-on-brand">
             Secure access
           </Badge>
           <Lock size={14} className="text-muted-foreground" />
@@ -190,18 +190,18 @@ function AuthPanelInner({ mode }: { mode: AuthMode }) {
         <div className="flex items-center justify-between text-sm">
           {mode === "login" && (
             <>
-              <Link href={ROUTES.FORGOT_PASSWORD} className="font-semibold text-primary transition-colors hover:text-violet-600">
+              <Link href={ROUTES.FORGOT_PASSWORD} className="font-semibold text-primary transition-colors hover:text-primary-600">
                 Forgot password?
               </Link>
               {!isAdminEntry && (
-                <Link href={ROUTES.REGISTER} className="font-semibold text-primary transition-colors hover:text-violet-600">
+                <Link href={ROUTES.REGISTER} className="font-semibold text-primary transition-colors hover:text-primary-600">
                   Create account
                 </Link>
               )}
             </>
           )}
           {mode === "sign-up" && (
-            <Link href={ROUTES.LOGIN} className="ml-auto font-semibold text-primary transition-colors hover:text-violet-600">
+            <Link href={ROUTES.LOGIN} className="ml-auto font-semibold text-primary transition-colors hover:text-primary-600">
               Already registered? Sign in
             </Link>
           )}
@@ -283,7 +283,7 @@ export function EmailVerifyPanel({ initialEmail = "" }: { initialEmail?: string 
     >
       <div className="mb-6">
         <div className="flex items-center gap-2">
-          <Badge variant="default" className="bg-linear-to-r from-primary to-violet-600 text-white">
+          <Badge variant="default" className="bg-linear-to-r from-primary to-primary-600 text-on-brand">
             Email verification
           </Badge>
         </div>
@@ -330,13 +330,13 @@ export function EmailVerifyPanel({ initialEmail = "" }: { initialEmail?: string 
             type="button"
             onClick={() => void sendCode()}
             disabled={loading}
-            className="mx-auto block text-sm font-semibold text-primary transition-colors hover:text-violet-600 hover:underline"
+            className="mx-auto block text-sm font-semibold text-primary transition-colors hover:text-primary-600 hover:underline"
           >
             Resend code
           </button>
         )}
         <div className="flex items-center justify-center text-sm">
-          <Link href={ROUTES.HOME} className="font-semibold text-primary transition-colors hover:text-violet-600">
+          <Link href={ROUTES.HOME} className="font-semibold text-primary transition-colors hover:text-primary-600">
             Skip for now
           </Link>
         </div>
@@ -704,7 +704,7 @@ export function ListingStepperForm({ edit = false, listingId }: { edit?: boolean
                 {selectedPhotos.map((photo, i) => (
                   <div
                     key={photo.id}
-                    className="relative aspect-square overflow-hidden rounded-lg border border-border bg-white shadow-sm"
+                    className="relative aspect-square overflow-hidden rounded-lg border border-border bg-card shadow-sm"
                   >
                     {/* eslint-disable-next-line @next/next/no-img-element */}
                     <img src={photo.url} alt={photo.file.name} className="h-full w-full object-cover" />
@@ -727,7 +727,7 @@ export function ListingStepperForm({ edit = false, listingId }: { edit?: boolean
                 ))}
               </div>
             ) : existingPhotos.length > 0 ? (
-              <div className="relative w-full max-w-md overflow-hidden rounded-2xl border border-border bg-white shadow-md shadow-black/5">
+              <div className="relative w-full max-w-md overflow-hidden rounded-2xl border border-border bg-card shadow-md shadow-black/5">
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img src={existingPhotos[0].url} alt={existingPhotos[0].caption || "listing photo"} className="max-h-80 w-full object-cover" />
                 <span className="absolute bottom-2 left-2 rounded-full bg-black/60 px-2.5 py-1 text-xs font-medium text-white backdrop-blur-sm">
@@ -835,7 +835,7 @@ export function ListingStepperForm({ edit = false, listingId }: { edit?: boolean
               />
             </div>
           </div>
-          <div className="rounded-xl bg-linear-to-br from-primary-50 to-violet-50 p-4">
+          <div className="rounded-xl bg-linear-to-br from-primary-50 to-primary-50 p-4">
             <div className="flex items-center gap-2 text-primary">
               <Clock size={18} />
               <span className="text-sm font-semibold">Live renter preview</span>
@@ -848,7 +848,7 @@ export function ListingStepperForm({ edit = false, listingId }: { edit?: boolean
         </div>
       </div>
       {otpSent && !edit && (
-        <div className="animate-[fadeInUp_0.3s_ease-out] rounded-xl border border-primary-200 bg-linear-to-br from-primary-50 to-violet-50 p-6">
+        <div className="animate-[fadeInUp_0.3s_ease-out] rounded-xl border border-primary-200 bg-linear-to-br from-primary-50 to-primary-50 p-6">
           <div className="flex items-center gap-2 text-primary">
             <Mail size={18} />
             <span className="text-sm font-semibold">Email OTP verification</span>
@@ -1139,7 +1139,7 @@ export function KycStepperForm() {
             </div>
           )}
           {selfiePreviewUrl && (
-            <div className="max-w-md overflow-hidden rounded-xl border border-border bg-white shadow-md shadow-black/5">
+            <div className="max-w-md overflow-hidden rounded-xl border border-border bg-card shadow-md shadow-black/5">
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img src={selfiePreviewUrl} alt="Captured live selfie" className="max-h-72 w-full object-contain" />
             </div>

@@ -101,6 +101,9 @@ export const Send = make(<><line x1="22" y1="2" x2="11" y2="13" /><polygon point
 // from ShieldCheck, which this nav already uses for identity verification.
 export const BadgeCheck = make(<><path d="M12 2 14.4 4.2l3.1-.5 1 3 2.8 1.4-1.1 3 1.1 3-2.8 1.4-1 3-3.1-.5L12 22l-2.4-2.2-3.1.5-1-3L2.7 16l1.1-3-1.1-3 2.8-1.4 1-3 3.1.5Z" /><path d="m9 12 2 2 4-4" /></>);
 
+export const Sun = make(<><circle cx="12" cy="12" r="4" /><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41" /></>);
+export const Moon = make(<path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z" />);
+export const Monitor = make(<><rect x="2" y="3" width="20" height="14" rx="2" /><path d="M8 21h8M12 17v4" /></>);
 export const Paperclip = make(<><path d="m21.44 11.05-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48" /></>);
 
 /** Generic icon resolver — used in config-driven nav. */

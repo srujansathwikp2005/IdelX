@@ -25,20 +25,28 @@ async function register({ name, email, phone, password, phoneVerificationToken }
   const existing = await User.findOne({ email: normalizedEmail });
   if (existing) throw ApiError.conflict('Email already registered');
 
-  let normalizedPhone;
-  if (phone) {
-    normalizedPhone = normalizePhone(phone);
-    if (!normalizedPhone) throw ApiError.badRequest('Enter a valid 10-digit phone number');
-    const phoneInUse = await User.findOne({ phone: normalizedPhone });
-    if (phoneInUse) throw ApiError.conflict('Phone number already registered');
-    if (!phoneVerificationToken) {
-      throw ApiError.badRequest('Verify your phone number with an OTP before creating the account');
-    }
+  // A number is required now. Owners and renters have to be able to reach
+  // each other when a handover or a dispute needs sorting out, and support
+  // had no way to contact most accounts because the field was optional and
+  // almost nobody filled it in.
+  const normalizedPhone = normalizePhone(phone);
+  if (!normalizedPhone) throw ApiError.badRequest('Enter a valid 10-digit phone number');
+  const phoneInUse = await User.findOne({ phone: normalizedPhone });
+  if (phoneInUse) throw ApiError.conflict('Phone number already registered');
+
+  // An SMS OTP proves the number belongs to whoever is signing up, but it is
+  // not demanded here: the address is already proved by the emailed code, and
+  // making signup depend on a second delivery channel would shut the door on
+  // everyone the SMS gateway cannot reach. Supplying a token is still
+  // honoured, and is what marks the number verified.
+  let phoneVerified = false;
+  if (phoneVerificationToken) {
     try {
       const payload = verifyPhoneVerificationToken(phoneVerificationToken);
       if (payload.phone !== normalizedPhone || payload.purpose !== 'signup') {
         throw new Error('mismatch');
       }
+      phoneVerified = true;
     } catch (err) {
       throw ApiError.badRequest('Phone verification is invalid or expired. Request a new OTP');
     }
@@ -60,7 +68,7 @@ async function register({ name, email, phone, password, phoneVerificationToken }
         name,
         password: hashed,
         phone: normalizedPhone,
-        phoneVerified: Boolean(normalizedPhone),
+        phoneVerified,
         code,
         attempts: 0,
         expiresAt: new Date(Date.now() + REGISTRATION_TTL_MS),

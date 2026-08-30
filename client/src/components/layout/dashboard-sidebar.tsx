@@ -15,6 +15,7 @@ import { ICONS } from "@/components/ui/icons";
 import { ADMIN_SIDEBAR_FLAT, RENTER_SIDEBAR, OWNER_SIDEBAR } from "@/config/navigation";
 import { ROUTES } from "@/lib/constants";
 import { useAuth } from "@/lib/auth";
+import { BrandLockup } from "./brand";
 
 export function DashboardSidebar({
   onCloseMobile,
@@ -52,16 +53,11 @@ export function DashboardSidebar({
   const homeHref = isAdmin ? ROUTES.ADMIN : ROUTES.DASHBOARD;
 
   return (
-    <aside className="h-full flex flex-col bg-white border-r border-border w-64">
+    <aside className="h-full flex flex-col bg-card border-r border-border w-64">
       {/* Brand */}
       <div className="h-16 flex items-center justify-between px-4 border-b border-border">
-        <Link href={homeHref} className="flex items-center gap-2">
-          <div className="h-8 w-8 rounded-md bg-primary flex items-center justify-center text-white font-bold text-sm">
-            iX
-          </div>
-          <span className="text-lg font-bold">
-            Idle<span className="text-primary">X</span>
-          </span>
+        <Link href={homeHref}>
+          <BrandLockup />
         </Link>
         {onCloseMobile && (
           <button onClick={onCloseMobile} className="md:hidden">
@@ -98,7 +94,7 @@ export function DashboardSidebar({
               className={cn(
                 "flex items-center gap-3 px-4 py-2.5 mx-2 rounded-lg text-sm transition-colors",
                 active
-                  ? "bg-primary text-white font-medium"
+                  ? "bg-primary text-on-brand font-medium"
                   : "text-foreground hover:bg-muted"
               )}
             >
@@ -116,7 +112,7 @@ export function DashboardSidebar({
                   <span
                     className={cn(
                       "min-w-5 h-5 px-1.5 inline-flex items-center justify-center rounded-full text-[10px] font-bold",
-                      active ? "bg-white text-primary" : "bg-danger text-white"
+                      active ? "bg-card text-primary" : "bg-danger text-on-brand"
                     )}
                   >
                     {item.badge}

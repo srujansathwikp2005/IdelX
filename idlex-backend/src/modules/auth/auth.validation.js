@@ -3,7 +3,7 @@ const { z } = require('zod');
 const registerSchema = z.object({
   name: z.string().min(2),
   email: z.string().email(),
-  phone: z.string().min(7).optional(),
+  phone: z.string().min(7),
   password: z.string().min(8),
   // Required when a phone is provided — proves the number was OTP-verified.
   phoneVerificationToken: z.string().optional(),

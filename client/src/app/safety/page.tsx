@@ -86,7 +86,7 @@ export default function SafetyPage() {
             {/* Node content */}
             <div className="flex w-full min-w-0 flex-col gap-3 sm:flex-row sm:items-start">
               {/* Main card */}
-              <div className="min-w-0 flex-1 rounded-md border-2 border-[#17264A] bg-white p-4">
+              <div className="min-w-0 flex-1 rounded-md border-2 border-[#17264A] bg-card p-4">
                 <h2 className="font-serif text-base font-semibold text-[#171512]">
                   {item.title}
                 </h2>

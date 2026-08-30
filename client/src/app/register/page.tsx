@@ -169,7 +169,7 @@ export default function RegisterPage() {
   };
 
   return (
-    <main className="min-h-screen bg-white">
+    <main className="min-h-screen bg-card">
       <div className="mx-auto grid min-h-screen max-w-7xl px-4 py-6 sm:px-6 lg:grid-cols-[0.88fr_1fr] lg:gap-12 lg:py-10">
         <section className="hidden flex-col justify-between rounded-2xl bg-primary-50 p-8 lg:flex">
           <Link href={ROUTES.HOME} className="flex w-fit items-center gap-2">
@@ -182,7 +182,7 @@ export default function RegisterPage() {
           </Link>
 
           <div className="py-10">
-            <Badge className="border-primary-200 bg-white text-primary-700">New user registration</Badge>
+            <Badge className="border-primary-200 bg-card text-primary-700">New user registration</Badge>
             <h1 className="mt-5 max-w-xl text-5xl font-bold leading-tight text-foreground">
               Create your IdleX account and start renting smarter.
             </h1>
@@ -197,7 +197,7 @@ export default function RegisterPage() {
                 { icon: <Package size={18} />, label: "Book, extend, and return from one dashboard" },
                 { icon: <Wallet size={18} />, label: "Clear payments, deposits, and owner payouts" },
               ].map((item) => (
-                <div key={item.label} className="flex items-center gap-3 rounded-xl bg-white px-4 py-3 text-sm font-medium shadow-sm">
+                <div key={item.label} className="flex items-center gap-3 rounded-xl bg-card px-4 py-3 text-sm font-medium shadow-sm">
                   <span className="grid h-9 w-9 place-items-center rounded-lg bg-primary-50 text-primary">
                     {item.icon}
                   </span>
@@ -208,7 +208,7 @@ export default function RegisterPage() {
           </div>
 
           <div className="grid grid-cols-[1fr_0.8fr] gap-4">
-            <div className="overflow-hidden rounded-2xl bg-white shadow-sm">
+            <div className="overflow-hidden rounded-2xl bg-card shadow-sm">
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img
                 src="https://images.unsplash.com/photo-1516035069371-29a1b244cc32?auto=format&fit=crop&w=900&q=80"
@@ -216,7 +216,7 @@ export default function RegisterPage() {
                 className="h-44 w-full object-cover"
               />
             </div>
-            <div className="rounded-2xl bg-white p-4 shadow-sm">
+            <div className="rounded-2xl bg-card p-4 shadow-sm">
               <div className="flex items-center justify-between">
                 <Camera className="text-primary" />
                 <Badge variant="success">Trusted</Badge>
@@ -251,7 +251,7 @@ export default function RegisterPage() {
             </div>
 
             <form onSubmit={handleSubmit} className="rounded-2xl border border-border bg-card p-5 shadow-sm sm:p-7">
-              <Badge className="border-violet-200 bg-violet-50 text-violet-700">Register</Badge>
+              <Badge className="border-primary-200 bg-primary-50 text-primary-700">Register</Badge>
               <h2 className="mt-4 text-3xl font-bold text-foreground">Tell us your initial details</h2>
               <p className="mt-2 text-sm leading-6 text-muted-foreground">
                 These details create your basic IdleX account. You can complete KYC and owner setup later.
@@ -268,7 +268,7 @@ export default function RegisterPage() {
                       className={`rounded-xl border p-4 text-left transition ${
                         selected
                           ? "border-primary bg-primary-50 shadow-sm"
-                          : "border-border bg-white hover:border-primary"
+                          : "border-border bg-card hover:border-primary"
                       }`}
                     >
                       <div className="flex items-center justify-between">

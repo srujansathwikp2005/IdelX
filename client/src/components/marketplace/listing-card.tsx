@@ -59,7 +59,7 @@ export function ListingCard({
           type="button"
           aria-label={`Remove ${listing.title} from wishlist`}
           onClick={() => onRemove(listing.id)}
-          className="absolute right-3 top-3 z-10 grid h-9 w-9 place-items-center rounded-full bg-white/90 text-danger shadow-sm backdrop-blur-sm transition-all duration-200 hover:scale-110 hover:bg-danger hover:text-white active:scale-95"
+          className="absolute right-3 top-3 z-10 grid h-9 w-9 place-items-center rounded-full bg-card/90 text-danger shadow-sm backdrop-blur-sm transition-all duration-200 hover:scale-110 hover:bg-danger hover:text-white active:scale-95"
         >
           <Heart size={17} fill="currentColor" />
         </button>

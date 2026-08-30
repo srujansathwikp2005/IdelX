@@ -136,7 +136,7 @@ function MyListingsInner() {
 
       {!isLoading && !error && (data ?? []).length === 0 && (
         <div className="animate-[fadeInUp_0.4s_ease-out] rounded-lg border border-dashed border-border bg-card/50 p-10 text-center">
-          <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-linear-to-br from-primary/10 to-violet-500/10">
+          <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-linear-to-br from-primary/10 to-primary-500/10">
             <Package size={26} className="text-primary" />
           </div>
           <p className="mx-auto mt-4 max-w-sm text-sm text-muted-foreground">

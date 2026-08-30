@@ -3,6 +3,8 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { Badge } from "@/components/ui/badge";
+import { BrandLockup } from "@/components/layout/brand";
+import { ThemeToggle } from "@/components/layout/theme-toggle";
 import { ADMIN_SIDEBAR } from "@/config/navigation";
 import { ICONS } from "@/components/ui/icons";
 import { ROUTES } from "@/lib/constants";
@@ -19,12 +21,12 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
 
   return (
     <div className="min-h-screen bg-muted lg:grid lg:grid-cols-[280px_1fr]">
-      <aside className="hidden border-r border-border bg-white lg:block">
+      <aside className="hidden border-r border-border bg-card lg:block">
         <div className="flex h-16 items-center gap-2 border-b border-border px-5">
-          <div className="flex h-8 w-8 items-center justify-center rounded-md bg-foreground text-sm font-bold text-white">
-            iX
-          </div>
-          <Link href={ROUTES.ADMIN} className="font-bold">IdleX Admin</Link>
+          <Link href={ROUTES.ADMIN}>
+            <BrandLockup suffix="Admin" />
+          </Link>
+          <ThemeToggle className="ml-auto" />
         </div>
         <nav className="p-3 pb-8">
           {ADMIN_SIDEBAR.map((group) => (
@@ -51,7 +53,7 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
                     className={cn(
                       "flex items-center gap-3 rounded-md px-3 py-2 text-sm transition-colors",
                       active
-                        ? "bg-foreground text-white"
+                        ? "bg-primary text-on-brand"
                         : "text-foreground hover:bg-muted",
                     )}
                   >
@@ -71,7 +73,7 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
         </nav>
       </aside>
       <main>
-        <header className="sticky top-0 z-10 flex h-16 items-center justify-between border-b border-border bg-white px-4 sm:px-6">
+        <header className="sticky top-0 z-10 flex h-16 items-center justify-between border-b border-border bg-card px-4 sm:px-6">
           <div>
             <p className="text-xs font-semibold uppercase text-primary">Operations</p>
             <h1 className="text-lg font-semibold">Admin Control Center</h1>

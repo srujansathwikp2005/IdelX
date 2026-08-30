@@ -89,17 +89,17 @@ export default function Home() {
 
   return (
     <PublicShell>
-      <section className="relative overflow-hidden bg-white">
+      <section className="relative overflow-hidden bg-card">
         {/* Ambient gradient blobs — slow float, purely decorative, behind everything */}
-        <div className="pointer-events-none absolute -left-24 -top-24 h-96 w-96 animate-[float_9s_ease-in-out_infinite] rounded-full bg-linear-to-br from-violet-300/30 to-fuchsia-300/20 blur-3xl" />
-        <div className="pointer-events-none absolute -right-32 top-40 h-112 w-md animate-[float_11s_ease-in-out_infinite_1s] rounded-full bg-linear-to-br from-primary/20 to-violet-200/20 blur-3xl" />
+        <div className="pointer-events-none absolute -left-24 -top-24 h-96 w-96 animate-[float_9s_ease-in-out_infinite] rounded-full bg-linear-to-br from-primary-300/30 to-fuchsia-300/20 blur-3xl" />
+        <div className="pointer-events-none absolute -right-32 top-40 h-112 w-md animate-[float_11s_ease-in-out_infinite_1s] rounded-full bg-linear-to-br from-primary/20 to-primary-200/20 blur-3xl" />
 
         <div className="relative mx-auto grid max-w-7xl gap-10 px-4 pb-6 pt-8 sm:px-6 lg:grid-cols-[0.92fr_1.08fr] lg:pb-10 lg:pt-12">
           <div className="flex flex-col justify-center animate-[fadeInUp_0.7s_ease-out]">
-            <Badge className="w-fit border-violet-200 bg-violet-50 text-violet-700">Rent Smart. Live More.</Badge>
+            <Badge className="w-fit border-primary-200 bg-primary-50 text-primary-700">Rent Smart. Live More.</Badge>
             <h1 className="mt-5 max-w-xl text-4xl font-bold leading-tight text-foreground sm:text-6xl">
               Rent{" "}
-              <span className="bg-linear-to-r from-primary to-violet-500 bg-clip-text text-transparent">
+              <span className="bg-linear-to-r from-primary to-primary-500 bg-clip-text text-transparent">
                 Anything.
               </span>
               <br />
@@ -155,7 +155,7 @@ export default function Home() {
                     alt={title}
                     className="h-full w-full origin-center scale-105 object-cover saturate-[1.15] contrast-[1.03] transition-transform duration-700 ease-out group-hover:scale-115"
                   />
-                  <div className="pointer-events-none absolute inset-0 bg-linear-to-t from-violet-950/15 via-transparent to-transparent opacity-0 transition-opacity duration-500 group-hover:opacity-100" />
+                  <div className="pointer-events-none absolute inset-0 bg-linear-to-t from-primary-900/15 via-transparent to-transparent opacity-0 transition-opacity duration-500 group-hover:opacity-100" />
                 </div>
               ))}
             </div>
@@ -169,7 +169,7 @@ export default function Home() {
             <h2 className="text-2xl font-bold">Popular Categories</h2>
             <p className="mt-2 text-sm text-muted-foreground">Find the things you need without buying them.</p>
           </div>
-          <Link href={ROUTES.CATEGORIES} className="text-sm font-semibold text-primary transition-colors hover:text-violet-600">
+          <Link href={ROUTES.CATEGORIES} className="text-sm font-semibold text-primary transition-colors hover:text-primary-600">
             View all
           </Link>
         </div>
@@ -187,11 +187,11 @@ export default function Home() {
                 style={{
                   transitionDelay: categoriesReveal.visible ? `${index * 60}ms` : "0ms",
                 }}
-                className={`group rounded-xl border border-border bg-white p-5 text-center shadow-sm transition-all duration-500 hover:-translate-y-1 hover:border-primary hover:shadow-lg hover:shadow-primary/10 ${
+                className={`group rounded-xl border border-border bg-card p-5 text-center shadow-sm transition-all duration-500 hover:-translate-y-1 hover:border-primary hover:shadow-lg hover:shadow-primary/10 ${
                   categoriesReveal.visible ? "translate-y-0 opacity-100" : "translate-y-4 opacity-0"
                 }`}
               >
-                <span className="mx-auto grid h-12 w-12 place-items-center rounded-xl bg-linear-to-br from-primary to-violet-600 text-white shadow-sm shadow-primary/30 transition-transform duration-300 group-hover:scale-110 group-hover:rotate-3">
+                <span className="mx-auto grid h-12 w-12 place-items-center rounded-xl bg-linear-to-br from-primary to-primary-600 text-on-brand shadow-sm shadow-primary/30 transition-transform duration-300 group-hover:scale-110 group-hover:rotate-3">
                   <Icon size={22} />
                 </span>
                 <p className="mt-3 font-semibold">{category.name}</p>
@@ -202,7 +202,7 @@ export default function Home() {
         </div>
       </section>
 
-      <section id="how-it-works" className="border-y border-border bg-white">
+      <section id="how-it-works" className="border-y border-border bg-card">
         <div className="mx-auto max-w-7xl px-4 py-14 text-center sm:px-6">
           <h2 className="text-2xl font-bold">How IdleX Works</h2>
           <div ref={stepsReveal.ref} className="mt-9 grid gap-5 md:grid-cols-5">
@@ -217,7 +217,7 @@ export default function Home() {
                 {index < steps.length - 1 && (
                   <div className="absolute left-[55%] top-7 hidden h-px w-[90%] bg-linear-to-r from-primary/40 to-border md:block" />
                 )}
-                <div className="group relative mx-auto grid h-14 w-14 place-items-center rounded-full border border-border bg-white text-primary shadow-sm transition-all duration-300 hover:-translate-y-1 hover:border-primary hover:shadow-lg hover:shadow-primary/20">
+                <div className="group relative mx-auto grid h-14 w-14 place-items-center rounded-full border border-border bg-card text-primary shadow-sm transition-all duration-300 hover:-translate-y-1 hover:border-primary hover:shadow-lg hover:shadow-primary/20">
                   <Icon size={22} className="transition-transform duration-300 group-hover:scale-110" />
                 </div>
                 <p className="mt-4 text-sm font-bold">{index + 1}. {title}</p>
@@ -229,7 +229,7 @@ export default function Home() {
       </section>
 
       <section className="relative overflow-hidden bg-primary-50/60">
-        <div className="pointer-events-none absolute -right-20 -top-20 h-72 w-72 rounded-full bg-linear-to-br from-primary/15 to-violet-300/15 blur-3xl" />
+        <div className="pointer-events-none absolute -right-20 -top-20 h-72 w-72 rounded-full bg-linear-to-br from-primary/15 to-primary-300/15 blur-3xl" />
         <div
           ref={extensionReveal.ref}
           className={`relative mx-auto grid max-w-7xl gap-6 px-4 py-12 transition-all duration-700 sm:px-6 lg:grid-cols-[1fr_420px] ${
@@ -237,14 +237,14 @@ export default function Home() {
           }`}
         >
           <div>
-            <Badge className="border-primary-200 bg-white text-primary-700">New rental extension</Badge>
+            <Badge className="border-primary-200 bg-card text-primary-700">New rental extension</Badge>
             <h2 className="mt-4 text-3xl font-bold">Need one more day? Extend without starting over.</h2>
             <p className="mt-3 max-w-2xl text-sm leading-6 text-muted-foreground">
               Renters can check extension rules before booking, and owners can set extension pricing,
               maximum days, and approval rules while listing an item.
             </p>
           </div>
-          <div className="rounded-2xl border border-primary-100 bg-white p-5 shadow-lg shadow-primary/5 transition-shadow duration-300 hover:shadow-xl hover:shadow-primary/10">
+          <div className="rounded-2xl border border-primary-100 bg-card p-5 shadow-lg shadow-primary/5 transition-shadow duration-300 hover:shadow-xl hover:shadow-primary/10">
             <div className="flex items-center justify-between">
               <span className="font-semibold">Extension request</span>
               <Badge variant="warning">Pending owner</Badge>

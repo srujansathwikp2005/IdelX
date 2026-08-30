@@ -39,9 +39,13 @@ async function sendOtpSms(phone, otp) {
     } catch {
       data = null;
     }
-    const ok =
-      resp.ok &&
-      (data === null || data.error === undefined || data.error === false || data.status === 'success');
+    // Renflair answers HTTP 200 even when it refuses to send, reporting the
+    // outcome only in the body as {"status":"FAILED","message":...}. The
+    // check used to accept that as a success because the body carries no
+    // `error` key, so a rejected send looked identical to a delivered one
+    // and the person waited for a code that was never sent.
+    const status = typeof data?.status === 'string' ? data.status.toLowerCase() : null;
+    const ok = resp.ok && (status === null ? data?.error !== true : status === 'success');
     if (!ok) {
       throw new Error(`HTTP ${resp.status}: ${text.slice(0, 200)}`);
     }

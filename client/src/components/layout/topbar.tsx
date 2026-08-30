@@ -16,7 +16,7 @@ export function TopBar({ onMenuClick, title }: { onMenuClick?: () => void; title
   const { data: unread } = useFetchData<{ count: number }>("/api/notifications/unread-count", []);
   const unreadCount = unread?.count ?? 0;
   return (
-    <div className="sticky top-0 z-20 h-16 bg-white border-b border-border px-4 md:px-6 flex items-center gap-3">
+    <div className="sticky top-0 z-20 h-16 bg-card border-b border-border px-4 md:px-6 flex items-center gap-3">
       <Link href={ROUTES.HOME} title="Home" className="h-10 w-10 inline-flex items-center justify-center rounded-md hover:bg-muted">
         <Home size={20} />
       </Link>
@@ -33,7 +33,7 @@ export function TopBar({ onMenuClick, title }: { onMenuClick?: () => void; title
           <input
             type="text"
             placeholder="Search..."
-            className="w-full h-10 pl-10 pr-4 rounded-lg border border-border bg-white text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary"
+            className="w-full h-10 pl-10 pr-4 rounded-lg border border-border bg-card text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary"
           />
         </div>
       </div>
@@ -45,7 +45,7 @@ export function TopBar({ onMenuClick, title }: { onMenuClick?: () => void; title
         <Link href={notificationsHref} className="relative h-10 w-10 inline-flex items-center justify-center rounded-full hover:bg-muted">
           <Bell size={20} />
           {unreadCount > 0 && (
-            <span className="absolute top-1.5 right-1.5 h-4 min-w-4 px-1 text-[10px] font-bold rounded-full bg-danger text-white flex items-center justify-center">
+            <span className="absolute top-1.5 right-1.5 h-4 min-w-4 px-1 text-[10px] font-bold rounded-full bg-danger text-on-brand flex items-center justify-center">
               {unreadCount > 9 ? "9+" : unreadCount}
             </span>
           )}

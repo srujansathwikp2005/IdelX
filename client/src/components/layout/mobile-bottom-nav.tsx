@@ -12,7 +12,7 @@ export function MobileBottomNav({ role = USER_ROLES.RENTER }: { role?: keyof typ
   const pathname = usePathname();
   const items = BOTTOM_NAV[role];
   return (
-    <nav className="md:hidden fixed bottom-0 left-0 right-0 z-30 bg-white border-t border-border">
+    <nav className="md:hidden fixed bottom-0 left-0 right-0 z-30 bg-card border-t border-border">
       <div className="grid grid-cols-5">
         {items.map((item) => {
           const Icon = ICONS[item.icon];
