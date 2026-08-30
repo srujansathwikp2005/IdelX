@@ -4,7 +4,7 @@ import { AuthProvider, RouteGuard } from "@/lib/auth";
 import { ThemeProvider } from "@/lib/theme";
 
 export const metadata: Metadata = {
-  title: "IdleX - Rent Smart. Own Nothing. Live Fully.",
+  title: "IdleX — Rent Smart. Own Less. Live More.",
   description:
     "IdleX is your trusted community marketplace to rent items you love and earn from what you don't use.",
 };

@@ -65,38 +65,37 @@ export function ListingCard({
         </button>
       )}
 
-      <div className="space-y-4 p-4">
+      <div className="space-y-3.5 p-4">
         <div>
-          <div className="flex items-start justify-between gap-3">
-            <div>
-              <div className="flex flex-wrap items-center gap-2">
-                <Badge variant="outline">{listing.category}</Badge>
-                {manage && <Badge variant={statusVariant}>{listing.status}</Badge>}
-              </div>
-              <h3 className="mt-2 line-clamp-2 text-base font-semibold transition-colors duration-200 group-hover:text-primary">
-                {listing.title}
-              </h3>
+          <div className="flex items-center justify-between gap-3">
+            <div className="flex flex-wrap items-center gap-2">
+              <Badge variant="default">{listing.category}</Badge>
+              {manage && <Badge variant={statusVariant}>{listing.status}</Badge>}
             </div>
-            <div className="flex shrink-0 items-center gap-1 text-sm font-semibold text-accent-700">
-              <Star size={15} className="fill-current" />
-              {listing.rating}
-            </div>
+            {!onRemove && (
+              <span className="text-muted-foreground transition-colors group-hover:text-primary">
+                <Heart size={17} />
+              </span>
+            )}
           </div>
-          <p className="mt-2 flex items-center gap-1 text-sm text-muted-foreground">
-            <MapPin size={15} />
-            {listing.location} · {listing.reviews} reviews
-          </p>
-        </div>
 
-        <div className="flex flex-wrap gap-2">
-          {listing.tags.slice(0, 2).map((tag) => (
-            <span
-              key={tag}
-              className="rounded-md bg-muted px-2 py-1 text-xs text-muted-foreground transition-colors duration-200 group-hover:bg-primary-50 group-hover:text-primary"
-            >
-              {tag}
+          <h3 className="mt-2 line-clamp-1 text-base font-semibold transition-colors duration-200 group-hover:text-primary">
+            {listing.title}
+          </h3>
+
+          {/* Where it is and how it has gone for other people, on one line —
+              the two questions asked of every card in a results grid. */}
+          <div className="mt-1.5 flex items-center justify-between gap-2 text-sm">
+            <span className="flex min-w-0 items-center gap-1 text-muted-foreground">
+              <MapPin size={14} className="shrink-0" />
+              <span className="truncate">{listing.location}</span>
             </span>
-          ))}
+            <span className="flex shrink-0 items-center gap-1 font-medium text-accent-700">
+              <Star size={14} className="fill-current" />
+              {listing.rating}
+              <span className="font-normal text-muted-foreground">({listing.reviews})</span>
+            </span>
+          </div>
         </div>
 
         {manage ? (
@@ -135,17 +134,17 @@ export function ListingCard({
             </div>
           </div>
         ) : (
-          <div className="flex items-center justify-between gap-3">
+          <div>
             <p className="text-sm text-muted-foreground">
-              <span className="text-xl font-bold text-foreground">{formatCurrency(listing.price)}</span>
-              /day
+              <span className="text-lg font-bold text-foreground">{formatCurrency(listing.price)}</span>
+              {" "}/ day
             </p>
-            <Link href={ROUTES.CHECKOUT(listing.id)}>
+            <Link href={ROUTES.CHECKOUT(listing.id)} className="mt-3 block">
               <Button
                 size="sm"
-                className="shadow-sm shadow-primary/20 transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md hover:shadow-primary/30 active:scale-95"
+                className="w-full shadow-sm shadow-primary/20 transition-all duration-200 hover:shadow-md hover:shadow-primary/30 active:scale-[0.98]"
               >
-                Book
+                Book Now
               </Button>
             </Link>
           </div>
