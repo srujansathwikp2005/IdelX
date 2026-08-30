@@ -4,7 +4,7 @@ const ApiError = require('../../utils/ApiError');
 const ManualPayment = require('../../models/ManualPayment');
 const Booking = require('../../models/Booking');
 const service = require('./manual-payments.service');
-const env = require('../../config/env');
+const settingsService = require('../settings/settings.service');
 const { logAudit } = require('../../utils/audit');
 const { sendPaymentConfirmedEmail } = require('../../utils/email');
 const User = require('../../models/User');
@@ -22,6 +22,8 @@ const getPaymentInstructions = asyncHandler(async (req, res) => {
   const existing = await ManualPayment.findOne({ booking: booking._id })
     .sort('-createdAt')
     .lean();
+
+  const payTo = await settingsService.getManualPaymentSettings();
 
   return new ApiResponse(200, {
     booking: {
@@ -42,16 +44,22 @@ const getPaymentInstructions = asyncHandler(async (req, res) => {
       totalAmount: booking.totalAmount,
     },
     payTo: {
-      upiId: env.manualPayment.upiId,
-      payeeName: env.manualPayment.payeeName,
+      upiId: payTo.upiId,
+      payeeName: payTo.payeeName,
       // A UPI intent string the app can render as a QR code, so nothing has
       // to ship an image that would go stale if the account changed.
-      upiUri: env.manualPayment.upiId
-        ? `upi://pay?pa=${encodeURIComponent(env.manualPayment.upiId)}` +
-          `&pn=${encodeURIComponent(env.manualPayment.payeeName || 'IdleX')}` +
+      upiUri: payTo.upiId
+        ? `upi://pay?pa=${encodeURIComponent(payTo.upiId)}` +
+          `&pn=${encodeURIComponent(payTo.payeeName || 'IdleX')}` +
           `&am=${booking.totalAmount}&cu=INR` +
           `&tn=${encodeURIComponent(`IdleX booking ${booking._id}`)}`
         : null,
+      // Whether the app should offer to hand the payment straight to a UPI
+      // app. Only a merchant VPA may be paid that way; against a personal one
+      // the UPI app declines it, so the app hides the button unless an admin
+      // has said this account is a merchant account.
+      supportsIntent: payTo.supportsIntent,
+      note: payTo.note,
     },
     submission: existing
       ? {

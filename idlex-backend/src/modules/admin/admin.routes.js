@@ -5,10 +5,19 @@ const { protect } = require('../../middlewares/auth.middleware');
 const { authorize } = require('../../middlewares/role.middleware');
 const validate = require('../../middlewares/validate.middleware');
 const { kycReviewSchema } = require('./admin.validation');
+const settingsController = require('../settings/settings.controller');
+const { manualPaymentSettingsSchema } = require('../settings/settings.validation');
 
 const router = express.Router();
 
 router.use(protect, authorize('admin'));
+
+router.get('/settings', settingsController.getSettings);
+router.put(
+  '/settings/manual-payment',
+  validate(manualPaymentSettingsSchema),
+  settingsController.updateManualPayment
+);
 
 router.get('/queues', controller.getQueues);
 router.get('/stats', controller.getStats);
