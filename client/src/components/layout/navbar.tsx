@@ -6,20 +6,18 @@ import { useRouter } from "next/navigation";
 import { Avatar } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import {
-  Bell, MessageCircle, Search, MapPin, Menu, X, User, LogOut, Settings, ChevronDown, LayoutDashboard, Home, Heart,
+  Bell, MessageCircle, Search, Menu, X, User, LogOut, Settings, LayoutDashboard, Home, Heart,
 } from "@/components/ui/icons";
 import { PUBLIC_NAV } from "@/config/site";
 import { ROUTES } from "@/lib/constants";
 import { useAuth } from "@/lib/auth";
 import { getToken } from "@/lib/api-client";
-import { useHostStatus } from "@/lib/use-host-status";
 import { BrandMark } from "./brand";
 import { ThemeToggle } from "./theme-toggle";
 
 export function Navbar() {
   const router = useRouter();
   const { user, logout } = useAuth();
-  const { hasListings } = useHostStatus();
   const [open, setOpen] = React.useState(false);
   const [menu, setMenu] = React.useState(false);
 
@@ -29,7 +27,6 @@ export function Navbar() {
     () => false
   );
   const signedIn = mounted && (!!user || !!getToken());
-  const isHost = mounted && signedIn && hasListings;
   const isAdmin = user?.role === "admin";
 
   return (
@@ -46,21 +43,23 @@ export function Navbar() {
           </span>
         </Link>
 
-        {/* Home (desktop) */}
-        <Link
-          href={ROUTES.HOME}
-          className="hidden items-center gap-1.5 text-sm text-muted-foreground transition-colors hover:text-foreground sm:flex"
-        >
-          <Home size={16} />
-          Home
-        </Link>
-
-        {/* Location (desktop) */}
-        <button className="hidden items-center gap-1 text-sm text-muted-foreground transition-colors hover:text-foreground lg:flex">
-          <MapPin size={16} />
-          India
-          <ChevronDown size={14} />
-        </button>
+        {/* Sections (desktop) */}
+        <nav className="hidden items-center gap-5 lg:flex">
+          {[
+            [ROUTES.HOME, "Home"],
+            [ROUTES.CATEGORIES, "Categories"],
+            ["/#how-it-works", "How it Works"],
+            [ROUTES.BECOME_HOST, "Become a Host"],
+          ].map(([href, label]) => (
+            <Link
+              key={label}
+              href={href}
+              className="text-sm text-muted-foreground transition-colors hover:text-foreground"
+            >
+              {label}
+            </Link>
+          ))}
+        </nav>
 
         {/* Search (desktop) */}
         <div className="mx-4 hidden max-w-xl flex-1 md:flex">
@@ -97,17 +96,6 @@ export function Navbar() {
             </>
           )}
           <ThemeToggle className="hidden sm:inline-flex" />
-          {!isAdmin && (
-            <Link href={isHost ? ROUTES.LISTING_NEW : ROUTES.BECOME_HOST} className="hidden md:inline-flex">
-              <Button
-                variant="primary"
-                size="sm"
-                className="shadow-sm shadow-primary/20 transition-transform hover:-translate-y-0.5 hover:shadow-md hover:shadow-primary/30"
-              >
-                {isHost ? "Add another listing" : "Become a Host"}
-              </Button>
-            </Link>
-          )}
 
           {/* User menu */}
           {signedIn ? (
@@ -152,11 +140,18 @@ export function Navbar() {
               )}
             </div>
           ) : (
-            <Link href={ROUTES.LOGIN}>
-              <Button variant="outline" size="sm" className="transition-transform hover:-translate-y-0.5">
-                Sign in
-              </Button>
-            </Link>
+            <>
+              <Link href={ROUTES.LOGIN}>
+                <Button variant="ghost" size="sm">
+                  Log in
+                </Button>
+              </Link>
+              <Link href={ROUTES.REGISTER}>
+                <Button size="sm" className="transition-transform hover:-translate-y-0.5">
+                  Sign up
+                </Button>
+              </Link>
+            </>
           )}
         </div>
 

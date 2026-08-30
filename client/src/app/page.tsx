@@ -79,12 +79,29 @@ export default function Home() {
   const stepsReveal = useReveal<HTMLDivElement>();
   const extensionReveal = useReveal<HTMLDivElement>();
 
-  const tiles = [
-    { className: "col-span-2 row-span-2", image: data?.items[0] ? listingImage(data.items[0]) : "https://images.unsplash.com/photo-1516035069371-29a1b244cc32?auto=format&fit=crop&w=1200&q=80", title: data?.items[0]?.title ?? "Camera kit" },
-    { className: "col-span-1 row-span-1", image: data?.items[1] ? listingImage(data.items[1]) : "https://images.unsplash.com/photo-1504148455328-c376907d081c?auto=format&fit=crop&w=1200&q=80", title: data?.items[1]?.title ?? "Drill set" },
-    { className: "col-span-1 row-span-1", image: data?.items[2] ? listingImage(data.items[2]) : "https://images.unsplash.com/photo-1626379953822-baec19c3accd?auto=format&fit=crop&w=1200&q=80", title: data?.items[2]?.title ?? "Projector" },
-    { className: "col-span-1 row-span-1", image: data?.items[3] ? listingImage(data.items[3]) : "https://images.unsplash.com/photo-1485965120184-e220f721d03e?auto=format&fit=crop&w=1200&q=80", title: data?.items[3]?.title ?? "City bike" },
-    { className: "col-span-1 row-span-1", image: "https://images.unsplash.com/photo-1504280390367-361c6d9f38f4?auto=format&fit=crop&w=900&q=80", title: "Weekend camping tent" },
+  // An overlapping stack rather than a grid: the point of the picture is
+  // "all this is sitting idle in someone's cupboard", and a tidy grid reads
+  // as a catalogue instead of a pile. Positions are percentages so the whole
+  // arrangement scales with the column.
+  const collage = [
+    { top: "0%",   left: "6%",  w: "42%", ratio: "4/3", rotate: "-3deg", z: 3,
+      image: data?.items[0] ? listingImage(data.items[0]) : "https://images.unsplash.com/photo-1516035069371-29a1b244cc32?auto=format&fit=crop&w=1200&q=80",
+      title: data?.items[0]?.title ?? "Camera kit" },
+    { top: "-2%",  left: "51%", w: "46%", ratio: "5/4", rotate: "2deg",  z: 2,
+      image: "https://images.unsplash.com/photo-1504280390367-361c6d9f38f4?auto=format&fit=crop&w=1100&q=80",
+      title: "Weekend camping tent" },
+    { top: "50%",  left: "0%",  w: "36%", ratio: "4/3", rotate: "-2deg", z: 4,
+      image: data?.items[3] ? listingImage(data.items[3]) : "https://images.unsplash.com/photo-1485965120184-e220f721d03e?auto=format&fit=crop&w=1000&q=80",
+      title: data?.items[3]?.title ?? "City bike" },
+    { top: "38%",  left: "38%", w: "28%", ratio: "1/1", rotate: "3deg",  z: 6,
+      image: data?.items[1] ? listingImage(data.items[1]) : "https://images.unsplash.com/photo-1504148455328-c376907d081c?auto=format&fit=crop&w=900&q=80",
+      title: data?.items[1]?.title ?? "Drill set" },
+    { top: "66%",  left: "26%", w: "24%", ratio: "1/1", rotate: "-4deg", z: 5,
+      image: data?.items[2] ? listingImage(data.items[2]) : "https://images.unsplash.com/photo-1590658268037-6bf12165a8df?auto=format&fit=crop&w=800&q=80",
+      title: data?.items[2]?.title ?? "Headphones" },
+    { top: "56%",  left: "60%", w: "38%", ratio: "4/3", rotate: "2deg",  z: 3,
+      image: "https://images.unsplash.com/photo-1626379953822-baec19c3accd?auto=format&fit=crop&w=1000&q=80",
+      title: "Studio light" },
   ];
 
   return (
@@ -96,16 +113,12 @@ export default function Home() {
 
         <div className="relative mx-auto grid max-w-7xl gap-10 px-4 pb-6 pt-8 sm:px-6 lg:grid-cols-[0.92fr_1.08fr] lg:pb-10 lg:pt-12">
           <div className="flex flex-col justify-center animate-[fadeInUp_0.7s_ease-out]">
-            <Badge className="w-fit border-primary-200 bg-primary-50 text-primary-700">Rent Smart. Live More.</Badge>
-            <h1 className="mt-5 max-w-xl text-4xl font-bold leading-tight text-foreground sm:text-6xl">
-              Rent{" "}
-              <span className="bg-linear-to-r from-primary to-primary-500 bg-clip-text text-transparent">
-                Anything.
-              </span>
+            <h1 className="max-w-xl text-4xl font-bold leading-[1.06] tracking-tight text-foreground sm:text-6xl">
+              Rent <span className="text-primary">Smart.</span>
               <br />
-              Own Nothing.
+              Own <span className="text-primary">Less.</span>
               <br />
-              Live Fully.
+              Live <span className="text-primary">More.</span>
             </h1>
             <p className="mt-5 max-w-lg text-base leading-7 text-muted-foreground">
               IdleX is your trusted community marketplace to rent items you love and earn from
@@ -127,75 +140,79 @@ export default function Home() {
                 </Button>
               </Link>
             </div>
-            <div className="mt-10 grid max-w-lg grid-cols-3 gap-5">
-              {[
-                [`${(stats?.activeListings ?? data?.pagination.total ?? 10000).toLocaleString("en-IN")}+`, "Active Listings"],
-                [`${(stats?.happyRenters ?? 5000).toLocaleString("en-IN")}+`, "Happy Renters"],
-                [stats?.averageRating ? stats.averageRating.toFixed(1) : "4.8", "Average Rating"],
-              ].map(([value, label]) => (
-                <div key={label}>
-                  <p className="text-2xl font-bold text-primary">{value}</p>
-                  <p className="mt-1 text-xs font-medium text-muted-foreground">{label}</p>
-                </div>
-              ))}
-            </div>
           </div>
 
-          <div className="relative min-h-130">
-            <div className="grid h-full grid-cols-3 grid-rows-4 gap-4">
-              {tiles.map(({ image, title, className }, index) => (
-                <div
-                  key={`${title}-${index}`}
-                  style={{ animationDelay: `${index * 90}ms` }}
-                  className={`${className} group relative animate-[fadeInUp_0.6s_ease-out_backwards] overflow-hidden rounded-2xl bg-muted shadow-md shadow-black/5 ring-1 ring-black/5 transition-all duration-500 hover:shadow-xl hover:shadow-primary/10`}
-                >
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img
-                    src={image}
-                    alt={title}
-                    className="h-full w-full origin-center scale-105 object-cover saturate-[1.15] contrast-[1.03] transition-transform duration-700 ease-out group-hover:scale-115"
-                  />
-                  <div className="pointer-events-none absolute inset-0 bg-linear-to-t from-primary-900/15 via-transparent to-transparent opacity-0 transition-opacity duration-500 group-hover:opacity-100" />
-                </div>
-              ))}
-            </div>
+          <div className="relative mt-2 hidden min-h-[26rem] lg:block">
+            {collage.map(({ image, title, top, left, w, ratio, rotate, z }, index) => (
+              <div
+                key={`${title}-${index}`}
+                style={{
+                  top,
+                  left,
+                  width: w,
+                  aspectRatio: ratio,
+                  zIndex: z,
+                  transform: `rotate(${rotate})`,
+                  animationDelay: `${index * 90}ms`,
+                }}
+                className="group absolute animate-[fadeInUp_0.6s_ease-out_backwards] overflow-hidden rounded-2xl bg-muted shadow-lg shadow-black/10 ring-4 ring-card transition-transform duration-500 hover:z-10 hover:scale-[1.04] hover:rotate-0"
+              >
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
+                  src={image}
+                  alt={title}
+                  className="h-full w-full object-cover saturate-[1.1] transition-transform duration-700 ease-out group-hover:scale-105"
+                />
+              </div>
+            ))}
+          </div>
+
+          {/* Overlapping tiles need room to overlap into. On a phone there is
+              none, so the same photographs run as a plain scroller. */}
+          <div className="-mx-4 flex gap-3 overflow-x-auto px-4 pb-2 lg:hidden">
+            {collage.map(({ image, title }, index) => (
+              <div
+                key={`m-${title}-${index}`}
+                className="h-36 w-44 shrink-0 overflow-hidden rounded-2xl bg-muted shadow-md shadow-black/10"
+              >
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src={image} alt={title} className="h-full w-full object-cover" />
+              </div>
+            ))}
           </div>
         </div>
       </section>
 
-      <section className="mx-auto max-w-7xl px-4 sm:px-6">
-        <div className="flex items-end justify-between gap-4">
-          <div>
-            <h2 className="text-2xl font-bold">Popular Categories</h2>
-            <p className="mt-2 text-sm text-muted-foreground">Find the things you need without buying them.</p>
-          </div>
-          <Link href={ROUTES.CATEGORIES} className="text-sm font-semibold text-primary transition-colors hover:text-primary-600">
-            View all
-          </Link>
-        </div>
+      {/* A band directly under the hero rather than a card grid further down.
+          It is the first thing to do on the page — pick a kind of thing — so
+          it sits where the eye lands after the headline, and the counts are
+          real so an empty category reads as empty rather than as coming soon. */}
+      <section className="border-y border-border bg-muted">
         <div
           ref={categoriesReveal.ref}
-          className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-6"
+          className="mx-auto grid max-w-7xl grid-cols-3 gap-2 px-4 py-7 sm:px-6 md:grid-cols-6"
         >
           {categoryStats.slice(0, 6).map((category, index) => {
             const Icon = categoryIcons[category.name as keyof typeof categoryIcons] ?? Package;
-            const count = stats ? stats.listingsByCategory?.find((row) => row.category === category.slug)?.count ?? 0 : category.count;
+            const count = stats
+              ? stats.listingsByCategory?.find((row) => row.category === category.slug)?.count ?? 0
+              : category.count;
             return (
               <Link
                 key={category.slug}
                 href={`${ROUTES.SEARCH}?category=${category.slug}`}
-                style={{
-                  transitionDelay: categoriesReveal.visible ? `${index * 60}ms` : "0ms",
-                }}
-                className={`group rounded-xl border border-border bg-card p-5 text-center shadow-sm transition-all duration-500 hover:-translate-y-1 hover:border-primary hover:shadow-lg hover:shadow-primary/10 ${
-                  categoriesReveal.visible ? "translate-y-0 opacity-100" : "translate-y-4 opacity-0"
+                style={{ transitionDelay: categoriesReveal.visible ? `${index * 50}ms` : "0ms" }}
+                className={`group flex flex-col items-center gap-2 rounded-xl px-2 py-3 text-center transition-all duration-500 hover:bg-card ${
+                  categoriesReveal.visible ? "translate-y-0 opacity-100" : "translate-y-3 opacity-0"
                 }`}
               >
-                <span className="mx-auto grid h-12 w-12 place-items-center rounded-xl bg-linear-to-br from-primary to-primary-600 text-on-brand shadow-sm shadow-primary/30 transition-transform duration-300 group-hover:scale-110 group-hover:rotate-3">
-                  <Icon size={22} />
+                <span className="grid h-12 w-12 place-items-center rounded-2xl bg-card text-primary shadow-sm ring-1 ring-border transition-transform duration-300 group-hover:-translate-y-0.5">
+                  <Icon size={21} />
                 </span>
-                <p className="mt-3 font-semibold">{category.name}</p>
-                <p className="mt-1 text-xs text-muted-foreground">{count.toLocaleString("en-IN")}+ items</p>
+                <span className="text-sm font-semibold text-foreground">{category.name}</span>
+                <span className="text-xs text-muted-foreground">
+                  {count.toLocaleString("en-IN")}+ items
+                </span>
               </Link>
             );
           })}
