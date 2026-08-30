@@ -89,7 +89,14 @@ const updateMeSchema = z.object({
   becomeOwner: z.boolean().optional(),
 });
 
+// The password is re-typed even though the request is already authenticated:
+// a session on a lost phone should not be enough to erase someone.
+const deleteAccountSchema = z.object({
+  password: z.string().min(1, 'Enter your password to confirm'),
+});
+
 module.exports = {
+  deleteAccountSchema,
   registerSchema,
   registerVerifySchema,
   registerResendSchema,

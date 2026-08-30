@@ -165,7 +165,7 @@ export const DEPOSIT_DOC: LegalDoc = {
     {
   heading: "Contact & Support",
   paragraphs: [
-        "IdelX Owner: Pujari Srujan Sathwik Email: idelxsupport@gmail.com Phone: +91 9704426431 Support: 8 hours per day",
+        "IdelX Owner: Pujari Srujan Sathwik Email: idlexsupport@gmail.com Phone: +91 9704426431 Support: 8 hours per day",
         "IdelX — Local Peer-to-Peer Rental Marketplace"
       ]
     }

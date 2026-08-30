@@ -25,6 +25,11 @@ const userSchema = new mongoose.Schema(
     isEmailVerified: { type: Boolean, default: false },
     isActive: { type: Boolean, default: true }, // false = suspended by admin
 
+    // Set when the person deletes their own account. The record stays because
+    // bookings and ledger entries point at it, but everything on it that
+    // identified anybody has been overwritten by then.
+    deletedAt: { type: Date, default: null },
+
     // When this account was last seen doing anything. Written on socket
     // connect and disconnect, and by the API on authenticated requests, so it
     // stays roughly true whether or not the app holds a socket open.

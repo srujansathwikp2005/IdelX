@@ -18,6 +18,7 @@ const {
   passwordResetRequestSchema,
   passwordResetConfirmSchema,
   updateMeSchema,
+  deleteAccountSchema,
 } = require('./auth.validation');
 
 const router = express.Router();
@@ -39,5 +40,10 @@ router.post('/password/reset', validate(passwordResetRequestSchema), controller.
 router.post('/password/reset/confirm', validate(passwordResetConfirmSchema), controller.confirmPasswordReset);
 router.get('/me', protect, controller.me);
 router.patch('/me', protect, validate(updateMeSchema), controller.updateMe);
+
+router.get('/me/deletion', protect, controller.accountDeletionStatus);
+// POST rather than DELETE: this one carries a body, and a request body on a
+// DELETE is the kind of thing an intermediary is allowed to drop.
+router.post('/me/delete', protect, validate(deleteAccountSchema), controller.deleteMyAccount);
 
 module.exports = router;

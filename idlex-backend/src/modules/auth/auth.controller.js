@@ -169,6 +169,28 @@ const updateMe = asyncHandler(async (req, res) => {
   return new ApiResponse(200, user, 'Profile updated').send(res);
 });
 
+
+// What would stop this account being deleted right now. Asked before the
+// confirmation screen, so nobody types a password only to be refused.
+const accountDeletionStatus = asyncHandler(async (req, res) => {
+  const reasons = await deletionService.deletionBlockers(req.user._id);
+  return new ApiResponse(200, { canDelete: reasons.length === 0, reasons }).send(res);
+});
+
+const deleteMyAccount = asyncHandler(async (req, res) => {
+  const result = await deletionService.deleteAccount(req.user._id, req.body.password);
+  logAudit({
+    actor: req.user._id,
+    action: 'account.deleted',
+    category: 'auth',
+    resourceType: 'User',
+    resourceId: String(req.user._id),
+    summary: 'Account deleted by its owner',
+    req,
+  });
+  return new ApiResponse(200, result, 'Your account has been deleted').send(res);
+});
+
 module.exports = {
   register,
   resendRegistrationCode,
@@ -187,4 +209,6 @@ module.exports = {
   confirmPasswordReset,
   me,
   updateMe,
+  accountDeletionStatus,
+  deleteMyAccount,
 };

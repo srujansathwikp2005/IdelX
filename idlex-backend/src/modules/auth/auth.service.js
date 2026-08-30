@@ -185,6 +185,9 @@ async function login({ identifier, email, password }) {
   if (!user || !(await user.comparePassword(password))) {
     throw ApiError.unauthorized('Invalid credentials');
   }
+  // Checked before isActive, because a deleted account is also inactive and
+  // "suspended" would be both wrong and alarming.
+  if (user.deletedAt) throw ApiError.forbidden('This account has been deleted');
   if (!user.isActive) throw ApiError.forbidden('Account is suspended');
 
   // Belt and braces. New accounts are only created once verified, so this

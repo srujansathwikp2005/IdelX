@@ -158,9 +158,11 @@
     {
       "heading": "Account Deletion",
       "paragraphs": [
-        "You may request deletion or deactivation of your IdelX account by contacting idelxsupport@gmail.com.",
-        "IdelX may require reasonable verification of your identity before processing a deletion request.",
-        "Deletion of an account does not necessarily mean that all information will immediately be deleted. Information may be retained where necessary for legal compliance, fraud prevention, dispute resolution, transaction records, establishing or defending legal claims, or other legally permitted purposes."
+        "You can delete your account yourself, without contacting us. In the app, open Profile, then Personal Information, then Delete account. From a browser, go to https://idlex.in/delete-account and sign in. Either route asks for your password and then deletes the account immediately.",
+        "Deleting removes your name, email address, phone number, profile photo, saved items and notifications; the identity document and selfie you uploaded for KYC, which are erased from our storage; and your payout details, including any UPI ID or bank account. Any listings you own are taken down and stop accepting bookings.",
+        "Records of completed rentals — bookings, payments, security deposits and refunds — are retained. Each of those transactions involved another person who holds their own record of it, and we are required to be able to account for money that has moved. Those records are no longer linked to your identity: reviews and messages you wrote are shown as being from a deleted user.",
+        "An account cannot be deleted while a rental is still in progress or a dispute is open, because somebody else is waiting on the outcome. The app and the web page will tell you what remains to be finished.",
+        "If you cannot sign in, email idlexsupport@gmail.com from the address on the account and we will delete it for you. We may ask for reasonable verification of your identity before doing so."
       ]
     },
     {
@@ -215,14 +217,14 @@
     {
       "heading": "Grievance Officer",
       "paragraphs": [
-        "Name: Pujari Srujan Sathwik Designation: Owner, IdelX Email: idelxsupport@gmail.com Phone: +91 9704426431 Correspondence Address: 10-5-625, Bangle Street, Rayadurgam, Ananthapur, Andhra Pradesh, India. Support Hours: 8 hours per day.",
+        "Name: Pujari Srujan Sathwik Designation: Owner, IdelX Email: idlexsupport@gmail.com Phone: +91 9704426431 Correspondence Address: 10-5-625, Bangle Street, Rayadurgam, Ananthapur, Andhra Pradesh, India. Support Hours: 8 hours per day.",
         "IdelX will handle privacy-related grievances in accordance with applicable law and its applicable internal procedures."
       ]
     },
     {
       "heading": "Contact Us",
       "paragraphs": [
-        "IdelX Sole Proprietorship Owner: Pujari Srujan Sathwik Email: idelxsupport@gmail.com Phone: +91 9704426431 Business Address: D.No: 17-21-5, Ward No. 3, Near Why Not Shopping Mall, Undarajavaram Road, Tanuku, West Godavari District, Andhra Pradesh, India. Support Hours: 8 hours per day."
+        "IdelX Sole Proprietorship Owner: Pujari Srujan Sathwik Email: idlexsupport@gmail.com Phone: +91 9704426431 Business Address: D.No: 17-21-5, Ward No. 3, Near Why Not Shopping Mall, Undarajavaram Road, Tanuku, West Godavari District, Andhra Pradesh, India. Support Hours: 8 hours per day."
       ]
     },
     {
