@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { DashboardShell } from "@/components/marketplace/dashboard-shell";
 import { StatCard } from "@/components/shared/stat-card";
+import { Avatar } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { RequireAuth, useAuth, errorMessage } from "@/lib/auth";
@@ -16,32 +17,67 @@ import { LineChart } from "@/components/marketplace/charts";
 import { ROUTES } from "@/lib/constants";
 import * as React from "react";
 
-function BookingRow({ booking, onApprove, onConfirmReturn, busy }: {
+function BookingRow({ booking, asOwner, onApprove, onReject, onConfirmReturn, busy }: {
   booking: Booking;
+  /** Whether the signed-in user owns the item in THIS booking. */
+  asOwner: boolean;
   onApprove?: (booking: Booking) => void;
+  onReject?: (booking: Booking) => void;
   onConfirmReturn?: (booking: Booking) => void;
   busy?: boolean;
 }) {
   const title = typeof booking.listing === "object" && booking.listing !== null ? booking.listing.title : "Rental";
+  const renter = typeof booking.renter === "object" && booking.renter !== null ? booking.renter : null;
+  const rating = renter && typeof renter === "object" && "ratingAvg" in renter
+    ? (renter as { ratingAvg?: number; ratingCount?: number })
+    : null;
+
   return (
-    <div className="flex items-center justify-between rounded-lg bg-muted p-3">
-      <div>
-        <p className="font-medium">{title}</p>
-        <p className="text-sm text-muted-foreground">{formatDate(booking.startDate)} - {formatDate(booking.endDate)}</p>
+    <div className="rounded-lg bg-muted p-3">
+      <div className="flex items-center justify-between gap-3">
+        <div className="min-w-0">
+          <p className="truncate font-medium">{title}</p>
+          <p className="text-sm text-muted-foreground">
+            {formatDate(booking.startDate)} - {formatDate(booking.endDate)}
+          </p>
+        </div>
+        <div className="flex shrink-0 items-center gap-2">
+          <Badge variant={booking.status === "completed" ? "success" : booking.status === "cancelled" ? "danger" : booking.status === "return_requested" || booking.status === "awaiting_payment" ? "warning" : "default"}>{booking.status}</Badge>
+          {/* Every action below is gated on owning THIS booking, not on the
+              account being an owner of anything. Gating on the latter put an
+              Approve button on the user's own rentals, and the server — which
+              checks properly — answered "Only the owner can confirm". */}
+          {asOwner && onApprove && booking.status === "requested" && (
+            <Button size="sm" loading={busy} disabled={busy} onClick={() => onApprove(booking)}>
+              Approve
+            </Button>
+          )}
+          {asOwner && onReject && booking.status === "requested" && (
+            <Button size="sm" variant="outline" disabled={busy} onClick={() => onReject(booking)}>
+              Reject
+            </Button>
+          )}
+          {asOwner && onConfirmReturn && booking.status === "return_requested" && (
+            <Button size="sm" loading={busy} disabled={busy} onClick={() => onConfirmReturn(booking)}>
+              Confirm Return
+            </Button>
+          )}
+        </div>
       </div>
-      <div className="flex items-center gap-2">
-        <Badge variant={booking.status === "completed" ? "success" : booking.status === "cancelled" ? "danger" : booking.status === "return_requested" || booking.status === "awaiting_payment" ? "warning" : "default"}>{booking.status}</Badge>
-        {onApprove && booking.status === "requested" && (
-          <Button size="sm" loading={busy} disabled={busy} onClick={() => onApprove(booking)}>
-            Approve
-          </Button>
-        )}
-        {onConfirmReturn && booking.status === "return_requested" && (
-          <Button size="sm" loading={busy} disabled={busy} onClick={() => onConfirmReturn(booking)}>
-            Confirm Return
-          </Button>
-        )}
-      </div>
+
+      {/* Who is asking, and how it has gone for other people. An owner
+          choosing between competing requests needs it in front of them. */}
+      {asOwner && booking.status === "requested" && renter && (
+        <div className="mt-2.5 flex items-center gap-2 border-t border-border pt-2.5 text-sm">
+          <Avatar name={renter.name ?? "Renter"} size="sm" />
+          <span className="font-medium">{renter.name ?? "Renter"}</span>
+          <span className="ml-auto text-muted-foreground">
+            {rating?.ratingCount
+              ? `${rating.ratingAvg?.toFixed(1)} ★ (${rating.ratingCount})`
+              : "No reviews yet"}
+          </span>
+        </div>
+      )}
     </div>
   );
 }
@@ -68,6 +104,24 @@ function DashboardInner() {
     setBusyId(booking._id);
     try {
       await api.post<Booking>(`/api/bookings/${booking._id}/confirm`, {});
+      refetchOwner();
+    } catch (err) {
+      setApprovalError(errorMessage(err));
+    } finally {
+      setBusyId(null);
+    }
+  };
+
+  const reject = async (booking: Booking) => {
+    if (busyId) return;
+    const title = typeof booking.listing === "object" && booking.listing !== null ? booking.listing.title : "this rental";
+    if (!window.confirm(`Reject this request for ${title}? The renter is told the dates went elsewhere, and nothing is charged.`)) {
+      return;
+    }
+    setApprovalError(null);
+    setBusyId(booking._id);
+    try {
+      await api.post<Booking>(`/api/bookings/${booking._id}/cancel`, {});
       refetchOwner();
     } catch (err) {
       setApprovalError(errorMessage(err));
@@ -193,12 +247,30 @@ function DashboardInner() {
             <Empty>Nothing booked yet. Browse the marketplace to rent something.</Empty>
           ) : (
             <div className="flex flex-col gap-2.5">
-              {[...upcoming, ...ownerUpcoming].slice(0, 4).map((booking) => (
+              {/* Requests waiting on this owner come first. Merging the two
+                  lists and slicing to four buried them behind the user's own
+                  rentals — an owner with two power bank requests saw a
+                  basketball he had asked to rent, and nothing to act on. */}
+              {ownerUpcoming
+                .filter((b) => b.status === "requested")
+                .concat(ownerUpcoming.filter((b) => b.status !== "requested"))
+                .slice(0, 3)
+                .map((booking) => (
+                  <BookingRow
+                    key={booking._id}
+                    booking={booking}
+                    asOwner
+                    onApprove={approve}
+                    onReject={reject}
+                    onConfirmReturn={confirmReturn}
+                    busy={busyId === booking._id}
+                  />
+                ))}
+              {upcoming.slice(0, 3).map((booking) => (
                 <BookingRow
                   key={booking._id}
                   booking={booking}
-                  onApprove={isOwner ? approve : undefined}
-                  onConfirmReturn={isOwner ? confirmReturn : undefined}
+                  asOwner={false}
                   busy={busyId === booking._id}
                 />
               ))}

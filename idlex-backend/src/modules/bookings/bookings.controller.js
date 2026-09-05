@@ -38,7 +38,10 @@ const ownerBookings = asyncHandler(async (req, res) => {
   const bookings = await Booking.find({ owner: req.user._id })
     .sort('-createdAt')
     .populate('listing', 'title photos pricePerDay')
-    .populate('renter', 'name avatarUrl');
+    // The rating comes along because the owner is choosing between people,
+    // not just dates, and a second request per row to find that out would be
+    // a round trip for every card on the dashboard.
+    .populate('renter', 'name avatarUrl ratingAvg ratingCount');
   return new ApiResponse(200, bookings, "Owner's bookings").send(res);
 });
 
