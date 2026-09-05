@@ -69,9 +69,14 @@ async function assertDatesAvailable(listingId, startDate, endDate, excludeBookin
   );
   if (blockOverlap) throw ApiError.conflict('Selected dates are blocked by the owner');
 
+  // A pending request does NOT hold the dates. Several renters may ask for
+  // the same window and the owner picks one; approving that one rejects the
+  // rest. Only a booking the owner has actually committed to blocks a new
+  // request — approved-and-awaiting-payment counts, because that renter is
+  // inside their payment window and the item is spoken for until it lapses.
   const bookingQuery = {
     listing: listingId,
-    status: { $in: ['requested', 'awaiting_payment', 'confirmed', 'active'] },
+    status: { $in: ['awaiting_payment', 'confirmed', 'active', 'return_requested'] },
     startDate: { $lte: endDate },
     endDate: { $gte: startDate },
   };
@@ -135,4 +140,15 @@ function formatDate(date) {
   return new Date(date).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' });
 }
 
-module.exports = { assertDatesAvailable, createBooking, daysBetween, computeCost };
+/** Bookings on the same listing whose dates overlap [startDate, endDate]. */
+function overlapQuery(listingId, startDate, endDate, statuses) {
+  return {
+    listing: listingId,
+    status: { $in: statuses },
+    startDate: { $lte: endDate },
+    endDate: { $gte: startDate },
+  };
+}
+
+module.exports = {
+  overlapQuery, assertDatesAvailable, createBooking, daysBetween, computeCost };

@@ -62,4 +62,16 @@ async function updateManualPaymentSettings(patch, actorId) {
   return doc;
 }
 
-module.exports = { getManualPaymentSettings, updateManualPaymentSettings, invalidate };
+/** How long an approved booking may sit unpaid. */
+async function getPaymentWindowHours() {
+  const doc = await loadDoc();
+  const hours = Number(doc?.booking?.paymentWindowHours);
+  return Number.isFinite(hours) && hours > 0 ? hours : 12;
+}
+
+module.exports = {
+  getManualPaymentSettings,
+  updateManualPaymentSettings,
+  getPaymentWindowHours,
+  invalidate,
+};

@@ -33,6 +33,12 @@ const platformSettingsSchema = new mongoose.Schema(
       note: { type: String, default: null, trim: true },
     },
 
+    booking: {
+      // How long an approved renter has to pay before the booking lapses and
+      // the dates go back on sale. Owners asked for this to be adjustable.
+      paymentWindowHours: { type: Number, default: 12, min: 1, max: 168 },
+    },
+
     updatedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User', default: null },
   },
   { timestamps: true }

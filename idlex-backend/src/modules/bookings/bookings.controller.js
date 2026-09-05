@@ -6,6 +6,7 @@ const Dispute = require('../../models/Dispute');
 const paymentsService = require('../payments/payments.service');
 const Listing = require('../../models/Listing');
 const bookingsService = require('./bookings.service');
+const settingsService = require('../settings/settings.service');
 const { notify } = require('../notifications/notifications.service');
 const { logAudit } = require('../../utils/audit');
 
@@ -97,17 +98,60 @@ const startRental = asyncHandler(async (req, res) => {
 });
 
 const confirmBooking = asyncHandler(async (req, res) => {
-  const booking = await Booking.findById(req.params.id);
-  if (!booking) throw ApiError.notFound('Booking not found');
-  if (booking.owner.toString() !== req.user._id.toString()) throw ApiError.forbidden('Only the owner can confirm');
-  if (booking.status !== 'requested') throw ApiError.badRequest(`Cannot confirm a booking in '${booking.status}' state`);
+  const existing = await Booking.findById(req.params.id);
+  if (!existing) throw ApiError.notFound('Booking not found');
+  if (existing.owner.toString() !== req.user._id.toString()) throw ApiError.forbidden('Only the owner can confirm');
+  if (existing.status !== 'requested') {
+    throw ApiError.badRequest(`Cannot confirm a booking in '${existing.status}' state`);
+  }
 
-  // Approval no longer confirms the booking — it unlocks payment. The renter
-  // is charged only after the owner has agreed to hand the item over, so
-  // nobody pays for a request that is then declined.
-  booking.status = 'awaiting_payment';
-  booking.approvedAt = new Date();
-  await booking.save();
+  // Nothing else may already be committed to these dates. Several people can
+  // ask for the same window, but only one of those requests can be accepted.
+  const committed = await Booking.findOne({
+    ...bookingsService.overlapQuery(existing.listing, existing.startDate, existing.endDate, [
+      'awaiting_payment',
+      'confirmed',
+      'active',
+      'return_requested',
+    ]),
+    _id: { $ne: existing._id },
+  });
+  if (committed) {
+    throw ApiError.conflict('Another booking for these dates has already been accepted');
+  }
+
+  const windowHours = await settingsService.getPaymentWindowHours();
+  const approvedAt = new Date();
+  const paymentDueAt = new Date(approvedAt.getTime() + windowHours * 3600 * 1000);
+
+  // Claimed with the status in the filter, so two approvals arriving together
+  // cannot both succeed — the second matches nothing and is told why.
+  const booking = await Booking.findOneAndUpdate(
+    { _id: existing._id, status: 'requested' },
+    { $set: { status: 'awaiting_payment', approvedAt, paymentDueAt } },
+    { new: true }
+  );
+  if (!booking) throw ApiError.conflict('That request was already handled');
+
+  // Everyone else who asked for an overlapping window is now out. Left as
+  // 'requested' they would sit in the renter's list looking live, and the
+  // owner would be able to accept a second one for dates that are taken.
+  const losers = await Booking.find({
+    ...bookingsService.overlapQuery(booking.listing, booking.startDate, booking.endDate, ['requested']),
+    _id: { $ne: booking._id },
+  });
+  if (losers.length) {
+    await Booking.updateMany(
+      { _id: { $in: losers.map((b) => b._id) } },
+      {
+        $set: {
+          status: 'cancelled',
+          cancelledBy: req.user._id,
+          cancellationReason: 'The owner accepted another request for these dates',
+        },
+      }
+    );
+  }
   logAudit({
     actor: req.user._id,
     action: 'booking.approved',
@@ -120,12 +164,30 @@ const confirmBooking = asyncHandler(async (req, res) => {
 
   // Tell the renter their request was approved.
   const listing = await Listing.findById(booking.listing).select('title');
+  const dueLabel = paymentDueAt.toLocaleString('en-IN', {
+    dateStyle: 'medium',
+    timeStyle: 'short',
+    timeZone: 'Asia/Kolkata',
+  });
   await notify(booking.renter, {
     type: 'booking_confirmed',
     title: 'Booking approved — payment needed',
-    body: `The owner approved your booking for "${listing ? listing.title : 'your rental'}". Pay now to secure it.`,
+    body: `The owner approved your booking for "${listing ? listing.title : 'your rental'}". `
+      + `Pay by ${dueLabel} to secure it, or the dates go back on sale.`,
     link: `/checkout/booking/${booking._id}`,
   });
+
+  // The people who did not get it are told now, rather than being left with a
+  // request that quietly never moves.
+  for (const lost of losers) {
+    await notify(lost.renter, {
+      type: 'booking_cancelled',
+      title: 'Request not accepted',
+      body: `The owner accepted another request for "${listing ? listing.title : 'that item'}" `
+        + 'on those dates. Nothing was charged.',
+      link: '/my-rentals',
+    }).catch(() => {});
+  }
 
   return new ApiResponse(200, booking, 'Booking approved; awaiting payment').send(res);
 });

@@ -76,6 +76,12 @@ const bookingSchema = new mongoose.Schema(
     // someone's dates forever, so a sweep cancels stale ones.
     approvedAt: Date,
 
+    // When the approved-but-unpaid booking lapses. Stored rather than derived
+    // from approvedAt so the renter can be shown the actual deadline, and so
+    // changing the window later does not silently move the deadline for
+    // bookings that were approved under the old one.
+    paymentDueAt: Date,
+
     escrow: {
       // Rent: held from capture until the rental actually starts.
       rentStatus: {

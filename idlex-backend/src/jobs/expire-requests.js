@@ -2,14 +2,13 @@ const Booking = require('../models/Booking');
 const Listing = require('../models/Listing');
 const { notify } = require('../modules/notifications/notifications.service');
 
-// An unapproved request holds its dates — that is deliberate, so two renters
-// cannot both pay for the same window. The cost is that an owner who ignores
-// a request freezes their own calendar, and the renter waits on a booking
-// that is never going to happen.
+// A pending request no longer holds its dates — several renters may ask for
+// the same window and the owner picks one. Requests still expire, so a
+// question nobody answered does not sit in either list forever.
 //
-// So requests expire. Approved-but-unpaid bookings expire faster: the owner
-// has committed at that point, and the item should not sit reserved for
-// someone who has stopped responding.
+// Approved-but-unpaid bookings are different: those DO hold the dates, because
+// the owner has committed and the renter is inside their payment window. They
+// expire on the deadline stored when the owner approved.
 const REQUEST_TTL_HOURS = 24;
 const AWAITING_PAYMENT_TTL_HOURS = 12;
 
@@ -21,7 +20,11 @@ async function expireStaleBookings() {
   const stale = await Booking.find({
     $or: [
       { status: 'requested', createdAt: { $lt: requestCutoff } },
-      { status: 'awaiting_payment', approvedAt: { $lt: paymentCutoff } },
+      // paymentDueAt is the deadline the renter was actually shown, so it is
+      // what expiry honours. approvedAt is the fallback for bookings approved
+      // before the deadline was stored on the record.
+      { status: 'awaiting_payment', paymentDueAt: { $lt: new Date(now) } },
+      { status: 'awaiting_payment', paymentDueAt: null, approvedAt: { $lt: paymentCutoff } },
     ],
   });
 
