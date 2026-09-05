@@ -33,7 +33,7 @@ export function Navbar() {
     <header className="sticky top-0 z-40 border-b border-border bg-card/80 backdrop-blur-md">
       <div className="mx-auto flex h-16 max-w-7xl items-center gap-4 px-4 sm:px-6">
         {/* Logo */}
-        <Link href={ROUTES.HOME} className="group flex shrink-0 items-center gap-2">
+        <Link href={ROUTES.HOME} className="group flex min-w-0 shrink-0 items-center gap-2">
           <BrandMark
             size={32}
             className="transition-transform duration-300 group-hover:scale-105 group-hover:rotate-3"
@@ -141,12 +141,12 @@ export function Navbar() {
             </div>
           ) : (
             <>
-              <Link href={ROUTES.LOGIN}>
+              <Link href={ROUTES.LOGIN} className="hidden sm:inline-flex">
                 <Button variant="ghost" size="sm">
                   Log in
                 </Button>
               </Link>
-              <Link href={ROUTES.REGISTER}>
+              <Link href={ROUTES.REGISTER} className="hidden sm:inline-flex">
                 <Button size="sm" className="transition-transform hover:-translate-y-0.5">
                   Sign up
                 </Button>
@@ -194,6 +194,19 @@ export function Navbar() {
               {item.label}
             </Link>
           ))}
+
+          {/* The header cannot hold these on a narrow screen, so they live
+              here instead of being squeezed until the layout breaks. */}
+          {!signedIn && (
+            <div className="flex gap-2 pt-1 sm:hidden">
+              <Link href={ROUTES.LOGIN} className="flex-1">
+                <Button variant="outline" className="w-full">Log in</Button>
+              </Link>
+              <Link href={ROUTES.REGISTER} className="flex-1">
+                <Button className="w-full">Sign up</Button>
+              </Link>
+            </div>
+          )}
         </div>
       )}
 
