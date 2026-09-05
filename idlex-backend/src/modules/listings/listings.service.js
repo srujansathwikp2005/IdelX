@@ -27,7 +27,20 @@ async function queryListings(query) {
     if (minPrice) filter.pricePerDay.$gte = Number(minPrice);
     if (maxPrice) filter.pricePerDay.$lte = Number(maxPrice);
   }
-  if (q) filter.$text = { $search: q };
+  // Substring, not $text. A text index matches whole words: "Car" finds
+  // "Car" and "Washing" finds "Washing Machine", but "Ca" and "Washi" are
+  // not words and match nothing — which is exactly what people type while
+  // they are still typing. A case-insensitive regex matches wherever the
+  // fragment falls, which is what a search box is expected to do.
+  if (q) {
+    const needle = String(q).trim();
+    if (needle) {
+      // Escaped: a stray "(" or "*" from a real search term would otherwise
+      // be read as part of the pattern and throw.
+      const rx = new RegExp(needle.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'i');
+      filter.$or = [{ title: rx }, { description: rx }];
+    }
+  }
 
   const sortField = ordering.replace(/^-/, '');
   const sortDir = ordering.startsWith('-') ? -1 : 1;
