@@ -8,7 +8,10 @@ const User = require('../../models/User');
 const { notify } = require('../notifications/notifications.service');
 
 const listConversations = asyncHandler(async (req, res) => {
-  const conversations = await Conversation.find({ participants: req.user._id })
+  const conversations = await Conversation.find({
+    participants: req.user._id,
+    hiddenFor: { $ne: req.user._id },
+  })
     .sort('-lastMessageAt')
     // lastSeenAt comes along so the client can say when the other person was
     // last around without a second request per row.
@@ -131,6 +134,10 @@ const sendMessage = asyncHandler(async (req, res) => {
 
   conversation.lastMessage = text;
   conversation.lastMessageAt = new Date();
+  // A new message un-hides the thread for everyone: if the recipient had
+  // deleted their copy, sending into it must put it back in front of them,
+  // or the message goes somewhere they cannot open.
+  conversation.hiddenFor = [];
   await conversation.save();
 
   // Mirror the socket event so anyone already watching this thread sees the
@@ -183,5 +190,24 @@ const getConversation = asyncHandler(async (req, res) => {
   return new ApiResponse(200, conversation, 'Conversation').send(res);
 });
 
+
+// Removes a conversation from the caller's list. Their copy only — see the
+// note on the model.
+const deleteConversation = asyncHandler(async (req, res) => {
+  const conversation = await Conversation.findById(req.params.id);
+  if (!conversation) throw ApiError.notFound('Conversation not found');
+  if (!conversation.participants.some((p) => p.toString() === req.user._id.toString())) {
+    throw ApiError.forbidden('Not a participant in this conversation');
+  }
+
+  await Conversation.updateOne(
+    { _id: conversation._id },
+    { $addToSet: { hiddenFor: req.user._id } }
+  );
+
+  return new ApiResponse(200, null, 'Conversation deleted').send(res);
+});
+
 module.exports = {
-  getConversation, listConversations, getMessages, startConversation, sendMessage };
+  getConversation, listConversations, getMessages, startConversation, sendMessage,
+  deleteConversation };

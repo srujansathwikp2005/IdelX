@@ -19,5 +19,6 @@ router.get('/conversations/:id/messages', controller.getMessages);
 // to a route that did not exist, silently discarding the message.
 router.post('/conversations', controller.startConversation);
 router.post('/conversations/:id/messages', controller.sendMessage);
+router.delete('/conversations/:id', controller.deleteConversation);
 
 module.exports = router;
