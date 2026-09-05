@@ -30,6 +30,12 @@ const userSchema = new mongoose.Schema(
     // identified anybody has been overwritten by then.
     deletedAt: { type: Date, default: null },
 
+    // What other people have said about this person, kept denormalised for
+    // the same reason a listing's rating is: it is read on every request row
+    // and every profile card, and recomputed only when a review lands.
+    ratingAvg: { type: Number, default: 0 },
+    ratingCount: { type: Number, default: 0 },
+
     // When this account was last seen doing anything. Written on socket
     // connect and disconnect, and by the API on authenticated requests, so it
     // stays roughly true whether or not the app holds a socket open.

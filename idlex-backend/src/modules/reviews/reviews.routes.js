@@ -6,5 +6,6 @@ const router = express.Router();
 
 router.get('/mine', protect, controller.myReviews);
 router.post('/', protect, controller.createReview);
+router.get('/user/:id', protect, controller.listUserReviews);
 
 module.exports = router;
