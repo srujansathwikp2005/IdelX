@@ -10,7 +10,7 @@ const ApiResponse = require('../../utils/ApiResponse');
 // legal text is not a cosmetic problem.
 const CONTENT_DIR = path.join(__dirname, 'content');
 
-const SLUGS = ['terms', 'privacy', 'security-deposit', 'cancellation-refund'];
+const SLUGS = ['terms', 'privacy', 'security-deposit', 'cancellation-refund', 'community-guidelines'];
 
 // Read once at boot. These change when counsel changes them, which is not at
 // runtime, and re-reading four files on every request is pointless IO.

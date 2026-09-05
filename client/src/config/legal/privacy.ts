@@ -1,26 +1,26 @@
 import type { LegalDoc } from "./types";
 
-// Verbatim from the client's counsel-supplied document, 20 August 2026.
+// Verbatim from the client's counsel-supplied document.
 // Do not reword: this is the operative legal text. Structure only.
 export const PRIVACY_DOC: LegalDoc = {
-  title: "Privacy Policy",
-  eyebrow: "Legal",
-  description: "How IdelX collects, uses, stores, and shares your personal information.",
-  effectiveDate: "20 August 2026",
-  sections: [
+  "title": "Privacy Policy",
+  "eyebrow": "Legal",
+  "description": "How IdleX collects, uses, stores, and shares your personal information.",
+  "effectiveDate": "20 August 2026",
+  "sections": [
     {
-  heading: "Introduction",
-  paragraphs: [
-        "IdelX (“IdelX”, “we”, “us”, or “our”) is a local peer-to-peer rental marketplace operated as a sole proprietorship by Pujari Srujan Sathwik.",
-        "IdelX provides a technology platform that enables users to list their own products, discover products listed by other users, communicate regarding rentals, and facilitate rental transactions.",
-        "IdelX does not own, manufacture, possess, inspect, maintain, or manage the products listed by users. Products displayed on the Platform are listed by individual users.",
-        "This Privacy Policy explains how IdelX collects, uses, stores, protects, and discloses personal information when you use the IdelX website, application, or related services (“Platform”). By accessing or using the Platform, you acknowledge that you have read and understood this Privacy Policy."
+      "heading": "Introduction",
+      "paragraphs": [
+        "IdleX (“IdleX”, “we”, “us”, or “our”) is a local peer-to-peer rental marketplace operated as a sole proprietorship by Pujari Srujan Sathwik.",
+        "IdleX provides a technology platform that enables users to list their own products, discover products listed by other users, communicate regarding rentals, and facilitate rental transactions.",
+        "IdleX does not own, manufacture, possess, inspect, maintain, or manage the products listed by users. Products displayed on the Platform are listed by individual users.",
+        "This Privacy Policy explains how IdleX collects, uses, stores, protects, and discloses personal information when you use the IdleX website, application, or related services (“Platform”). By accessing or using the Platform, you acknowledge that you have read and understood this Privacy Policy."
       ]
     },
     {
-  heading: "Information We Collect",
-  paragraphs: [
-        "Depending on how you use IdelX, we may collect account information such as your full name, mobile number, email address, password or authentication information, profile photograph where provided, date of birth or age information where required, account preferences, account status, and other information necessary to operate your account.",
+      "heading": "Information We Collect",
+      "paragraphs": [
+        "Depending on how you use IdleX, we may collect account information such as your full name, mobile number, email address, password or authentication information, profile photograph where provided, date of birth or age information where required, account preferences, account status, and other information necessary to operate your account.",
         "We may collect product listing information including product name, description, photographs/videos, rental price, security deposit, availability, rental duration, extension terms, product condition information, product location, category, listing preferences, and other information voluntarily provided by the Lender.",
         "We may collect rental and transaction information including rental requests, booking information, rental dates, rental duration, extension requests, payment status, security deposit information, cancellation information, return information, refund information, transaction history, damage-related information, and dispute information.",
         "We may collect communications and support information, including messages, complaints, dispute communications, rental-related communications, and technical support communications.",
@@ -28,29 +28,29 @@ export const PRIVACY_DOC: LegalDoc = {
       ]
     },
     {
-  heading: "Identity Verification and KYC Information",
-  paragraphs: [
-        "Certain IdelX services or rental transactions may require identity verification.",
-        "For this purpose, IdelX may require a user to submit a government-issued identity document, an image of an Aadhaar document where applicable, a selfie/photo for identity matching, information necessary to verify identity, and KYC verification status and related verification records.",
-        "The submitted information may be reviewed through manual verification by IdelX or authorised personnel.",
+      "heading": "Identity Verification and KYC Information",
+      "paragraphs": [
+        "Certain IdleX services or rental transactions may require identity verification.",
+        "For this purpose, IdleX may require a user to submit a government-issued identity document, an image of an Aadhaar document where applicable, a selfie/photo for identity matching, information necessary to verify identity, and KYC verification status and related verification records.",
+        "The submitted information may be reviewed through manual verification by IdleX or authorised personnel.",
         "The purpose of this process is to help verify user identity, prevent impersonation, reduce fraud, prevent misuse of the Platform, improve trust between users, investigate suspicious activity, and protect users and property.",
-        "Completion of KYC does not constitute a guarantee by IdelX regarding a user's character, conduct, financial capacity, reliability, or safety.",
-        "IdelX may retain appropriate verification records for as long as reasonably necessary for legitimate purposes including maintaining verification records; preventing and investigating fraud; investigating theft, loss, damage, or misuse associated with a rental; handling rental disputes; establishing, exercising, or defending legal claims; responding to lawful requests from authorities; and complying with applicable legal obligations.",
-        "IdelX will not make KYC documents publicly available or display them to ordinary Platform users. Where Aadhaar information is involved, IdelX will handle such information subject to applicable Aadhaar laws, regulations, and UIDAI requirements."
+        "Completion of KYC does not constitute a guarantee by IdleX regarding a user's character, conduct, financial capacity, reliability, or safety.",
+        "IdleX may retain appropriate verification records for as long as reasonably necessary for legitimate purposes including maintaining verification records; preventing and investigating fraud; investigating theft, loss, damage, or misuse associated with a rental; handling rental disputes; establishing, exercising, or defending legal claims; responding to lawful requests from authorities; and complying with applicable legal obligations.",
+        "IdleX will not make KYC documents publicly available or display them to ordinary Platform users. Where Aadhaar information is involved, IdleX will handle such information subject to applicable Aadhaar laws, regulations, and UIDAI requirements."
       ]
     },
     {
-  heading: "Location Information",
-  paragraphs: [
-        "IdelX may collect approximate or precise location information where necessary for location-based Platform functionality.",
+      "heading": "Location Information",
+      "paragraphs": [
+        "IdleX may collect approximate or precise location information where necessary for location-based Platform functionality.",
         "Location information may be used to show nearby rental listings, enable radius-based search, determine the approximate location of listed products, improve search results, and provide relevant rental recommendations.",
         "Users may control location permissions through their device or browser settings. Disabling location access may prevent certain location-based features from functioning properly.",
-        "IdelX may display an approximate location rather than a user's exact residential or personal location where precise location is not necessary."
+        "IdleX may display an approximate location rather than a user's exact residential or personal location where precise location is not necessary."
       ]
     },
     {
-  heading: "How We Collect Information",
-  paragraphs: [
+      "heading": "How We Collect Information",
+      "paragraphs": [
         "We may collect information directly from you when you create an account, upload KYC information, list an item, request a rental, make a payment, contact support, submit a complaint, or update your profile.",
         "We may collect information automatically through cookies, log files, device technologies, analytics technologies, and similar technologies.",
         "We may receive information from service providers assisting us with payment processing, identity verification, hosting, security, analytics, communication, and fraud prevention.",
@@ -58,185 +58,185 @@ export const PRIVACY_DOC: LegalDoc = {
       ]
     },
     {
-  heading: "How We Use Personal Information",
-  paragraphs: [
-        "IdelX may use personal information to provide Platform services, create and manage accounts, display listings, facilitate rental requests, connect Lenders and Renters, facilitate communication, manage bookings, rental periods, extensions and returns.",
+      "heading": "How We Use Personal Information",
+      "paragraphs": [
+        "IdleX may use personal information to provide Platform services, create and manage accounts, display listings, facilitate rental requests, connect Lenders and Renters, facilitate communication, manage bookings, rental periods, extensions and returns.",
         "Information may be used for identity verification, fraud prevention, payment processing, customer support, dispute resolution, platform improvement, security, technical troubleshooting, and legal or regulatory compliance.",
         "Information may also be used to investigate suspicious activity, theft, damage, loss, misuse, non-return, or other incidents associated with Platform transactions."
       ]
     },
     {
-  heading: "Information Shared Between Users",
-  paragraphs: [
-        "Because IdelX is a peer-to-peer marketplace, certain information may need to be shared between Lenders and Renters to facilitate a rental.",
+      "heading": "Information Shared Between Users",
+      "paragraphs": [
+        "Because IdleX is a peer-to-peer marketplace, certain information may need to be shared between Lenders and Renters to facilitate a rental.",
         "Depending on the stage of the transaction, this may include name, profile information, verification status, approximate location, listing information, rental details, and information necessary to arrange pickup or return.",
-        "IdelX will seek to limit information shared between users to information reasonably necessary for the relevant Platform functionality or transaction."
+        "IdleX will seek to limit information shared between users to information reasonably necessary for the relevant Platform functionality or transaction."
       ]
     },
     {
-  heading: "Sharing With Service Providers",
-  paragraphs: [
-        "IdelX may use third-party service providers for payment processing, hosting, cloud infrastructure, identity verification, security, analytics, communication, customer support, and fraud prevention.",
-        "Such providers may process personal information only to the extent reasonably necessary for the services they provide to IdelX and subject to applicable contractual and legal requirements."
+      "heading": "Sharing With Service Providers",
+      "paragraphs": [
+        "IdleX may use third-party service providers for payment processing, hosting, cloud infrastructure, identity verification, security, analytics, communication, customer support, and fraud prevention.",
+        "Such providers may process personal information only to the extent reasonably necessary for the services they provide to IdleX and subject to applicable contractual and legal requirements."
       ]
     },
     {
-  heading: "Legal Disclosure",
-  paragraphs: [
-        "IdelX may disclose information where reasonably necessary or legally required, including to police, law-enforcement authorities, courts, government authorities, regulatory authorities, and other legally authorised bodies.",
+      "heading": "Legal Disclosure",
+      "paragraphs": [
+        "IdleX may disclose information where reasonably necessary or legally required, including to police, law-enforcement authorities, courts, government authorities, regulatory authorities, and other legally authorised bodies.",
         "This may occur in circumstances involving fraud, theft, damage, illegal activity, safety concerns, court proceedings, legal investigations, or lawful government requests."
       ]
     },
     {
-  heading: "Damage, Theft and Rental Incidents",
-  paragraphs: [
-        "IdelX is an intermediary platform and does not physically inspect or manage the products listed by users.",
-        "Where a rental results in an allegation or incident involving damage, theft, loss, fraud, misuse, non-return, or other unlawful conduct, IdelX may use relevant account, transaction, KYC, communication, and listing information to investigate the matter and protect its users and legal interests.",
+      "heading": "Damage, Theft and Rental Incidents",
+      "paragraphs": [
+        "IdleX is an intermediary platform and does not physically inspect or manage the products listed by users.",
+        "Where a rental results in an allegation or incident involving damage, theft, loss, fraud, misuse, non-return, or other unlawful conduct, IdleX may use relevant account, transaction, KYC, communication, and listing information to investigate the matter and protect its users and legal interests.",
         "Where legally permitted or required, relevant information may be disclosed to law-enforcement authorities or other appropriate parties."
       ]
     },
     {
-  heading: "Insurance and Recovery Assistance",
-  paragraphs: [
-        "IdelX does not provide, arrange, underwrite, or guarantee insurance coverage for any product, rental transaction, theft, loss, damage, accident, or personal injury.",
-        "In the event of theft, wrongful retention, non-return, damage, fraud, or another rental-related incident, IdelX may, where reasonably possible and legally permitted, assist affected Users by facilitating communication, preserving relevant Platform records, providing relevant information or documentation, and assisting Users in making reports to appropriate authorities.",
-        "Any such assistance is provided on a reasonable-efforts basis only. IdelX does not guarantee that a product, money, security deposit, or other property will be recovered, or that any particular outcome will be achieved."
+      "heading": "Insurance and Recovery Assistance",
+      "paragraphs": [
+        "IdleX does not provide, arrange, underwrite, or guarantee insurance coverage for any product, rental transaction, theft, loss, damage, accident, or personal injury.",
+        "In the event of theft, wrongful retention, non-return, damage, fraud, or another rental-related incident, IdleX may, where reasonably possible and legally permitted, assist affected Users by facilitating communication, preserving relevant Platform records, providing relevant information or documentation, and assisting Users in making reports to appropriate authorities.",
+        "Any such assistance is provided on a reasonable-efforts basis only. IdleX does not guarantee that a product, money, security deposit, or other property will be recovered, or that any particular outcome will be achieved."
       ]
     },
     {
-  heading: "Security Deposits",
-  paragraphs: [
+      "heading": "Security Deposits",
+      "paragraphs": [
         "The security deposit applicable to a rental is determined by the Lender according to the applicable listing or rental terms.",
         "The security deposit is intended to be 100% refundable, subject to legitimate deductions where the rented product has been damaged or another permitted deduction applies under the applicable rental agreement.",
-        "IdelX may process information relating to security deposits for transaction records, payment processing, refund processing, dispute handling, and fraud prevention.",
-        "IdelX does not independently determine the physical condition of a product."
+        "IdleX may process information relating to security deposits for transaction records, payment processing, refund processing, dispute handling, and fraud prevention.",
+        "IdleX does not independently determine the physical condition of a product."
       ]
     },
     {
-  heading: "Payment Information",
-  paragraphs: [
-        "IdelX uses Razorpay and/or other authorised payment service providers to facilitate payments, refunds, security-deposit transactions and other payment-related services.",
+      "heading": "Payment Information",
+      "paragraphs": [
+        "IdleX uses Razorpay and/or other authorised payment service providers to facilitate payments, refunds, security-deposit transactions and other payment-related services.",
         "Depending on the payment method used, Razorpay or the applicable payment provider may process payment information such as UPI details, card information, bank-related information, payment identifiers and transaction information.",
         "Where payment information is collected or processed directly by a payment provider, that provider's applicable privacy policy and terms will also apply.",
-        "IdelX will not intentionally request users to send complete payment credentials through ordinary support communications."
+        "IdleX will not intentionally request users to send complete payment credentials through ordinary support communications."
       ]
     },
     {
-  heading: "Cookies",
-  paragraphs: [
-        "IdelX may use cookies and similar technologies to maintain login sessions, remember preferences, improve Platform functionality, analyse Platform usage, improve security, and understand user interactions.",
+      "heading": "Cookies",
+      "paragraphs": [
+        "IdleX may use cookies and similar technologies to maintain login sessions, remember preferences, improve Platform functionality, analyse Platform usage, improve security, and understand user interactions.",
         "Users may disable cookies through their browser settings. Some Platform features may not work correctly if certain cookies are disabled."
       ]
     },
     {
-  heading: "Data Security",
-  paragraphs: [
-        "IdelX will implement reasonable technical and organisational safeguards designed to protect personal information against unauthorised access, unauthorised disclosure, loss, misuse, alteration, and destruction.",
+      "heading": "Data Security",
+      "paragraphs": [
+        "IdleX will implement reasonable technical and organisational safeguards designed to protect personal information against unauthorised access, unauthorised disclosure, loss, misuse, alteration, and destruction.",
         "Access to sensitive information, including KYC information, should be restricted to authorised personnel who require such access for legitimate purposes.",
-        "However, no internet-based system can guarantee absolute security. Accordingly, IdelX cannot guarantee that information will never be accessed, disclosed, altered, or lost as a result of circumstances beyond its reasonable control."
+        "However, no internet-based system can guarantee absolute security. Accordingly, IdleX cannot guarantee that information will never be accessed, disclosed, altered, or lost as a result of circumstances beyond its reasonable control."
       ]
     },
     {
-  heading: "KYC Security",
-  paragraphs: [
+      "heading": "KYC Security",
+      "paragraphs": [
         "KYC information is particularly sensitive and should receive enhanced protection.",
-        "IdelX intends to restrict access to authorised personnel, use appropriate technical safeguards, avoid publicly displaying KYC documents, avoid providing KYC documents to ordinary users, use KYC information only for legitimate purposes, maintain appropriate verification records, and delete or securely dispose of information when it is no longer reasonably necessary, subject to applicable law.",
-        "Where Aadhaar-related information is processed, IdelX will follow applicable UIDAI requirements and other applicable law."
+        "IdleX intends to restrict access to authorised personnel, use appropriate technical safeguards, avoid publicly displaying KYC documents, avoid providing KYC documents to ordinary users, use KYC information only for legitimate purposes, maintain appropriate verification records, and delete or securely dispose of information when it is no longer reasonably necessary, subject to applicable law.",
+        "Where Aadhaar-related information is processed, IdleX will follow applicable UIDAI requirements and other applicable law."
       ]
     },
     {
-  heading: "Data Retention",
-  paragraphs: [
-        "IdelX will retain personal information only for as long as reasonably necessary for the purposes for which it was collected, including providing Platform services, maintaining accounts, maintaining transaction records, KYC verification, fraud prevention, investigating damage or theft, resolving disputes, establishing or defending legal claims, and complying with legal obligations.",
-        "When information is no longer reasonably necessary, IdelX may delete, anonymise, or securely dispose of it, subject to applicable law.",
+      "heading": "Data Retention",
+      "paragraphs": [
+        "IdleX will retain personal information only for as long as reasonably necessary for the purposes for which it was collected, including providing Platform services, maintaining accounts, maintaining transaction records, KYC verification, fraud prevention, investigating damage or theft, resolving disputes, establishing or defending legal claims, and complying with legal obligations.",
+        "When information is no longer reasonably necessary, IdleX may delete, anonymise, or securely dispose of it, subject to applicable law.",
         "Certain information may need to be retained for longer periods where required by law or where necessary for pending disputes or legal proceedings."
       ]
     },
     {
-  heading: "Your Rights and Choices",
-  paragraphs: [
+      "heading": "Your Rights and Choices",
+      "paragraphs": [
         "Subject to applicable law, you may have rights to access your personal information, correct inaccurate information, update your information, request deletion of certain information, withdraw consent where applicable, object to certain processing, request restriction of processing where applicable, and raise a privacy-related grievance.",
         "These rights may be subject to legal exceptions and legitimate retention requirements."
       ]
     },
     {
-  heading: "Account Deletion",
-  paragraphs: [
+      "heading": "Account Deletion",
+      "paragraphs": [
         "You can delete your account yourself, without contacting us. In the app, open Profile, then Personal Information, then Delete account. From a browser, go to https://idlex.in/delete-account and sign in. Either route asks for your password and then deletes the account immediately.",
         "Deleting removes your name, email address, phone number, profile photo, saved items and notifications; the identity document and selfie you uploaded for KYC, which are erased from our storage; and your payout details, including any UPI ID or bank account. Any listings you own are taken down and stop accepting bookings.",
-        "Records of completed rentals \u2014 bookings, payments, security deposits and refunds \u2014 are retained. Each of those transactions involved another person who holds their own record of it, and we are required to be able to account for money that has moved. Those records are no longer linked to your identity: reviews and messages you wrote are shown as being from a deleted user.",
+        "Records of completed rentals — bookings, payments, security deposits and refunds — are retained. Each of those transactions involved another person who holds their own record of it, and we are required to be able to account for money that has moved. Those records are no longer linked to your identity: reviews and messages you wrote are shown as being from a deleted user.",
         "An account cannot be deleted while a rental is still in progress or a dispute is open, because somebody else is waiting on the outcome. The app and the web page will tell you what remains to be finished.",
         "If you cannot sign in, email idlexsupport@gmail.com from the address on the account and we will delete it for you. We may ask for reasonable verification of your identity before doing so."
       ]
     },
     {
-  heading: "Children's Privacy",
-  paragraphs: [
-        "IdelX is not intended to facilitate rental agreements by individuals who are legally incapable of entering into such agreements.",
+      "heading": "Children's Privacy",
+      "paragraphs": [
+        "IdleX is not intended to facilitate rental agreements by individuals who are legally incapable of entering into such agreements.",
         "Users must satisfy applicable age and legal-capacity requirements for the services they use.",
-        "IdelX does not knowingly seek to collect children's personal information in circumstances prohibited by applicable law."
+        "IdleX does not knowingly seek to collect children's personal information in circumstances prohibited by applicable law."
       ]
     },
     {
-  heading: "User Responsibilities",
-  paragraphs: [
-        "Users are responsible for ensuring that information they provide to IdelX is accurate, complete, current, lawful, and not misleading.",
+      "heading": "User Responsibilities",
+      "paragraphs": [
+        "Users are responsible for ensuring that information they provide to IdleX is accurate, complete, current, lawful, and not misleading.",
         "Users must not upload another person's identity document without lawful authority, upload fraudulent documents, impersonate another person, provide false KYC information, publish unnecessary sensitive information, or misuse another user's personal information."
       ]
     },
     {
-  heading: "Public Listings and User Content",
-  paragraphs: [
+      "heading": "Public Listings and User Content",
+      "paragraphs": [
         "Information voluntarily included in public areas of the Platform may be visible to other users. This may include product photographs, product descriptions, listing information, reviews, ratings, and public profile information.",
         "Users should avoid including Aadhaar numbers, government ID photographs, bank details, passwords, OTPs, or other sensitive personal information in publicly visible listings, descriptions, reviews, or messages."
       ]
     },
     {
-  heading: "Third-Party Websites and Services",
-  paragraphs: [
-        "IdelX may contain links to or integrations with third-party websites and services. Such third parties may have their own privacy policies and terms.",
-        "IdelX is not responsible for privacy practices of third-party services that it does not own or control."
+      "heading": "Third-Party Websites and Services",
+      "paragraphs": [
+        "IdleX may contain links to or integrations with third-party websites and services. Such third parties may have their own privacy policies and terms.",
+        "IdleX is not responsible for privacy practices of third-party services that it does not own or control."
       ]
     },
     {
-  heading: "Marketing Communications",
-  paragraphs: [
-        "Where permitted by applicable law, IdelX may send communications relating to Platform updates, rental-related information, security alerts, service notifications, offers, and promotional communications.",
+      "heading": "Marketing Communications",
+      "paragraphs": [
+        "Where permitted by applicable law, IdleX may send communications relating to Platform updates, rental-related information, security alerts, service notifications, offers, and promotional communications.",
         "Users may opt out of promotional communications where an appropriate unsubscribe or preference-management mechanism is provided. Necessary transactional, account, security, or legal communications may continue."
       ]
     },
     {
-  heading: "Business Transfers",
-  paragraphs: [
-        "If IdelX is involved in a merger, acquisition, sale of assets, restructuring, financing, or transfer of business, personal information may be transferred as part of the relevant transaction, subject to applicable law."
+      "heading": "Business Transfers",
+      "paragraphs": [
+        "If IdleX is involved in a merger, acquisition, sale of assets, restructuring, financing, or transfer of business, personal information may be transferred as part of the relevant transaction, subject to applicable law."
       ]
     },
     {
-  heading: "Changes to This Privacy Policy",
-  paragraphs: [
-        "IdelX may update this Privacy Policy from time to time because of changes in Platform functionality, business practices, technology, applicable law, or security practices.",
+      "heading": "Changes to This Privacy Policy",
+      "paragraphs": [
+        "IdleX may update this Privacy Policy from time to time because of changes in Platform functionality, business practices, technology, applicable law, or security practices.",
         "The latest version will be made available through the Platform. The Effective Date at the beginning of the policy indicates the date from which the current version applies."
       ]
     },
     {
-  heading: "Grievance Officer",
-  paragraphs: [
-        "Name: Pujari Srujan Sathwik Designation: Owner, IdelX Email: idlexsupport@gmail.com Phone: +91 9704426431 Correspondence Address: 10-5-625, Bangle Street, Rayadurgam, Ananthapur, Andhra Pradesh, India. Support Hours: 8 hours per day.",
-        "IdelX will handle privacy-related grievances in accordance with applicable law and its applicable internal procedures."
+      "heading": "Grievance Officer",
+      "paragraphs": [
+        "Name: Pujari Srujan SathwikDesignation: Owner, IdleXEmail: idlexsupport@gmail.comPhone: +91 9704426431Correspondence Address:10-5-625, Bangle Street,Rayadurgam, Ananthapur,Andhra Pradesh, India.Support Hours: 8 hours per day.",
+        "IdleX will handle privacy-related grievances in accordance with applicable law and its applicable internal procedures."
       ]
     },
     {
-  heading: "Contact Us",
-  paragraphs: [
-        "IdelX Sole Proprietorship Owner: Pujari Srujan Sathwik Email: idlexsupport@gmail.com Phone: +91 9704426431 Business Address: D.No: 17-21-5, Ward No. 3, Near Why Not Shopping Mall, Undarajavaram Road, Tanuku, West Godavari District, Andhra Pradesh, India. Support Hours: 8 hours per day."
+      "heading": "Contact Us",
+      "paragraphs": [
+        "IdleXSole ProprietorshipOwner: Pujari Srujan SathwikEmail: idlexsupport@gmail.comPhone: +91 9704426431Business Address:D.No: 17-21-5, Ward No. 3,Near Why Not Shopping Mall,Undarajavaram Road, Tanuku,West Godavari District,Andhra Pradesh, India.Support Hours: 8 hours per day."
       ]
     },
     {
-  heading: "Governing Framework",
-  paragraphs: [
+      "heading": "Governing Framework",
+      "paragraphs": [
         "This Privacy Policy shall be interpreted in accordance with the applicable laws and regulations of India.",
         "Nothing in this Privacy Policy is intended to restrict any rights available to users under applicable law.",
-        "Effective Date: 20 August 2026 IdelX — Local Peer-to-Peer Rental Marketplace"
+        "Effective Date: 20 August 2026IdleX — Local Peer-to-Peer Rental Marketplace"
       ]
     }
   ]
