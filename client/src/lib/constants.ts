@@ -46,6 +46,7 @@ export const ROUTES = {
   KYC: "/kyc",
   SETTINGS: "/settings",
   KYC_VERIFICATION: "/kyc-verification",
+  PAYOUTS: "/payouts",
 
   // Checkout
   CHECKOUT: (id: string) => `/checkout/${id}`,

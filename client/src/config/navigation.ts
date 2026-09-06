@@ -27,7 +27,7 @@ export const OWNER_SIDEBAR: Array<{ label: string; href: string; icon: string; b
   { label: "Wishlist", href: ROUTES.WISHLIST, icon: "Heart" },
   { label: "Messages", href: ROUTES.MESSAGES, icon: "MessageCircle" },
   { label: "Reviews", href: ROUTES.REVIEWS, icon: "Star" },
-  { label: "Payouts", href: ROUTES.PAYMENTS, icon: "Banknote" },
+  { label: "Payouts", href: ROUTES.PAYOUTS, icon: "Banknote" },
   // No badge here: the real KYC status is injected by the sidebar at render
   // time. A literal string would report "Verified" to every user regardless
   // of their actual state.

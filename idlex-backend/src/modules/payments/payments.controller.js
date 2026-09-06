@@ -130,9 +130,30 @@ const getPayoutSettings = asyncHandler(async (req, res) => {
 });
 
 const updatePayoutSettings = asyncHandler(async (req, res) => {
+  // Named rather than spread. This decides where money is sent, so the
+  // fields a request may set are listed here instead of whatever the body
+  // happens to carry.
+  const allowed = ['accountHolderName', 'accountNumber', 'ifscOrRoutingNumber', 'bankName', 'upiId'];
+  const update = {};
+  for (const key of allowed) {
+    if (req.body[key] !== undefined) update[key] = String(req.body[key]).trim();
+  }
+
+  // UPI is the rail payouts actually go out on, so it has to look like an
+  // address — a typo here is a transfer that bounces.
+  if (update.upiId && !/^[\w.\-]{2,64}@[a-zA-Z]{2,32}$/.test(update.upiId)) {
+    throw ApiError.badRequest('That does not look like a UPI ID. It should look like name@bank');
+  }
+  // Half a bank account looks usable and is not.
+  const anyBank = ['accountHolderName', 'accountNumber', 'ifscOrRoutingNumber', 'bankName']
+    .some((k) => update[k]);
+  if (anyBank && (!update.accountNumber || !update.ifscOrRoutingNumber)) {
+    throw ApiError.badRequest('If you add bank details, include both the account number and the IFSC code');
+  }
+
   const settings = await PayoutSettings.findOneAndUpdate(
     { owner: req.user._id },
-    { $set: { ...req.body, owner: req.user._id } },
+    { $set: { ...update, owner: req.user._id } },
     { upsert: true, new: true }
   );
   return new ApiResponse(200, settings, 'Payout settings updated').send(res);

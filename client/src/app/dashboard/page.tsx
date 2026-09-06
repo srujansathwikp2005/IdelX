@@ -13,12 +13,13 @@ import { useFetchData } from "@/lib/use-fetch-data";
 import { formatCurrency, formatDate, timeAgo } from "@/lib/formatters";
 import type { Booking, Kyc, Listing, Payout, Review } from "@/lib/api-types";
 import { kycDisplay } from "@/lib/kyc-status";
-import { ICONS } from "@/components/ui/icons";
+import { ChevronRight, ICONS } from "@/components/ui/icons";
+import { ProfileSheet } from "@/components/marketplace/profile-sheet";
 import { LineChart } from "@/components/marketplace/charts";
 import { ROUTES } from "@/lib/constants";
 import * as React from "react";
 
-function BookingRow({ booking, asOwner, onApprove, onReject, onConfirmReturn, onReview, busy }: {
+function BookingRow({ booking, asOwner, onApprove, onReject, onConfirmReturn, onReview, onViewRenter, busy }: {
   booking: Booking;
   /** Whether the signed-in user owns the item in THIS booking. */
   asOwner: boolean;
@@ -26,6 +27,7 @@ function BookingRow({ booking, asOwner, onApprove, onReject, onConfirmReturn, on
   onReject?: (booking: Booking) => void;
   onConfirmReturn?: (booking: Booking) => void;
   onReview?: (booking: Booking) => void;
+  onViewRenter?: (userId: string) => void;
   busy?: boolean;
 }) {
   const title = typeof booking.listing === "object" && booking.listing !== null ? booking.listing.title : "Rental";
@@ -78,7 +80,12 @@ function BookingRow({ booking, asOwner, onApprove, onReject, onConfirmReturn, on
       {/* Who is asking, and how it has gone for other people. An owner
           choosing between competing requests needs it in front of them. */}
       {asOwner && booking.status === "requested" && renter && (
-        <div className="mt-2.5 flex items-center gap-2 border-t border-border pt-2.5 text-sm">
+        <button
+          type="button"
+          onClick={() => renter._id && onViewRenter?.(renter._id)}
+          disabled={!onViewRenter || !renter._id}
+          className="mt-2.5 flex w-full items-center gap-2 border-t border-border pt-2.5 text-left text-sm enabled:hover:text-primary disabled:cursor-default"
+        >
           <Avatar name={renter.name ?? "Renter"} size="sm" />
           <span className="font-medium">{renter.name ?? "Renter"}</span>
           <span className="ml-auto text-muted-foreground">
@@ -86,7 +93,10 @@ function BookingRow({ booking, asOwner, onApprove, onReject, onConfirmReturn, on
               ? `${rating.ratingAvg?.toFixed(1)} ★ (${rating.ratingCount})`
               : "No reviews yet"}
           </span>
-        </div>
+          {onViewRenter && renter._id && (
+            <ChevronRight size={16} className="shrink-0 text-muted-foreground" />
+          )}
+        </button>
       )}
     </div>
   );
@@ -104,6 +114,7 @@ function DashboardInner() {
   const { data: kyc } = useFetchData<Kyc>("/api/kyc", [user?._id]);
   const [approvalError, setApprovalError] = React.useState<string | null>(null);
   const [reviewing, setReviewing] = React.useState<Booking | null>(null);
+  const [viewingRenter, setViewingRenter] = React.useState<string | null>(null);
   const [busyId, setBusyId] = React.useState<string | null>(null);
 
   const approve = async (booking: Booking) => {
@@ -286,6 +297,7 @@ function DashboardInner() {
                     onApprove={approve}
                     onReject={reject}
                     onConfirmReturn={confirmReturn}
+                    onViewRenter={setViewingRenter}
                     busy={busyId === booking._id}
                   />
                 ))}
@@ -341,6 +353,8 @@ function DashboardInner() {
           )}
         </Panel>
       </section>
+
+      <ProfileSheet userId={viewingRenter} onClose={() => setViewingRenter(null)} />
 
       <ReviewModal
         open={!!reviewing}

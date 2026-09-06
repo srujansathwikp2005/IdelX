@@ -9,7 +9,7 @@ import { Stepper } from "@/components/ui/stepper";
 import { Badge } from "@/components/ui/badge";
 import { Checkbox, RadioGroup } from "@/components/ui/form-controls";
 import {
-  AlertTriangle, Camera, CheckCircle, Clock, IdCard, Mail, Repeat, ShieldCheck, Upload,
+  AlertTriangle, Camera, CheckCircle, ChevronRight, Clock, IdCard, Mail, Repeat, ShieldCheck, Upload,
 } from "@/components/ui/icons";
 import { api, ApiError, getStoredUser, setStoredUser } from "@/lib/api-client";
 import { useAuth } from "@/lib/auth";
@@ -1075,6 +1075,20 @@ export function KycStepperForm() {
             KYC rejected: {kyc.rejectionReason || "Please resubmit your details."}
           </p>
         </div>
+      )}
+      {kyc && (
+        <Link
+          href={ROUTES.PAYOUTS}
+          className="flex items-center justify-between gap-3 rounded-lg border border-border bg-card p-4 text-sm transition-colors hover:border-border-strong"
+        >
+          <span>
+            <span className="font-medium">Edit bank details</span>
+            <span className="mt-0.5 block text-muted-foreground">
+              Change the UPI ID or account your earnings are paid into.
+            </span>
+          </span>
+          <ChevronRight size={18} className="shrink-0 text-muted-foreground" />
+        </Link>
       )}
       <div className="grid gap-4 rounded-xl border border-border bg-card p-6 shadow-sm md:grid-cols-2">
         <div className="md:col-span-2 flex items-start gap-3 rounded-lg bg-panel p-4">
