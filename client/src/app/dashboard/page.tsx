@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { DashboardShell } from "@/components/marketplace/dashboard-shell";
+import { ReviewModal } from "@/components/marketplace/review-modal";
 import { StatCard } from "@/components/shared/stat-card";
 import { Avatar } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
@@ -10,20 +11,21 @@ import { RequireAuth, useAuth, errorMessage } from "@/lib/auth";
 import { api } from "@/lib/api-client";
 import { useFetchData } from "@/lib/use-fetch-data";
 import { formatCurrency, formatDate, timeAgo } from "@/lib/formatters";
-import type { Booking, Kyc, Listing, Payout } from "@/lib/api-types";
+import type { Booking, Kyc, Listing, Payout, Review } from "@/lib/api-types";
 import { kycDisplay } from "@/lib/kyc-status";
 import { ICONS } from "@/components/ui/icons";
 import { LineChart } from "@/components/marketplace/charts";
 import { ROUTES } from "@/lib/constants";
 import * as React from "react";
 
-function BookingRow({ booking, asOwner, onApprove, onReject, onConfirmReturn, busy }: {
+function BookingRow({ booking, asOwner, onApprove, onReject, onConfirmReturn, onReview, busy }: {
   booking: Booking;
   /** Whether the signed-in user owns the item in THIS booking. */
   asOwner: boolean;
   onApprove?: (booking: Booking) => void;
   onReject?: (booking: Booking) => void;
   onConfirmReturn?: (booking: Booking) => void;
+  onReview?: (booking: Booking) => void;
   busy?: boolean;
 }) {
   const title = typeof booking.listing === "object" && booking.listing !== null ? booking.listing.title : "Rental";
@@ -62,6 +64,14 @@ function BookingRow({ booking, asOwner, onApprove, onReject, onConfirmReturn, bu
               Confirm Return
             </Button>
           )}
+          {/* Where a renter's rating comes from. Without this the web could
+              read ratings but never produce one, so every renter stayed on
+              "No reviews yet" forever. */}
+          {asOwner && onReview && booking.status === "completed" && (
+            <Button size="sm" variant="outline" onClick={() => onReview(booking)}>
+              Rate renter
+            </Button>
+          )}
         </div>
       </div>
 
@@ -90,8 +100,10 @@ function DashboardInner() {
   const { data: renterBookings } = useFetchData<Booking[]>("/api/bookings", []);
   const { data: ownerBookings, refetch: refetchOwner } = useFetchData<Booking[]>("/api/bookings/owner", [isOwner]);
   const { data: payouts } = useFetchData<Payout[]>("/api/payments/payouts", [isOwner]);
+  const { data: myReviews, refetch: refetchReviews } = useFetchData<Review[]>("/api/reviews/mine", []);
   const { data: kyc } = useFetchData<Kyc>("/api/kyc", [user?._id]);
   const [approvalError, setApprovalError] = React.useState<string | null>(null);
+  const [reviewing, setReviewing] = React.useState<Booking | null>(null);
   const [busyId, setBusyId] = React.useState<string | null>(null);
 
   const approve = async (booking: Booking) => {
@@ -121,7 +133,12 @@ function DashboardInner() {
     setApprovalError(null);
     setBusyId(booking._id);
     try {
-      await api.post<Booking>(`/api/bookings/${booking._id}/cancel`, {});
+      // The server requires a reason and records it on the booking, which is
+      // what the renter is shown. Posting an empty body failed validation,
+      // so Reject did nothing but print "Validation failed — reason: Required".
+      await api.post<Booking>(`/api/bookings/${booking._id}/cancel`, {
+        reason: "The owner declined this request",
+      });
       refetchOwner();
     } catch (err) {
       setApprovalError(errorMessage(err));
@@ -146,6 +163,12 @@ function DashboardInner() {
 
   const upcoming = (renterBookings ?? []).filter((b) => ["requested", "confirmed", "active"].includes(b.status));
   const ownerUpcoming = (ownerBookings ?? []).filter((b) => ["requested", "confirmed", "active", "return_requested"].includes(b.status));
+  // Finished rentals the owner has not rated yet. They are the only source of
+  // a renter's reputation, so they need somewhere to be acted on.
+  const reviewedBookingIds = new Set((myReviews ?? []).map((r) => String(r.booking)));
+  const toRate = (ownerBookings ?? []).filter(
+    (b) => b.status === "completed" && !reviewedBookingIds.has(String(b._id))
+  );
   const listedCount = myListings?.length ?? 0;
   const publishedCount = myListings?.filter((l) => l.status === "published").length ?? 0;
   const payoutTotal = (payouts ?? []).filter((p) => p.status !== "failed").reduce((sum, p) => sum + p.amount, 0);
@@ -266,6 +289,15 @@ function DashboardInner() {
                     busy={busyId === booking._id}
                   />
                 ))}
+              {toRate.slice(0, 2).map((booking) => (
+                <BookingRow
+                  key={booking._id}
+                  booking={booking}
+                  asOwner
+                  onReview={setReviewing}
+                  busy={busyId === booking._id}
+                />
+              ))}
               {upcoming.slice(0, 3).map((booking) => (
                 <BookingRow
                   key={booking._id}
@@ -309,6 +341,29 @@ function DashboardInner() {
           )}
         </Panel>
       </section>
+
+      <ReviewModal
+        open={!!reviewing}
+        onClose={() => setReviewing(null)}
+        asOwner
+        booking={
+          reviewing
+            ? {
+                _id: reviewing._id,
+                // The person, not the item — this review is about them.
+                title:
+                  typeof reviewing.renter === "object" && reviewing.renter !== null
+                    ? reviewing.renter.name ?? "the renter"
+                    : "the renter",
+              }
+            : null
+        }
+        onSubmitted={() => {
+          setReviewing(null);
+          refetchOwner();
+          refetchReviews();
+        }}
+      />
 
       <section className="mt-5 rounded-xl border border-border bg-card p-5 shadow-sm">
         <div className="flex flex-wrap items-center justify-between gap-3">

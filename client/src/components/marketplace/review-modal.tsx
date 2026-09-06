@@ -16,11 +16,15 @@ export function ReviewModal({
   onClose,
   booking,
   onSubmitted,
+  asOwner = false,
 }: {
   open: boolean;
   onClose: () => void;
   booking: ReviewTarget | null;
   onSubmitted: () => void;
+  /** An owner rates the person who hired the item, not the item. The server
+   *  works out the direction from who is asking; this only sets the wording. */
+  asOwner?: boolean;
 }) {
   const [rating, setRating] = React.useState(0);
   const [hover, setHover] = React.useState(0);
@@ -58,8 +62,14 @@ export function ReviewModal({
     <Modal
       open={open}
       onClose={onClose}
-      title="Rate your rental"
-      description={booking ? `How was renting “${booking.title}”?` : undefined}
+      title={asOwner ? "Rate this renter" : "Rate your rental"}
+      description={
+        booking
+          ? asOwner
+            ? `How was ${booking.title}? Did they look after it and return it on time?`
+            : `How was renting “${booking.title}”?`
+          : undefined
+      }
       footer={
         <div className="flex justify-end gap-3">
           <Button variant="outline" onClick={onClose}>Cancel</Button>
@@ -102,7 +112,7 @@ export function ReviewModal({
           label="Comment (optional)"
           value={comment}
           onChange={(e) => setComment(e.target.value)}
-          placeholder="Smooth handover, item matched the description, deposit returned on time..."
+          placeholder={asOwner ? "Did they look after it and return it on time?" : "Smooth handover, item matched the description, deposit returned on time..."}
           rows={4}
         />
       </div>
