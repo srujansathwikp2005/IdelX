@@ -226,7 +226,9 @@ export function EmailVerifyPanel({ initialEmail = "" }: { initialEmail?: string 
     try {
       await api.post<null>("/api/auth/email-otp/request", { email: email.trim() });
       setCodeSent(true);
-      setNotice(`A verification code was sent to ${email.trim()}.`);
+      setNotice(
+        `A verification code was sent to ${email.trim()}. If it is not in your inbox, check your spam folder.`
+      );
     } catch (err) {
       if (isNetworkError(err)) {
         setCodeSent(true);
@@ -283,7 +285,8 @@ export function EmailVerifyPanel({ initialEmail = "" }: { initialEmail?: string 
           <h1 className="text-2xl font-bold tracking-tight">Verify your email</h1>
         </div>
         <p className="mt-2 text-sm text-muted-foreground">
-          We&apos;ll send a one-time code to this address so we know it&apos;s really you.
+          We&apos;ll send a one-time code to this address so we know it&apos;s really you. If it
+          does not arrive, check your spam folder.
         </p>
       </div>
       <div className="space-y-4">
@@ -526,7 +529,10 @@ export function ListingStepperForm({ edit = false, listingId }: { edit?: boolean
     try {
       await api.post<null>("/api/listings/otp/request", {});
       setOtpSent(true);
-      setNotice(`A 6-digit code was sent to ${user?.email ?? "your email"}. Enter it below, then click Save again.`);
+      setNotice(
+        `A 6-digit code was sent to ${user?.email ?? "your email"}. Enter it below, then click Save again. ` +
+          "If it is not in your inbox, check your spam folder."
+      );
     } catch (err) {
       if (isNetworkError(err)) {
         setOtpSent(true);
@@ -845,7 +851,7 @@ export function ListingStepperForm({ edit = false, listingId }: { edit?: boolean
           <p className="mt-2 text-sm leading-6 text-primary-900">
             A verification code was sent to <strong>{user?.email ?? "your email"}</strong>. Every
             listing must be confirmed with this code before it is saved — enter it and click Save
-            again.
+            again. If it is not in your inbox, check your spam folder.
           </p>
           <div className="mt-4 flex flex-wrap items-end gap-3">
             <Input

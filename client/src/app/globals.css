@@ -292,6 +292,24 @@
 }
 
 @theme inline {
+  /* What lifts a card off the page.
+     
+     The page is near-white and cards are white, and Tailwind's stock
+     shadow-sm — a single 1px pass at 5% black — is not enough to separate
+     them: the browse grid read as one flat sheet with captions floating on
+     it. Redefined here rather than at 35 call sites, so every card that
+     already asks for shadow-sm gets it.
+     
+     Two passes: the tight one defines the edge, the wide one gives the
+     lift. A single blur big enough to be felt reads as fog. Tinted with the
+     ink colour rather than pure black, so the shade belongs to the same
+     palette as everything else.
+     
+     Dark mode needs no counterpart. A shadow is light being blocked, and on
+     a near-black ground there is none to block; depth there comes from the
+     card surface already being lighter than the page. */
+  --shadow-sm: 0 1px 2px 0 rgb(24 21 40 / 0.05), 0 4px 14px -2px rgb(24 21 40 / 0.07);
+
   --color-background: var(--background);
   --color-foreground: var(--foreground);
   --color-muted: var(--muted);
