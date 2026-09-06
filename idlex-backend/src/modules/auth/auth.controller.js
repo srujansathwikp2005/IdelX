@@ -16,7 +16,7 @@ const register = asyncHandler(async (req, res) => {
     action: 'user.registration_started',
     category: 'auth',
     summary: 'Signup started, awaiting email verification',
-    details: { email: result.email },
+    details: { email: result.email, acceptedTerms: Boolean(req.body?.acceptedTerms) },
     req,
   });
   return new ApiResponse(202, result, 'Check your email for the six-digit code').send(res);

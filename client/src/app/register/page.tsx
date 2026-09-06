@@ -47,6 +47,7 @@ export default function RegisterPage() {
   const [email, setEmail] = React.useState("");
   const [password, setPassword] = React.useState("");
   const [confirmPassword, setConfirmPassword] = React.useState("");
+  const [acceptedTerms, setAcceptedTerms] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
   const [loading, setLoading] = React.useState(false);
 
@@ -145,6 +146,12 @@ export default function RegisterPage() {
       setError("Passwords do not match");
       return;
     }
+    // The browser enforces this too, but only while the input is rendered
+    // and reachable; the check belongs where the submit actually happens.
+    if (!acceptedTerms) {
+      setError("Please accept the terms of service to continue");
+      return;
+    }
     setLoading(true);
     try {
       const user = await register({
@@ -154,6 +161,7 @@ export default function RegisterPage() {
         phoneVerificationToken: phoneVerificationToken ?? undefined,
         password,
         becomeOwner: role === "owner",
+        acceptedTerms,
       });
       if (user.role === "admin") {
         router.push(ROUTES.ADMIN);
@@ -346,11 +354,33 @@ export default function RegisterPage() {
               <div className="mt-5 rounded-xl bg-primary-50 p-4">
                 <Checkbox
                   required
+                  checked={acceptedTerms}
+                  onChange={(e) => {
+                    setAcceptedTerms(e.target.checked);
+                    setError(null);
+                  }}
                   label={
                     <span className="text-sm leading-6">
-                      I agree to IdleX safe rental rules, verification checks, and the{" "}
-                      <Link href={ROUTES.TERMS} className="font-semibold text-primary">
+                      I agree to IdleX safe rental rules, verification checks, the{" "}
+                      {/* stopPropagation because these sit inside the
+                          checkbox's <label>: without it, reading the terms
+                          also ticks the box you have not read them for. */}
+                      <Link
+                        href={ROUTES.TERMS}
+                        className="font-semibold text-primary"
+                        target="_blank"
+                        onClick={(e) => e.stopPropagation()}
+                      >
                         terms of service
+                      </Link>{" "}
+                      and the{" "}
+                      <Link
+                        href={ROUTES.PRIVACY}
+                        className="font-semibold text-primary"
+                        target="_blank"
+                        onClick={(e) => e.stopPropagation()}
+                      >
+                        privacy policy
                       </Link>.
                     </span>
                   }

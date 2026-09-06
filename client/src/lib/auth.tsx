@@ -21,6 +21,7 @@ export type RegisterPayload = {
   phoneVerificationToken?: string;
   password: string;
   becomeOwner?: boolean;
+  acceptedTerms?: boolean;
 };
 
 const AuthContext = React.createContext<AuthContextValue | null>(null);
@@ -205,6 +206,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         phone: payload.phone,
         phoneVerificationToken: payload.phoneVerificationToken,
         password: payload.password,
+        acceptedTerms: payload.acceptedTerms ?? false,
       });
     } catch (err) {
       if (!isNetworkError(err)) throw err;

@@ -7,6 +7,7 @@ const { signAccessToken, signRefreshToken, signPhoneVerificationToken, verifyPho
 const { generateOtp, sendOtpSms, normalizePhone, issuePhoneOtp, verifyPhoneOtpRecord, issueEmailOtp, verifyEmailOtpRecord } = require('../../utils/otp');
 const { sendPasswordResetEmail, sendOtpEmail } = require('../../utils/email');
 const env = require('../../config/env');
+const { currentTermsVersion } = require('../legal/legal.controller');
 
 // Business logic lives here, controllers stay thin (parse req -> call
 // service -> shape response) — mirrors keeping Django views thin and
@@ -20,7 +21,7 @@ const REGISTRATION_MAX_ATTEMPTS = 5;
 // exists before the proof can sign in, be messaged and hold listings while
 // still being unreachable. What was submitted waits in PendingRegistration
 // until the emailed code comes back.
-async function register({ name, email, phone, password, phoneVerificationToken }) {
+async function register({ name, email, phone, password, phoneVerificationToken, acceptedTerms }) {
   const normalizedEmail = String(email).trim().toLowerCase();
   const existing = await User.findOne({ email: normalizedEmail });
   if (existing) throw ApiError.conflict('Email already registered');
@@ -69,6 +70,11 @@ async function register({ name, email, phone, password, phoneVerificationToken }
         password: hashed,
         phone: normalizedPhone,
         phoneVerified,
+        // Stamped now, not when the code comes back: the moment someone
+        // agreed is the moment they ticked the box, and the two can be ten
+        // minutes apart.
+        termsAcceptedAt: acceptedTerms ? new Date() : null,
+        termsVersion: acceptedTerms ? currentTermsVersion() : null,
         code,
         attempts: 0,
         expiresAt: new Date(Date.now() + REGISTRATION_TTL_MS),
@@ -150,6 +156,8 @@ async function verifyRegistration(email, code) {
     password: pending.password,
     isEmailVerified: true,
     isPhoneVerified: Boolean(pending.phoneVerified),
+    termsAcceptedAt: pending.termsAcceptedAt ?? null,
+    termsVersion: pending.termsVersion ?? null,
   });
   // Tells the model's pre-save hook the digest is already final; hashing it
   // again would store a hash of a hash and no password would ever match.

@@ -18,6 +18,11 @@ const pendingRegistrationSchema = new mongoose.Schema(
     phone: { type: String, trim: true },
     phoneVerified: { type: Boolean, default: false },
 
+    // What the person ticked, kept with the rest of the submission so the
+    // record survives the gap between agreeing and the account existing.
+    termsAcceptedAt: { type: Date },
+    termsVersion: { type: String },
+
     code: { type: String, required: true },
     attempts: { type: Number, default: 0 },
 

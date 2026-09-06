@@ -25,6 +25,13 @@ const userSchema = new mongoose.Schema(
     isEmailVerified: { type: Boolean, default: false },
     isActive: { type: Boolean, default: true }, // false = suspended by admin
 
+    // When this person agreed to the terms, and which edition they agreed
+    // to. An agreement nobody recorded is one nobody can show, and the text
+    // changes, so the date alone would not say what was agreed.
+    // Null on accounts created before the checkbox existed.
+    termsAcceptedAt: { type: Date, default: null },
+    termsVersion: { type: String, default: null },
+
     // Set when the person deletes their own account. The record stays because
     // bookings and ledger entries point at it, but everything on it that
     // identified anybody has been overwritten by then.

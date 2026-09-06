@@ -36,6 +36,11 @@ const listDocs = asyncHandler(async (req, res) =>
   ).send(res)
 );
 
+// Which edition of the terms is currently in force. Signup stamps this on
+// the account, so a later revision cannot make it look as though someone
+// agreed to text that did not exist when they signed up.
+const currentTermsVersion = () => docs.get('terms')?.effectiveDate ?? null;
+
 const getDoc = asyncHandler(async (req, res) => {
   const doc = docs.get(req.params.slug);
   if (!doc) throw ApiError.notFound('No such document');
@@ -102,4 +107,4 @@ const getHelp = asyncHandler(async (req, res) =>
   new ApiResponse(200, HELP, 'Help topics').send(res)
 );
 
-module.exports = { listDocs, getDoc, getHelp };
+module.exports = { listDocs, getDoc, getHelp, currentTermsVersion };

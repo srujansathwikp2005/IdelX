@@ -7,6 +7,10 @@ const registerSchema = z.object({
   password: z.string().min(8),
   // Required when a phone is provided — proves the number was OTP-verified.
   phoneVerificationToken: z.string().optional(),
+  // Both clients require the tick before they will submit. It is optional
+  // here only so the builds already in testers' hands keep working; once
+  // everyone is past those, this becomes z.literal(true).
+  acceptedTerms: z.boolean().optional(),
 });
 
 // Login accepts an email address OR a phone number in one field. `email`
