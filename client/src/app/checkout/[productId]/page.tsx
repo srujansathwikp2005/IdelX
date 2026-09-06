@@ -6,7 +6,7 @@ import Link from "next/link";
 import { PublicShell } from "@/components/marketplace/app-shell";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Input, Select } from "@/components/ui/input";
+import { Input } from "@/components/ui/input";
 import { formatCurrency } from "@/lib/formatters";
 import { api } from "@/lib/api-client";
 import { useFetchData } from "@/lib/use-fetch-data";
@@ -15,11 +15,6 @@ import { listingImage } from "@/lib/api-types";
 import type { Booking, Listing } from "@/lib/api-types";
 import { ROUTES } from "@/lib/constants";
 import { daysBetween } from "@/lib/formatters";
-import {
-  DeliveryAddressFields,
-  isAddressComplete,
-  type DeliveryAddress,
-} from "@/components/marketplace/delivery-address";
 
 // Step one of two: the renter asks, and nothing is charged.
 //
@@ -36,8 +31,9 @@ export default function RequestBookingPage({ params }: { params: Promise<{ produ
 
   const [startDate, setStartDate] = React.useState("");
   const [endDate, setEndDate] = React.useState("");
-  const [pickup, setPickup] = React.useState("pickup");
-  const [address, setAddress] = React.useState<DeliveryAddress>({});
+  const [startTime, setStartTime] = React.useState("10:00");
+  const [endTime, setEndTime] = React.useState("10:00");
+
   const [submitting, setSubmitting] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
 
@@ -57,11 +53,6 @@ export default function RequestBookingPage({ params }: { params: Promise<{ produ
   const ownerId = typeof listing.owner === "object" && listing.owner !== null ? listing.owner._id : listing.owner;
   const isOwn = !!user && ownerId === user._id;
 
-  // Always asked, the way a food delivery app asks before an order rather
-  // than after. For doorstep delivery it is where the item goes; for pickup
-  // it is where the renter is, which the owner needs in order to arrange a
-  // handover and which gives a dispute somewhere to start.
-  const isDelivery = pickup === "delivery";
 
   const submit = async () => {
     setError(null);
@@ -69,21 +60,13 @@ export default function RequestBookingPage({ params }: { params: Promise<{ produ
     if (!user) return setError("Please sign in to request this booking.");
     if (!startDate || !endDate) return setError("Choose start and end dates");
     if (days < 1) return setError("End date must be after start date");
-    if (!isAddressComplete(address)) {
-      return setError(
-        isDelivery
-          ? "Add a delivery address — flat/house, city and PIN code are needed."
-          : "Add your address — flat/house, city and PIN code are needed so the owner can arrange the handover."
-      );
-    }
 
     setSubmitting(true);
     try {
       const booking = await api.post<Booking>("/api/bookings", {
         listingId: listing._id,
-        startDate,
-        endDate,
-        deliveryAddress: address,
+        startDate: `${startDate}T${startTime || "10:00"}`,
+        endDate: `${endDate}T${endTime || "10:00"}`,
       });
       router.push(`${ROUTES.MY_RENTALS}?requested=${booking._id}`);
     } catch (err) {
@@ -103,35 +86,16 @@ export default function RequestBookingPage({ params }: { params: Promise<{ produ
             <Card>
               <CardHeader><CardTitle>Rental details</CardTitle></CardHeader>
               <CardContent className="grid gap-4 md:grid-cols-2">
-                <Input label="Start date" type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)} />
-                <Input label="End date" type="date" value={endDate} onChange={(e) => setEndDate(e.target.value)} />
-                <Select
-                  label="Pickup option"
-                  value={pickup}
-                  onChange={(e) => setPickup(e.target.value)}
-                  options={[
-                    { value: "pickup", label: "Owner pickup" },
-                    { value: "delivery", label: "Doorstep delivery" },
-                  ]}
-                />
+                {/* The hour is part of the deal — charges run from when the
+                    item changes hands — so it is asked for beside the day
+                    rather than defaulted to midnight. */}
+                <Input label="Collect from" type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)} />
+                <Input label="Collection time" type="time" value={startTime} onChange={(e) => setStartTime(e.target.value)} />
+                <Input label="Return by" type="date" value={endDate} onChange={(e) => setEndDate(e.target.value)} />
+                <Input label="Return time" type="time" value={endTime} onChange={(e) => setEndTime(e.target.value)} />
               </CardContent>
             </Card>
 
-            <Card>
-              <CardContent className="pt-6">
-                <DeliveryAddressFields
-                  value={address}
-                  onChange={setAddress}
-                  disabled={submitting}
-                  heading={isDelivery ? "Delivery address" : "Your address"}
-                  hint={
-                    isDelivery
-                      ? "Where the owner should deliver the item."
-                      : "Where you are collecting from — the owner uses this to arrange the handover."
-                  }
-                />
-              </CardContent>
-            </Card>
 
             <p className="rounded-lg bg-panel p-4 text-sm text-muted-foreground">
               <strong>You will not be charged yet.</strong> The owner reviews your request first —
