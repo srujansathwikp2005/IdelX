@@ -5,7 +5,7 @@ import { DashboardShell } from "@/components/marketplace/dashboard-shell";
 import { Button } from "@/components/ui/button";
 import { Input, Textarea } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
-import { useAuth, errorMessage } from "@/lib/auth";
+import { useAuth, useIsMounted, errorMessage } from "@/lib/auth";
 import { api } from "@/lib/api-client";
 import { useFetchData } from "@/lib/use-fetch-data";
 import { formatDate } from "@/lib/formatters";
@@ -13,7 +13,13 @@ import { cn } from "@/lib/utils";
 import type { SupportTicket } from "@/lib/api-types";
 
 function HelpContent() {
-  const { user } = useAuth();
+  const { user: signedIn } = useAuth();
+  // Held back until mount for the same reason as the dashboard chrome: the
+  // stored user does not exist on the server, so this page rendered its
+  // signed-out shape there and its signed-in shape on the browser's first
+  // pass, and React discarded the server HTML.
+  const mounted = useIsMounted();
+  const user = mounted ? signedIn : null;
   // Only fetch the caller's tickets when there is a caller.
   const { data: tickets, isLoading, refetch } = useFetchData<SupportTicket[]>(user ? "/api/support/mine" : null, [user?._id]);
   const [subject, setSubject] = React.useState("");

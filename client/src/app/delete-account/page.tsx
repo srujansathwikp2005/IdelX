@@ -8,7 +8,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { AlertTriangle, CheckCircle } from "@/components/ui/icons";
 import { Input } from "@/components/ui/input";
 import { api } from "@/lib/api-client";
-import { errorMessage, useAuth } from "@/lib/auth";
+import { errorMessage, useAuth, useIsMounted } from "@/lib/auth";
 import { ROUTES } from "@/lib/constants";
 
 type DeletionStatus = { canDelete: boolean; reasons: string[] };
@@ -23,7 +23,13 @@ type DeletionStatus = { canDelete: boolean; reasons: string[] };
  * leave.
  */
 export default function DeleteAccountPage() {
-  const { user, logout } = useAuth();
+  const { user: signedIn, logout } = useAuth();
+  // The page renders one shape for a signed-in account and another for a
+  // visitor, and the stored user does not exist on the server — rendering
+  // it on the first client pass is a hydration mismatch. One paint later
+  // the real user is in place.
+  const mounted = useIsMounted();
+  const user = mounted ? signedIn : null;
   const [status, setStatus] = React.useState<DeletionStatus | null>(null);
   const [password, setPassword] = React.useState("");
   const [busy, setBusy] = React.useState(false);
