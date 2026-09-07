@@ -11,6 +11,7 @@ import { RequireAuth, useAuth, errorMessage } from "@/lib/auth";
 import { api } from "@/lib/api-client";
 import { useFetchData } from "@/lib/use-fetch-data";
 import { formatCurrency, formatDate, timeAgo } from "@/lib/formatters";
+import { isPaymentUnderReview } from "@/lib/api-types";
 import type { Booking, Kyc, Listing, Payout, Review } from "@/lib/api-types";
 import { kycDisplay } from "@/lib/kyc-status";
 import { ChevronRight, ICONS } from "@/components/ui/icons";
@@ -46,7 +47,9 @@ function BookingRow({ booking, asOwner, onApprove, onReject, onConfirmReturn, on
           </p>
         </div>
         <div className="flex shrink-0 items-center gap-2">
-          <Badge variant={booking.status === "completed" ? "success" : booking.status === "cancelled" ? "danger" : booking.status === "return_requested" || booking.status === "awaiting_payment" ? "warning" : "default"}>{booking.status}</Badge>
+          <Badge variant={booking.status === "completed" ? "success" : booking.status === "cancelled" ? "danger" : booking.status === "return_requested" || booking.status === "awaiting_payment" ? "warning" : "default"}>
+            {isPaymentUnderReview(booking) ? "verifying payment" : booking.status}
+          </Badge>
           {/* Every action below is gated on owning THIS booking, not on the
               account being an owner of anything. Gating on the latter put an
               Approve button on the user's own rentals, and the server — which

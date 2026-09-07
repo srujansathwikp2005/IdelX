@@ -12,6 +12,7 @@ import { RequireAuth, useAuth, errorMessage } from "@/lib/auth";
 import { api } from "@/lib/api-client";
 import { useFetchData } from "@/lib/use-fetch-data";
 import { formatCurrency, formatDate } from "@/lib/formatters";
+import { isPaymentRejected, isPaymentUnderReview } from "@/lib/api-types";
 import type { Booking } from "@/lib/api-types";
 
 function RentalDetailInner({ rentalId }: { rentalId: string }) {
@@ -117,15 +118,40 @@ function RentalDetailInner({ rentalId }: { rentalId: string }) {
         {message && <p className="rounded-md bg-danger-50 p-3 text-sm text-danger">{message}</p>}
         <div className="rounded-lg border border-border bg-card p-6">
           <div className="flex items-center justify-between gap-3">
-            <Badge variant={booking.status === "completed" ? "success" : booking.status === "cancelled" ? "danger" : booking.status === "return_requested" ? "warning" : "default"}>{booking.status}</Badge>
+            <Badge
+              variant={
+                isPaymentUnderReview(booking)
+                  ? "warning"
+                  : booking.status === "completed"
+                    ? "success"
+                    : booking.status === "cancelled"
+                      ? "danger"
+                      : booking.status === "return_requested"
+                        ? "warning"
+                        : "default"
+              }
+            >
+              {isPaymentUnderReview(booking)
+                ? "verifying payment"
+                : isPaymentRejected(booking)
+                  ? "payment not verified"
+                  : booking.status}
+            </Badge>
             <div className="flex flex-wrap items-center justify-end gap-3">
               {isOwner && booking.status === "requested" && (
                 <Button size="sm" loading={busy} onClick={confirm}>Confirm Booking</Button>
               )}
-              {isRenter && booking.status === "awaiting_payment" && (
+              {/* Not while a submitted payment is still being checked —
+                  offering it again is how people pay twice. */}
+              {isRenter && booking.status === "awaiting_payment" && !isPaymentUnderReview(booking) && (
                 <Link href={`/checkout/booking/${booking._id}`}>
-                  <Button size="sm">Pay now</Button>
+                  <Button size="sm">{isPaymentRejected(booking) ? "Try payment again" : "Pay now"}</Button>
                 </Link>
+              )}
+              {isRenter && isPaymentUnderReview(booking) && (
+                <p className="text-sm text-muted-foreground">
+                  Payment received — verification pending. Nothing more to do.
+                </p>
               )}
               {canConfirmReceipt && (
                 <Button size="sm" loading={busy} onClick={confirmReceipt}>

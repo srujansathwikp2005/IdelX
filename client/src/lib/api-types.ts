@@ -127,9 +127,32 @@ export type Booking = {
   cancelledBy: string | null;
   cancellationReason: string | null;
   extensionRequests: ExtensionRequest[];
+  /**
+   * Where a UPI payment for this booking has got to, when one has been
+   * submitted. `status` stays at "awaiting_payment" from the owner's
+   * approval until an admin has matched the reference against the money, so
+   * it cannot distinguish someone who has not paid from someone who paid an
+   * hour ago and is waiting on us.
+   */
+  paymentSubmission?: {
+    status: "verification_pending" | "verified" | "rejected";
+    utr: string;
+    submittedAt: string;
+    rejectionReason: string | null;
+  } | null;
   createdAt: string;
   updatedAt: string;
 };
+
+/** Paid, and waiting on us. Nothing should ask for money in this state. */
+export const isPaymentUnderReview = (booking: Booking) =>
+  booking.status === "awaiting_payment" &&
+  booking.paymentSubmission?.status === "verification_pending";
+
+/** Paid, but the reference did not check out — they do need to act. */
+export const isPaymentRejected = (booking: Booking) =>
+  booking.status === "awaiting_payment" &&
+  booking.paymentSubmission?.status === "rejected";
 
 export type PaymentStatus = "created" | "authorized" | "captured" | "failed" | "refunded";
 

@@ -11,6 +11,7 @@ import { RequireAuth, errorMessage } from "@/lib/auth";
 import { api } from "@/lib/api-client";
 import { useFetchData } from "@/lib/use-fetch-data";
 import { formatCurrency, formatDate } from "@/lib/formatters";
+import { isPaymentRejected, isPaymentUnderReview } from "@/lib/api-types";
 import type { Booking, Review } from "@/lib/api-types";
 import { ROUTES } from "@/lib/constants";
 
@@ -82,6 +83,8 @@ function MyRentalsInner() {
           const isReviewed = reviewedIds.has(booking._id);
           const canRequestReturn = ["confirmed", "active"].includes(booking.status);
           const canReview = ["completed", "return_requested"].includes(booking.status);
+          const underReview = isPaymentUnderReview(booking);
+          const rejected = isPaymentRejected(booking);
           return (
             <div key={booking._id} className="rounded-lg border border-border bg-card p-5 hover:border-primary">
               <div className="flex flex-wrap items-start justify-between gap-3">
@@ -89,7 +92,13 @@ function MyRentalsInner() {
                   <h2 className="font-semibold">{title}</h2>
                 </Link>
                 <div className="text-right">
-                  <Badge variant={statusVariant(booking.status)}>{booking.status}</Badge>
+                  <Badge variant={underReview ? "warning" : statusVariant(booking.status)}>
+                    {underReview
+                      ? "verifying payment"
+                      : rejected
+                        ? "payment not verified"
+                        : booking.status}
+                  </Badge>
                   <p className="mt-2 font-semibold">{formatCurrency(booking.totalAmount)}</p>
                 </div>
               </div>
@@ -97,16 +106,25 @@ function MyRentalsInner() {
                 <p className="text-sm text-muted-foreground">
                   {formatDate(booking.startDate)} - {formatDate(booking.endDate)}
                   {booking.status === "requested" && " · Awaiting owner approval — you have not been charged"}
-                  {booking.status === "awaiting_payment" && " · Approved! Pay now to secure it"}
+                  {booking.status === "awaiting_payment" &&
+                    (underReview
+                      ? " · Payment received — verification pending. Nothing more to do."
+                      : rejected
+                        ? ` · ${booking.paymentSubmission?.rejectionReason ?? "That payment could not be verified. Try the reference again."}`
+                        : " · Approved! Pay now to secure it")}
                   {booking.status === "confirmed" && " · Confirm receipt once you have the item — this pays the owner"}
                   {booking.status === "active" && " · In progress · rent paid to owner, deposit still held"}
                   {booking.status === "return_requested" && " · Return requested, awaiting owner confirmation"}
                   {booking.status === "completed" && " · Completed · deposit refunded"}
                 </p>
                 <div className="flex items-center gap-2">
-                  {booking.status === "awaiting_payment" && (
+                  {/* Asking for money again while a payment is being checked
+                      is how people pay twice. */}
+                  {booking.status === "awaiting_payment" && !underReview && (
                     <Link href={`/checkout/booking/${booking._id}`}>
-                      <Button size="sm" variant="primary">Pay now</Button>
+                      <Button size="sm" variant="primary">
+                        {rejected ? "Try payment again" : "Pay now"}
+                      </Button>
                     </Link>
                   )}
                   {booking.status === "confirmed" && (

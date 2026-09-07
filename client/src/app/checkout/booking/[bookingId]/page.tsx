@@ -10,6 +10,7 @@ import { formatCurrency, formatDate } from "@/lib/formatters";
 import { api, ApiError } from "@/lib/api-client";
 import { useFetchData } from "@/lib/use-fetch-data";
 import { errorMessage } from "@/lib/auth";
+import { isPaymentUnderReview } from "@/lib/api-types";
 import type { Booking, CheckoutOrder } from "@/lib/api-types";
 import { ROUTES } from "@/lib/constants";
 
@@ -178,6 +179,28 @@ export default function PayForBookingPage({ params }: { params: Promise<{ bookin
           </p>
           <Link href={ROUTES.MY_RENTALS} className="mt-6 inline-block">
             <Button>Go to My Bookings</Button>
+          </Link>
+        </div>
+      </PublicShell>
+    );
+  }
+
+  // Someone who already paid can still reach this URL — from a bookmark, a
+  // back button, a notification. Taking a second payment against a booking
+  // whose first one is still being matched is the worst outcome here.
+  if (isPaymentUnderReview(booking)) {
+    return (
+      <PublicShell>
+        <div className="mx-auto max-w-lg py-16 text-center">
+          <h1 className="text-2xl font-semibold">Payment verification pending</h1>
+          <p className="mt-3 text-muted-foreground">
+            We have your payment
+            {booking.paymentSubmission?.utr ? ` (reference ${booking.paymentSubmission.utr})` : ""} and
+            are matching it against the money received. Your booking is confirmed once that is done —
+            there is nothing more for you to do, and nothing more to pay.
+          </p>
+          <Link href={ROUTES.MY_RENTALS} className="mt-6 inline-block">
+            <Button variant="outline">Back to My Bookings</Button>
           </Link>
         </div>
       </PublicShell>

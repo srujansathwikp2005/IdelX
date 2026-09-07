@@ -3,6 +3,7 @@ const ApiResponse = require('../../utils/ApiResponse');
 const ApiError = require('../../utils/ApiError');
 const Booking = require('../../models/Booking');
 const Dispute = require('../../models/Dispute');
+const ManualPayment = require('../../models/ManualPayment');
 const paymentsService = require('../payments/payments.service');
 const Listing = require('../../models/Listing');
 const bookingsService = require('./bookings.service');
@@ -25,12 +26,54 @@ const createBooking = asyncHandler(async (req, res) => {
   return new ApiResponse(201, booking, 'Booking requested').send(res);
 });
 
+/**
+ * Attaches the state of a manual payment to the bookings it belongs to.
+ *
+ * A booking sitting at `awaiting_payment` says nothing about whether the
+ * renter has already paid: the money moves by UPI, outside the platform, and
+ * the booking only advances once an admin has matched the reference against
+ * what actually arrived. Without this the list kept offering "Pay now" to
+ * someone who had paid twenty minutes earlier and was waiting on us — which
+ * invites paying a second time.
+ *
+ * The latest submission wins. A rejected reference followed by a corrected
+ * one leaves two records, and the newer one is the one being acted on.
+ */
+async function withPaymentState(bookings) {
+  const plain = bookings.map((b) => (typeof b.toObject === 'function' ? b.toObject() : b));
+  const awaiting = plain.filter((b) => b.status === 'awaiting_payment').map((b) => b._id);
+  if (awaiting.length === 0) return plain;
+
+  const submissions = await ManualPayment.find({ booking: { $in: awaiting } })
+    .sort('-createdAt')
+    .select('booking status utr createdAt rejectionReason')
+    .lean();
+
+  const latest = new Map();
+  for (const sub of submissions) {
+    const key = String(sub.booking);
+    if (!latest.has(key)) latest.set(key, sub);
+  }
+
+  for (const booking of plain) {
+    const sub = latest.get(String(booking._id));
+    if (!sub) continue;
+    booking.paymentSubmission = {
+      status: sub.status,
+      utr: sub.utr,
+      submittedAt: sub.createdAt,
+      rejectionReason: sub.rejectionReason ?? null,
+    };
+  }
+  return plain;
+}
+
 // Renter's own bookings — powers the renter-facing booking list.
 const myBookings = asyncHandler(async (req, res) => {
   const bookings = await Booking.find({ renter: req.user._id })
     .sort('-createdAt')
     .populate('listing', 'title photos pricePerDay');
-  return new ApiResponse(200, bookings, "Renter's bookings").send(res);
+  return new ApiResponse(200, await withPaymentState(bookings), "Renter's bookings").send(res);
 });
 
 // Owner-facing list — 'my-rentals' counterpart from the owner side.
@@ -42,7 +85,9 @@ const ownerBookings = asyncHandler(async (req, res) => {
     // not just dates, and a second request per row to find that out would be
     // a round trip for every card on the dashboard.
     .populate('renter', 'name avatarUrl ratingAvg ratingCount');
-  return new ApiResponse(200, bookings, "Owner's bookings").send(res);
+  // The owner needs it too: their side reads "waiting for the renter to pay"
+  // while the renter is in fact waiting for us.
+  return new ApiResponse(200, await withPaymentState(bookings), "Owner's bookings").send(res);
 });
 
 const getBooking = asyncHandler(async (req, res) => {
@@ -57,7 +102,8 @@ const getBooking = asyncHandler(async (req, res) => {
   );
   if (!isParty && req.user.role !== 'admin') throw ApiError.forbidden('Not a party to this booking');
 
-  return new ApiResponse(200, booking, 'Booking detail — StatusTimeline data').send(res);
+  const [withState] = await withPaymentState([booking]);
+  return new ApiResponse(200, withState, 'Booking detail — StatusTimeline data').send(res);
 });
 
 
