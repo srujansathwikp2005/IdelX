@@ -14,7 +14,7 @@ import { LogOut, X } from "@/components/ui/icons";
 import { ICONS } from "@/components/ui/icons";
 import { ADMIN_SIDEBAR_FLAT, RENTER_SIDEBAR, OWNER_SIDEBAR } from "@/config/navigation";
 import { ROUTES } from "@/lib/constants";
-import { useAuth } from "@/lib/auth";
+import { useAuth, useIsMounted } from "@/lib/auth";
 import { BrandLockup } from "./brand";
 
 export function DashboardSidebar({
@@ -24,7 +24,15 @@ export function DashboardSidebar({
 }) {
   const pathname = usePathname();
   const router = useRouter();
-  const { user, logout } = useAuth();
+  const { user: signedIn, logout } = useAuth();
+  // The signed-in user is read from localStorage, which does not exist on
+  // the server: it renders "User" and a renter's nav, then the browser's
+  // first render produced the real name and an owner's nav, and React threw
+  // out the server HTML (hydration error #418). Holding the user back until
+  // after mount makes the first client render match the server exactly; the
+  // real one arrives on the very next paint.
+  const mounted = useIsMounted();
+  const user = mounted ? signedIn : null;
   const isAdmin = user?.role === "admin";
   const isOwner = user?.isOwner || user?.role === "owner" || user?.role === "admin";
   // Admins only see admin routes — user routes are not displayed.

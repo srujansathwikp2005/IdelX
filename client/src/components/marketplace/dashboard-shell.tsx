@@ -4,7 +4,7 @@ import * as React from "react";
 import { DashboardSidebar } from "@/components/layout/dashboard-sidebar";
 import { MobileBottomNav } from "@/components/layout/mobile-bottom-nav";
 import { TopBar } from "@/components/layout/topbar";
-import { useAuth } from "@/lib/auth";
+import { useAuth, useIsMounted } from "@/lib/auth";
 
 export function DashboardShell({
   children,
@@ -14,7 +14,9 @@ export function DashboardShell({
   title?: string;
 }) {
   const [open, setOpen] = React.useState(false);
-  const { user } = useAuth();
+  const { user: signedIn } = useAuth();
+  const mounted = useIsMounted();
+  const user = mounted ? signedIn : null;
   const role =
     user?.role === "admin" ? "admin" : user?.isOwner || user?.role === "owner" ? "owner" : "renter";
 

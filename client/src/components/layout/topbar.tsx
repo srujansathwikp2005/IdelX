@@ -4,12 +4,16 @@ import * as React from "react";
 import Link from "next/link";
 import { Search, Bell, MessageCircle, Menu, Home } from "@/components/ui/icons";
 import { Avatar } from "@/components/ui/avatar";
-import { useAuth } from "@/lib/auth";
+import { useAuth, useIsMounted } from "@/lib/auth";
 import { useFetchData } from "@/lib/use-fetch-data";
 import { ROUTES } from "@/lib/constants";
 
 export function TopBar({ onMenuClick, title }: { onMenuClick?: () => void; title?: string }) {
-  const { user } = useAuth();
+  const { user: signedIn } = useAuth();
+  // Same reason as the sidebar: the stored user does not exist server-side,
+  // so rendering it on the first client pass breaks hydration.
+  const mounted = useIsMounted();
+  const user = mounted ? signedIn : null;
   const isAdmin = user?.role === "admin";
   const messagesHref = isAdmin ? ROUTES.ADMIN_MESSAGES : ROUTES.MESSAGES;
   const notificationsHref = isAdmin ? ROUTES.ADMIN : ROUTES.NOTIFICATIONS;
