@@ -54,6 +54,12 @@ const createListing = asyncHandler(async (req, res) => {
 
 const updateListing = asyncHandler(async (req, res) => {
   const listing = await listingsService.getOwnedListingOr404(req.params.id, req.user._id);
+
+  // An admin suspension cannot be overridden by the owner.
+  if (listing.status === 'suspended' && req.body.status && req.body.status !== 'suspended') {
+    throw ApiError.forbidden('This listing has been suspended by IdelX and cannot be made live');
+  }
+
   const changed = Object.keys(req.body);
   Object.assign(listing, req.body);
   await listing.save();

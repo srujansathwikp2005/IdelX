@@ -383,7 +383,9 @@ export function ListingStepperForm({ edit = false, listingId }: { edit?: boolean
         setSecurityDeposit(String(listing.securityDeposit ?? 0));
         setDescription(listing.description);
         setCity(listing.location?.city ?? "");
-        setStatus(listing.status);
+        if (listing.status !== "suspended") {
+          setStatus(listing.status);
+        }
         setExistingPhotos(listing.photos ?? []);
         setExtensionAllowed(!!listing.extension?.allowed);
         setExtensionPricing(listing.extension?.pricing === "custom" ? "custom" : "same");

@@ -33,6 +33,19 @@ function MyListingsInner() {
     }
   };
 
+  const pauseListing = async (id: string) => {
+    setActionError(null);
+    setBusyId(id);
+    try {
+      await api.put<Listing>(`/api/listings/${id}`, { status: "paused" });
+      refetch();
+    } catch (err) {
+      setActionError(errorMessage(err));
+    } finally {
+      setBusyId(null);
+    }
+  };
+
   const deleteListing = async (id: string) => {
     if (!window.confirm("Delete this listing permanently? This cannot be undone.")) return;
     setActionError(null);
@@ -127,7 +140,7 @@ function MyListingsInner() {
             >
               <ListingCard
                 listing={toCard(listing)}
-                manage={{ onPublish: publishListing, onDelete: deleteListing, busy: busyId === listing._id }}
+                manage={{ onPublish: publishListing, onPause: pauseListing, onDelete: deleteListing, busy: busyId === listing._id }}
               />
             </div>
           ))}

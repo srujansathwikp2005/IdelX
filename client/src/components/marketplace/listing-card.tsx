@@ -23,6 +23,7 @@ type Listing = {
 
 type ManageActions = {
   onPublish?: (id: string) => void;
+  onPause?: (id: string) => void;
   onDelete?: (id: string) => void;
   busy?: boolean;
 };
@@ -70,7 +71,17 @@ export function ListingCard({
           <div className="flex items-center justify-between gap-3">
             <div className="flex flex-wrap items-center gap-2">
               <Badge variant="default">{listing.category}</Badge>
-              {manage && <Badge variant={statusVariant}>{listing.status}</Badge>}
+              {manage && (
+                <Badge variant={statusVariant}>
+                  {listing.status === "published"
+                    ? "Live"
+                    : listing.status === "paused"
+                      ? "Paused"
+                      : listing.status === "suspended"
+                        ? "Suspended by IdelX"
+                        : "Draft"}
+                </Badge>
+              )}
             </div>
             {!onRemove && (
               <span className="text-muted-foreground transition-colors group-hover:text-primary">
@@ -110,14 +121,25 @@ export function ListingCard({
                   Edit
                 </Button>
               </Link>
-              {manage.onPublish && listing.status !== "published" && (
+              {manage.onPublish && listing.status !== "published" && listing.status !== "suspended" && (
                 <Button
                   size="sm"
                   loading={manage.busy}
                   onClick={() => manage.onPublish?.(listing.id)}
                   className="shadow-sm shadow-primary/20 transition-transform hover:-translate-y-0.5 hover:shadow-md hover:shadow-primary/30"
                 >
-                  Publish
+                  {listing.status === "paused" ? "Make Live" : "Publish"}
+                </Button>
+              )}
+              {manage.onPause && listing.status === "published" && (
+                <Button
+                  size="sm"
+                  variant="outline"
+                  loading={manage.busy}
+                  onClick={() => manage.onPause?.(listing.id)}
+                  className="transition-transform hover:-translate-y-0.5"
+                >
+                  Pause
                 </Button>
               )}
               {manage.onDelete && (

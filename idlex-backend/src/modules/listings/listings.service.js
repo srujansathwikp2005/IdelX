@@ -16,10 +16,9 @@ async function queryListings(query) {
     ordering = '-createdAt',
     page = 1,
     limit = 20,
-    status = 'published',
   } = query;
 
-  const filter = { status };
+  const filter = { status: 'published' };
   if (category) filter.category = category;
   if (city) filter['location.city'] = new RegExp(`^${city}$`, 'i');
   if (minPrice || maxPrice) {

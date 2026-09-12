@@ -54,7 +54,7 @@ export type AvailabilityBlock = {
   reason?: string;
 };
 
-export type ListingStatus = "draft" | "published" | "paused";
+export type ListingStatus = "draft" | "published" | "paused" | "suspended";
 
 export type Listing = {
   _id: string;

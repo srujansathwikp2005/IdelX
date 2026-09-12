@@ -4,7 +4,7 @@ const supportController = require('../support/support.controller');
 const { protect } = require('../../middlewares/auth.middleware');
 const { authorize } = require('../../middlewares/role.middleware');
 const validate = require('../../middlewares/validate.middleware');
-const { kycReviewSchema } = require('./admin.validation');
+const { kycReviewSchema, listingModerationSchema } = require('./admin.validation');
 const settingsController = require('../settings/settings.controller');
 const { manualPaymentSettingsSchema } = require('../settings/settings.validation');
 
@@ -26,7 +26,7 @@ router.get('/audit-logs', controller.listAuditLogs);
 router.get('/users', controller.listUsers);
 router.patch('/users/:id', controller.updateUser);
 router.get('/listings', controller.listListingsForModeration);
-router.patch('/listings/:id', controller.moderateListing);
+router.patch('/listings/:id', validate(listingModerationSchema), controller.moderateListing);
 router.get('/bookings', controller.listBookings);
 router.get('/payments', controller.listPayments);
 router.get('/disputes', controller.listDisputes);

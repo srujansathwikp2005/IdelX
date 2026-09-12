@@ -968,11 +968,28 @@ export function AdminListingsPage() {
                 <Td>{listing.title}</Td>
                 <Td>{listing.owner && typeof listing.owner === "object" ? listing.owner.name : "Owner"}</Td>
                 <Td>{formatCurrency(listing.pricePerDay)}</Td>
-                <Td><Badge variant={listing.status === "published" ? "success" : "warning"}>{listing.status}</Badge></Td>
                 <Td>
-                  <div className="flex gap-2">
-                    <Button size="sm" variant="outline" onClick={() => moderate(listing._id, "paused")}>Pause</Button>
-                    <Button size="sm" variant="outline" onClick={() => moderate(listing._id, "published")}>Publish</Button>
+                  <Badge variant={listing.status === "published" ? "success" : listing.status === "suspended" ? "danger" : "warning"}>
+                    {listing.status === "published"
+                      ? "Live"
+                      : listing.status === "paused"
+                        ? "Paused"
+                        : listing.status === "suspended"
+                          ? "Suspended"
+                          : "Draft"}
+                  </Badge>
+                </Td>
+                <Td>
+                  <div className="flex flex-wrap gap-2">
+                    {listing.status === "published" && (
+                      <Button size="sm" variant="outline" onClick={() => moderate(listing._id, "paused")}>Pause</Button>
+                    )}
+                    {listing.status !== "published" && (
+                      <Button size="sm" variant="outline" onClick={() => moderate(listing._id, "published")}>Publish</Button>
+                    )}
+                    {listing.status !== "suspended" && (
+                      <Button size="sm" variant="danger" onClick={() => moderate(listing._id, "suspended")}>Suspend</Button>
+                    )}
                   </div>
                 </Td>
               </tr>

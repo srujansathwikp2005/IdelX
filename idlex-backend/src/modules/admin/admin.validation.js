@@ -5,4 +5,8 @@ const kycReviewSchema = z.object({
   rejectionReason: z.string().optional(),
 });
 
-module.exports = { kycReviewSchema };
+const listingModerationSchema = z.object({
+  status: z.enum(['published', 'paused', 'suspended']),
+});
+
+module.exports = { kycReviewSchema, listingModerationSchema };

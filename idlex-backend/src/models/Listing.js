@@ -64,7 +64,7 @@ const listingSchema = new mongoose.Schema(
 
     status: {
       type: String,
-      enum: ['draft', 'published', 'paused'],
+      enum: ['draft', 'published', 'paused', 'suspended'],
       default: 'draft',
       index: true,
     },
