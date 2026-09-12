@@ -41,7 +41,7 @@ export default function SafetyPage() {
   <PageHero
     title="Safety & KYC Verification"
     eyebrow="Trust & Safety"
-    description="We follow RBI & Government guidelines to keep the community safe. Here's the verification path — what happens at each stage, and why."
+    description="We follow RBI & Government guidelines to keep the community safe. Here&apos;s the verification path — what happens at each stage, and why."
   />
 
   <section className="mx-auto max-w-3xl px-4 py-12 sm:px-6">
@@ -136,7 +136,7 @@ export default function SafetyPage() {
         </div>
         <div>
           <p className="font-serif text-sm font-semibold text-success">Verified &amp; Approved</p>
-          <p className="text-xs text-muted-foreground">You're clear to list or book on IdleX.</p>
+          <p className="text-xs text-muted-foreground">You&apos;re clear to list or book on IdleX.</p>
         </div>
       </div>
     </div>
@@ -146,8 +146,8 @@ export default function SafetyPage() {
       <svg className="h-4 w-4 shrink-0 text-foreground" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75">
         <path d="M12 2 4 5v6c0 5 3.4 9.4 8 11 4.6-1.6 8-6 8-11V5l-8-3Z" />
       </svg>
-      <p className="text-xs text-muted-foreground">
-        Your data is encrypted, secure, and will never be shared with anyone.
+      <p className="text-xs text-[#6F6B60]">
+        We use reasonable security measures to protect your information. Information may be shared with trusted service providers or other parties where necessary to operate IdelX, process payments, perform verification, maintain safety, or comply with law.
       </p>
     </div>
   </section>

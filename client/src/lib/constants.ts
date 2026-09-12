@@ -106,7 +106,6 @@ export const PUBLIC_ROUTES = [
   "/reset-password",
   "/verify-otp",
   "/verify-email",
-
   // Browsing. A visitor has to be able to see what is for rent before they
   // have any reason to create an account; requiring a login to view the
   // catalogue asks for commitment before showing the product.
@@ -116,14 +115,11 @@ export const PUBLIC_ROUTES = [
   "/product",
   "/reviews",
 
-  // Legal. These must be reachable without an account: a visitor cannot be
-  // expected to agree to terms they can only read after signing up, and a
-  // privacy policy exists precisely for people deciding whether to hand over
-  // their data.
+  // Legal. These must be reachable without an account.
   "/terms",
   "/privacy-policy",
-  "/security-deposit-policy",
-  "/cancellation-refund-policy",
+  "/cancellation-refund",
+  "/security-deposit-damage",
   "/community-guidelines",
 
   // Information and marketing pages.

@@ -75,9 +75,9 @@ export default function Home() {
   const { hasListings } = useHostStatus();
   const isHost = mounted && hasListings;
 
-  const categoriesReveal = useReveal<HTMLDivElement>();
-  const stepsReveal = useReveal<HTMLDivElement>();
-  const extensionReveal = useReveal<HTMLDivElement>();
+  const { ref: categoriesRevealRef, visible: categoriesVisible } = useReveal<HTMLDivElement>();
+  const { ref: stepsRevealRef, visible: stepsVisible } = useReveal<HTMLDivElement>();
+  const { ref: extensionRevealRef, visible: extensionVisible } = useReveal<HTMLDivElement>();
 
   // An overlapping stack rather than a grid: the point of the picture is
   // "all this is sitting idle in someone's cupboard", and a tidy grid reads
@@ -189,8 +189,8 @@ export default function Home() {
           real so an empty category reads as empty rather than as coming soon. */}
       <section className="border-y border-border bg-muted">
         <div
-          ref={categoriesReveal.ref}
-          className="mx-auto grid max-w-7xl grid-cols-3 gap-2 px-4 py-7 sm:px-6 md:grid-cols-6"
+          ref={categoriesRevealRef}
+          className="mx-auto grid max-w-7xl grid-cols-3 gap-2 px-4 py-7 sm:px-6 md:grid-cols-6
         >
           {categoryStats.slice(0, 6).map((category, index) => {
             const Icon = categoryIcons[category.name as keyof typeof categoryIcons] ?? Package;
@@ -201,9 +201,11 @@ export default function Home() {
               <Link
                 key={category.slug}
                 href={`${ROUTES.SEARCH}?category=${category.slug}`}
-                style={{ transitionDelay: categoriesReveal.visible ? `${index * 50}ms` : "0ms" }}
-                className={`group flex flex-col items-center gap-2 rounded-xl px-2 py-3 text-center transition-all duration-500 hover:bg-card ${
-                  categoriesReveal.visible ? "translate-y-0 opacity-100" : "translate-y-3 opacity-0"
+                style={{
+                  transitionDelay: categoriesVisible ? `${index * 60}ms` : "0ms",
+                }}
+                className={`group rounded-xl border border-border bg-white p-5 text-center shadow-sm transition-all duration-500 hover:-translate-y-1 hover:border-primary hover:shadow-lg hover:shadow-primary/10 ${
+                  categoriesVisible ? "translate-y-0 opacity-100" : "translate-y-4 opacity-0
                 }`}
               >
                 <span className="grid h-12 w-12 place-items-center rounded-2xl bg-card text-primary shadow-sm ring-1 ring-border transition-transform duration-300 group-hover:-translate-y-0.5">
@@ -222,13 +224,13 @@ export default function Home() {
       <section id="how-it-works" className="border-y border-border bg-card">
         <div className="mx-auto max-w-7xl px-4 py-14 text-center sm:px-6">
           <h2 className="text-2xl font-bold">How IdleX Works</h2>
-          <div ref={stepsReveal.ref} className="mt-9 grid gap-5 md:grid-cols-5">
+          <div ref={stepsRevealRef} className="mt-9 grid gap-5 md:grid-cols-5">
             {steps.map(({ title, copy, Icon }, index) => (
               <div
                 key={title}
-                style={{ transitionDelay: stepsReveal.visible ? `${index * 90}ms` : "0ms" }}
+                style={{ transitionDelay: stepsVisible ? `${index * 90}ms` : "0ms" }}
                 className={`relative transition-all duration-500 ${
-                  stepsReveal.visible ? "translate-y-0 opacity-100" : "translate-y-5 opacity-0"
+                  stepsVisible ? "translate-y-0 opacity-100" : "translate-y-5 opacity-0"
                 }`}
               >
                 {index < steps.length - 1 && (
@@ -248,9 +250,9 @@ export default function Home() {
       <section className="relative overflow-hidden bg-primary-50/60">
         <div className="pointer-events-none absolute -right-20 -top-20 h-72 w-72 rounded-full bg-linear-to-br from-primary/15 to-primary-300/15 blur-3xl" />
         <div
-          ref={extensionReveal.ref}
+          ref={extensionRevealRef}
           className={`relative mx-auto grid max-w-7xl gap-6 px-4 py-12 transition-all duration-700 sm:px-6 lg:grid-cols-[1fr_420px] ${
-            extensionReveal.visible ? "translate-y-0 opacity-100" : "translate-y-6 opacity-0"
+            extensionVisible ? "translate-y-0 opacity-100" : "translate-y-6 opacity-0"
           }`}
         >
           <div>

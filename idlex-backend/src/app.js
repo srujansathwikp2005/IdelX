@@ -24,6 +24,7 @@ const notificationsRoutes = require('./modules/notifications/notifications.route
 const supportRoutes = require('./modules/support/support.routes');
 const statsRoutes = require('./modules/stats/stats.routes');
 const wishlistRoutes = require('./modules/wishlist/wishlist.routes');
+const legalRoutes = require('./modules/legal/legal.routes');
 
 const app = express();
 
@@ -84,6 +85,7 @@ app.use('/api/devices', require('./modules/devices/devices.routes'));
 app.use('/api/support', supportRoutes);
 app.use('/api/stats', statsRoutes);
 app.use('/api/wishlist', wishlistRoutes);
+app.use('/api/legal', legalRoutes);
 
 app.use(notFoundMiddleware);
 app.use(errorMiddleware);

@@ -11,6 +11,19 @@ export type ApiEnvelope<T> = {
 
 export type UserRole = "renter" | "owner" | "admin";
 
+export type LegalSection = {
+  heading: string;
+  paragraphs: string[];
+};
+
+export type LegalDocument = {
+  slug: string;
+  title: string;
+  description: string;
+  effectiveDate: string;
+  sections: LegalSection[];
+};
+
 export type User = {
   _id: string;
   name: string;
