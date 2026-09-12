@@ -53,7 +53,6 @@ export function Footer() {
         <p className="mt-6 text-center text-xs text-inverse-foreground/65">
           Made for people who&apos;d rather borrow than buy.
         </p>
-        </p>
       </div>
     </footer>
   );

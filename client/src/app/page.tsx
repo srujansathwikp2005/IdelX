@@ -190,7 +190,7 @@ export default function Home() {
       <section className="border-y border-border bg-muted">
         <div
           ref={categoriesRevealRef}
-          className="mx-auto grid max-w-7xl grid-cols-3 gap-2 px-4 py-7 sm:px-6 md:grid-cols-6
+          className="mx-auto grid max-w-7xl grid-cols-3 gap-2 px-4 py-7 sm:px-6 md:grid-cols-6"
         >
           {categoryStats.slice(0, 6).map((category, index) => {
             const Icon = categoryIcons[category.name as keyof typeof categoryIcons] ?? Package;
@@ -205,7 +205,7 @@ export default function Home() {
                   transitionDelay: categoriesVisible ? `${index * 60}ms` : "0ms",
                 }}
                 className={`group rounded-xl border border-border bg-white p-5 text-center shadow-sm transition-all duration-500 hover:-translate-y-1 hover:border-primary hover:shadow-lg hover:shadow-primary/10 ${
-                  categoriesVisible ? "translate-y-0 opacity-100" : "translate-y-4 opacity-0
+                  categoriesVisible ? "translate-y-0 opacity-100" : "translate-y-4 opacity-0"
                 }`}
               >
                 <span className="grid h-12 w-12 place-items-center rounded-2xl bg-card text-primary shadow-sm ring-1 ring-border transition-transform duration-300 group-hover:-translate-y-0.5">

@@ -34,7 +34,7 @@ export const FOOTER_NAV = {
   Support: [
     { label: "Help Center", href: ROUTES.HELP },
     { label: "Safety", href: ROUTES.SAFETY },
-    { label: "Community Guidelines", href: ROUTES.COMMUNITY_GUIDELINES }
+    { label: "Community Guidelines", href: ROUTES.COMMUNITY_GUIDELINES },
     { label: "Contact Us", href: ROUTES.CONTACT },
   ],
   Legal: [
